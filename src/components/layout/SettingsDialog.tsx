@@ -31,7 +31,9 @@ import { Palette, Sliders, Sun, Moon, Monitor, Mic, Settings } from 'lucide-reac
  * @returns React.ReactNode - 设置对话框组件
  */
 export function SettingsDialog() {
-  const { settings, updateSettings, updateChartSettings } = useStore();
+  const settings = useStore((state) => state.settings);
+  const updateSettings = useStore((state) => state.updateSettings);
+  const updateChartSettings = useStore((state) => state.updateChartSettings);
   const [isOpen, setIsOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

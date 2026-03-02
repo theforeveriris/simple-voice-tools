@@ -25,8 +25,12 @@ const navItems: NavItem[] = [
  * @returns React.ReactNode - 顶部导航栏
  */
 export function TopBar() {
-  // 从全局状态获取必要的状态和方法
-  const { currentView, setCurrentView, isDetecting, startDetection, stopDetection } = useStore();
+  // 从全局状态按字段订阅，减少无关重渲染
+  const currentView = useStore((state) => state.currentView);
+  const setCurrentView = useStore((state) => state.setCurrentView);
+  const isDetecting = useStore((state) => state.isDetecting);
+  const startDetection = useStore((state) => state.startDetection);
+  const stopDetection = useStore((state) => state.stopDetection);
   // 移动端菜单状态
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // 菜单引用

@@ -13,7 +13,12 @@ import { PitchView } from './PitchView';
  * @returns React.ReactNode - 音高跟踪组件
  */
 export function PitchTrackingView() {
-  const { currentView, isDetecting, currentPitch, pitchTrackingHistory, settings, clearPitchTrackingHistory } = useStore();
+  const currentView = useStore((state) => state.currentView);
+  const isDetecting = useStore((state) => state.isDetecting);
+  const currentPitch = useStore((state) => state.currentPitch);
+  const pitchTrackingHistory = useStore((state) => state.pitchTrackingHistory);
+  const settings = useStore((state) => state.settings);
+  const clearPitchTrackingHistory = useStore((state) => state.clearPitchTrackingHistory);
   const [, setVolume] = useState(0);
   
   const containerRef = useRef<HTMLDivElement>(null);

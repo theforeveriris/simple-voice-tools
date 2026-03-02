@@ -5,7 +5,8 @@ import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function AnalysisView() {
-  const { pitchTrackingHistory, clearPitchTrackingHistory } = useStore();
+  const pitchTrackingHistory = useStore((state) => state.pitchTrackingHistory);
+  const clearPitchTrackingHistory = useStore((state) => state.clearPitchTrackingHistory);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Calculate analysis data

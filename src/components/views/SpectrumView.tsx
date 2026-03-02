@@ -11,7 +11,8 @@ import gsap from 'gsap';
  * @returns React.ReactNode - 频谱图组件
  */
 export function SpectrumView() {
-  const { isDetecting, settings } = useStore();
+  const isDetecting = useStore((state) => state.isDetecting);
+  const settings = useStore((state) => state.settings);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);

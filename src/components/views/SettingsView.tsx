@@ -14,7 +14,9 @@ import { Separator } from '@/components/ui/separator';
 import { Palette, Sliders, Sun, Moon, Monitor, Mic, RefreshCw, Github } from 'lucide-react';
 
 export function SettingsView() {
-  const { settings, updateSettings, updateChartSettings } = useStore();
+  const settings = useStore((state) => state.settings);
+  const updateSettings = useStore((state) => state.updateSettings);
+  const updateChartSettings = useStore((state) => state.updateChartSettings);
 
   const handleResetSettings = () => {
     // Reset settings to default values
