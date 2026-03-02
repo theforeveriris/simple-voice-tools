@@ -13,12 +13,12 @@ import gsap from 'gsap';
 export function SpectrumView() {
   const isDetecting = useStore((state) => state.isDetecting);
   const settings = useStore((state) => state.settings);
+  const detector = useStore((state) => state.detector);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
 
   /**
    * 初始化频谱音频上下文
@@ -26,54 +26,28 @@ export function SpectrumView() {
    */
   useEffect(() => {
     if (!isDetecting) {
-      // 不检测时清理音频上下文
-      audioCtxRef.current?.close();
-      audioCtxRef.current = null;
+      // 不检测时清理绘制循环
+      if (animationRef.current !== null) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
       analyserRef.current = null;
       return;
     }
 
-    /**
-     * 初始化音频
-     * 创建音频上下文、获取麦克风权限并设置分析器
-     */
-    const initAudio = async () => {
-      try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          } 
-        });
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 4096;
-        source.connect(analyser);
-        
-        audioCtxRef.current = audioCtx;
-        analyserRef.current = analyser;
-        
-        // 分析器初始化后开始绘制
-        startDrawing();
-      } catch (err) {
-        console.error('Failed to initialize audio:', err);
-      }
-    };
-
-    initAudio();
+    const sharedAnalyser = detector?.getAnalyserNode() ?? null;
+    if (!sharedAnalyser) return;
+    analyserRef.current = sharedAnalyser;
+    startDrawing();
 
     return () => {
-      if (animationRef.current) {
+      if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
       }
-      audioCtxRef.current?.close();
-      audioCtxRef.current = null;
       analyserRef.current = null;
     };
-  }, [isDetecting]);
+  }, [isDetecting, detector]);
 
   /**
    * 开始绘制频谱
@@ -81,6 +55,10 @@ export function SpectrumView() {
    */
   const startDrawing = () => {
     if (!isDetecting || !analyserRef.current) return;
+    if (animationRef.current !== null) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -155,7 +133,7 @@ export function SpectrumView() {
         const barHeight = percent * rect.height * 0.9;
 
         // 计算此频率 bin 的频率
-        const sampleRate = audioCtxRef.current?.sampleRate || 44100;
+        const sampleRate = analyserRef.current.context.sampleRate || 44100;
         const freq = (i * sampleRate) / (bufferLength * 2);
         
         // 映射到 x 位置（对数刻度）
@@ -186,7 +164,7 @@ export function SpectrumView() {
         const percent = value / 255;
         const barHeight = percent * rect.height * 0.9;
         
-        const sampleRate = audioCtxRef.current?.sampleRate || 44100;
+        const sampleRate = analyserRef.current.context.sampleRate || 44100;
         const freq = (i * sampleRate) / (bufferLength * 2);
         const x = (Math.log(freq) - Math.log(20)) / (Math.log(20000) - Math.log(20)) * rect.width;
         const y = rect.height - barHeight;

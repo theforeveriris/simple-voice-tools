@@ -13,6 +13,8 @@ import { PitchAnalyzer } from './core';
 export class MicrophonePitchDetector {
   private audioContext: AudioContext | null = null;
   private analyserNode: AnalyserNode | null = null;
+  private mediaStream: MediaStream | null = null;
+  private sourceNode: MediaStreamAudioSourceNode | null = null;
   private frequencyData: any = null;
   private isActive = false;
   private animationFrameId: number | null = null;
@@ -46,11 +48,12 @@ export class MicrophonePitchDetector {
       });
 
       // 创建音频源和分析器
-      const source = this.audioContext.createMediaStreamSource(stream);
+      this.mediaStream = stream;
+      this.sourceNode = this.audioContext.createMediaStreamSource(stream);
       this.analyserNode = this.audioContext.createAnalyser();
       this.analyserNode.fftSize = 4096;
       this.analyserNode.smoothingTimeConstant = 0.0; // 无平滑，实时响应
-      source.connect(this.analyserNode);
+      this.sourceNode.connect(this.analyserNode);
 
       this.frequencyData = new Uint8Array(this.analyserNode.frequencyBinCount);
       this.isActive = true;
@@ -69,11 +72,29 @@ export class MicrophonePitchDetector {
    */
   stop(): void {
     this.isActive = false;
-    if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    if (this.sourceNode) {
+      this.sourceNode.disconnect();
+      this.sourceNode = null;
+    }
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach((track) => track.stop());
+      this.mediaStream = null;
+    }
     if (this.audioContext) this.audioContext.close();
     this.audioContext = null;
     this.analyserNode = null;
     this.frequencyData = null;
+  }
+
+  /**
+   * 获取分析节点（供可视化复用，避免重复开启麦克风）
+   */
+  getAnalyserNode(): AnalyserNode | null {
+    return this.analyserNode;
   }
 
   /**
