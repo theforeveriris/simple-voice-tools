@@ -18,8 +18,9 @@ import './App.css';
  * @returns React.ReactNode - 应用的整体布局
  */
 function App() {
-  // 从全局状态中获取当前视图和设置
-  const { currentView, settings } = useStore();
+  // 从全局状态中按字段订阅，减少无关重渲染
+  const currentView = useStore((state) => state.currentView);
+  const theme = useStore((state) => state.settings.theme);
 
   /**
    * 应用主题效果
@@ -27,8 +28,6 @@ function App() {
    */
   useEffect(() => {
     const root = document.documentElement;
-    const theme = settings.theme;
-
     if (theme === 'system') {
       // 当主题设置为系统时，根据系统偏好设置
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -37,7 +36,7 @@ function App() {
       // 当主题设置为手动选择时，直接应用
       root.classList.toggle('dark', theme === 'dark');
     }
-  }, [settings.theme]);
+  }, [theme]);
 
   /**
    * 监听系统主题变化
@@ -45,7 +44,7 @@ function App() {
    */
   useEffect(() => {
     // 如果主题不是系统模式，则不需要监听
-    if (settings.theme !== 'system') return;
+    if (theme !== 'system') return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
@@ -61,7 +60,7 @@ function App() {
     mediaQuery.addEventListener('change', handleChange);
     // 清理事件监听器
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [settings.theme]);
+  }, [theme]);
 
   /**
    * 根据当前视图状态渲染对应组件
@@ -99,7 +98,7 @@ function App() {
         'transition-all duration-300'
       )}>
         <div className="p-4 md:p-6 h-[calc(100vh-6rem)]">
-          <div className="h-full glass-card p-4 md:p-6 overflow-hidden">
+          <div className="h-full glass-card p-4 md:p-6 overflow-auto">
             {/* 渲染当前视图 */}
             {renderView()}
           </div>
