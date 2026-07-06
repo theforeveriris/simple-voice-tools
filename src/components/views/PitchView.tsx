@@ -14,7 +14,7 @@ import gsap from 'gsap';
  * @returns React.ReactNode - 音高显示组件
  */
 export function PitchView() {
-  const { currentPitch } = useStore();
+  const currentPitch = useStore((state) => state.currentPitch);
   const [, setVolume] = useState(0);
   
   /**
