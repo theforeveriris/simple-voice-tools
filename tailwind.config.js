@@ -5,6 +5,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // 莫奈动态色板（rgb 三元组变量，支持透明度修饰符）
+        surface: "rgb(var(--c-surface-rgb) / <alpha-value>)",
+        card: "rgb(var(--c-card-rgb) / <alpha-value>)",
+        "surface-hi": "rgb(var(--c-surface-hi-rgb) / <alpha-value>)",
+        ink: "rgb(var(--c-ink-rgb) / <alpha-value>)",
+        "ink-2": "rgb(var(--c-ink-2-rgb) / <alpha-value>)",
+        accent: "rgb(var(--c-accent-rgb) / <alpha-value>)",
+        "on-accent": "rgb(var(--c-on-accent-rgb) / <alpha-value>)",
+        "accent-soft": "rgb(var(--c-accent-soft-rgb) / <alpha-value>)",
+        "on-accent-soft": "rgb(var(--c-on-accent-soft-rgb) / <alpha-value>)",
+        accent2: "rgb(var(--c-accent2-rgb) / <alpha-value>)",
+        "accent2-soft": "rgb(var(--c-accent2-soft-rgb) / <alpha-value>)",
+        "on-accent2-soft": "rgb(var(--c-on-accent2-soft-rgb) / <alpha-value>)",
+        line: "rgb(var(--c-line-rgb) / <alpha-value>)",
+
+        // shadcn/radix 组件使用的传统语义色
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -25,28 +41,6 @@ module.exports = {
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
         },
       },
       borderRadius: {

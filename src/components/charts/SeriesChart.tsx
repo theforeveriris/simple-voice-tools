@@ -1,0 +1,107 @@
+/**
+ * 图表画布组件
+ * - live 模式：从录音引擎读取实时缓冲，requestAnimationFrame 驱动滚动绘制
+ * - 静态模式：绑定某条分析记录与时间区间，数据/尺寸变化时重绘
+ */
+
+import { useEffect, useRef } from 'react';
+import { recorder } from '@/lib/audio/recorder';
+import { LIVE_WINDOW_SEC } from '@/constants';
+import { useStore } from '@/store/useStore';
+import type { RecordSeries } from '@/types';
+import { paintChart } from './chartPainters';
+import { cn } from '@/lib/utils';
+
+export type ChartKind = 'pitch' | 'energy' | 'formant';
+
+interface SeriesChartProps {
+  kind: ChartKind;
+  /** live = 实时绘制录音引擎数据 */
+  live?: boolean;
+  /** 静态模式：数据序列 */
+  series?: RecordSeries;
+  /** 静态模式：显示的时间区间 [t0, t1]（秒） */
+  range?: [number, number];
+  className?: string;
+}
+
+export function SeriesChart({ kind, live = false, series, range, className }: SeriesChartProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sizeRef = useRef({ w: 0, h: 0 });
+  const dprRef = useRef(1);
+  // 让 rAF 循环与 ResizeObserver 始终读到最新 props
+  const propsRef = useRef({ kind, live, series, range });
+  propsRef.current = { kind, live, series, range };
+
+  const drawFrame = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const { w, h } = sizeRef.current;
+    if (w < 8 || h < 8) return;
+    const dpr = dprRef.current;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const cur = propsRef.current;
+    const showGrid = useStore.getState().settings.showGrid;
+
+    if (cur.live) {
+      const snap = recorder.getLive();
+      const t1 = Math.max(LIVE_WINDOW_SEC, snap.elapsedSec);
+      const t0 = t1 - LIVE_WINDOW_SEC;
+      paintChart(
+        cur.kind, ctx, w, h,
+        { t: snap.t, f0: snap.f0.map((v) => (isFinite(v) ? v : null)), rmsDb: snap.rmsDb, f1: snap.f1.map((v) => (isFinite(v) ? v : null)), f2: snap.f2.map((v) => (isFinite(v) ? v : null)) },
+        t0, t1, showGrid, false, true,
+      );
+    } else if (cur.series && cur.range) {
+      paintChart(cur.kind, ctx, w, h, cur.series, cur.range[0], cur.range[1], showGrid, true, false);
+    }
+  };
+
+  // 尺寸自适应
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ro = new ResizeObserver(() => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      dprRef.current = dpr;
+      sizeRef.current = { w: rect.width, h: rect.height };
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      if (!propsRef.current.live) drawFrame();
+    });
+    ro.observe(canvas);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 静态模式：数据 / 区间变化时重绘
+  useEffect(() => {
+    if (!live) drawFrame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, series, range]);
+
+  // 实时模式：rAF 循环
+  useEffect(() => {
+    if (!live) return;
+    let raf = 0;
+    const loop = () => {
+      drawFrame();
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={cn('block h-full w-full', className)}
+    />
+  );
+}

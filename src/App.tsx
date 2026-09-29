@@ -1,109 +1,69 @@
 /**
  * 应用主组件
- * 负责整体布局和视图切换
+ * 页面切换（带过渡动画）+ 底部悬浮导航栏
  */
+
 import { useEffect } from 'react';
-import { TopBar } from '@/components/layout/TopBar';
-import { PitchView } from '@/components/views/PitchView';
-import { PitchTrackingView } from '@/components/views/PitchTrackingView';
-import { SpectrumView } from '@/components/views/SpectrumView';
-import { AnalysisView } from '@/components/views/AnalysisView';
-import { SettingsView } from '@/components/views/SettingsView';
+import { motion } from 'framer-motion';
+import { Toaster } from 'sonner';
+import { BottomBar } from '@/components/layout/BottomBar';
+import { TestPage } from '@/components/pages/TestPage';
+import { AnalysisPage } from '@/components/pages/AnalysisPage';
+import { HistoryPage } from '@/components/pages/HistoryPage';
+import { SettingsPage } from '@/components/pages/SettingsPage';
 import { useStore } from '@/store/useStore';
-import { cn } from '@/lib/utils';
-import './App.css';
+import { useHistoryStore } from '@/store/useHistoryStore';
+import { applyTheme } from '@/lib/theme/monet';
+import { createDemoRecord } from '@/lib/audio/demo';
 
-/**
- * 应用主函数组件
- * @returns React.ReactNode - 应用的整体布局
- */
 function App() {
-  // 从全局状态中按字段订阅，减少无关重渲染
-  const currentView = useStore((state) => state.currentView);
-  const theme = useStore((state) => state.settings.theme);
+  const currentTab = useStore((s) => s.currentTab);
+  const hue = useStore((s) => s.settings.hue);
+  const addRecord = useHistoryStore((s) => s.addRecord);
+  const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
+  const setTab = useStore((s) => s.setTab);
 
-  /**
-   * 应用主题效果
-   * 根据用户设置的主题模式更新根元素的class
-   */
+  // 应用莫奈主题色
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'system') {
-      // 当主题设置为系统时，根据系统偏好设置
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.toggle('dark', prefersDark);
-    } else {
-      // 当主题设置为手动选择时，直接应用
-      root.classList.toggle('dark', theme === 'dark');
-    }
-  }, [theme]);
+    applyTheme(hue);
+  }, [hue]);
 
-  /**
-   * 监听系统主题变化
-   * 当主题设置为系统时，监听系统主题变化并更新
-   */
+  // 开发辅助：?demo=1 生成一条示例记录，便于无麦克风环境体验
   useEffect(() => {
-    // 如果主题不是系统模式，则不需要监听
-    if (theme !== 'system') return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    /**
-     * 处理系统主题变化的回调函数
-     * @param e MediaQueryListEvent - 媒体查询事件
-     */
-    const handleChange = (e: MediaQueryListEvent) => {
-      document.documentElement.classList.toggle('dark', e.matches);
-    };
-
-    // 添加事件监听器
-    mediaQuery.addEventListener('change', handleChange);
-    // 清理事件监听器
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
-
-  /**
-   * 根据当前视图状态渲染对应组件
-   * @returns React.ReactNode - 对应视图的组件
-   */
-  const renderView = () => {
-    switch (currentView) {
-      case 'pitch':
-        return <PitchView />;
-      case 'pitch-tracking':
-        return <PitchTrackingView />;
-      case 'spectrum':
-        return <SpectrumView />;
-      case 'analysis':
-        return <AnalysisView />;
-      case 'settings':
-        return <SettingsView />;
-      default:
-        // 默认返回PitchView
-        return <PitchView />;
-    }
-  };
+    if (new URLSearchParams(window.location.search).get('demo') !== '1') return;
+    if (useHistoryStore.getState().records.length > 0) return;
+    const demo = createDemoRecord();
+    addRecord(demo);
+    setCurrentAnalysis(demo);
+    setTab('analysis');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className={cn(
-      'min-h-screen bg-background text-foreground',
-      'transition-colors duration-300'
-    )}>
-      {/* 顶部导航栏 */}
-      <TopBar />
+    <div className="min-h-dvh bg-surface text-ink">
+      <Toaster position="top-center" richColors toastOptions={{ style: { borderRadius: '8px' } }} />
 
-      {/* 主内容区域 */}
-      <main className={cn(
-        'min-h-screen pt-24', // 为固定的顶部导航栏添加 padding
-        'transition-all duration-300'
-      )}>
-        <div className="p-4 md:p-6 h-[calc(100vh-6rem)]">
-          <div className="h-full glass-card p-4 md:p-6 overflow-auto">
-            {/* 渲染当前视图 */}
-            {renderView()}
-          </div>
-        </div>
+      <main className="mx-auto w-full max-w-5xl px-5 pt-7 pb-36">
+        {/*
+          页面切换策略：旧页即时卸载（不做退场动画）+ 新页做入场动画。
+          退场动画会让测试页的三张 Canvas 图表在底栏弹簧动画期间持续重绘，
+          抢占主线程导致底栏动效掉帧；即时卸载让图表 rAF 立即停止，
+          底栏动画与入场淡入独占动画帧。
+        */}
+        <motion.div
+          key={currentTab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        >
+          {currentTab === 'test' && <TestPage />}
+          {currentTab === 'analysis' && <AnalysisPage />}
+          {currentTab === 'history' && <HistoryPage />}
+          {currentTab === 'settings' && <SettingsPage />}
+        </motion.div>
       </main>
+
+      <BottomBar />
     </div>
   );
 }

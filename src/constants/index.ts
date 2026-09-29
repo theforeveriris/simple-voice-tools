@@ -1,50 +1,9 @@
 /**
  * 应用常量定义
- * 包含应用中使用的各种常量配置
+ * 音高区间、莫奈主题预设、音符换算、默认设置
  */
 
-/**
- * 音高检测配置常量
- * 定义音高检测算法的参数配置
- */
-export const PITCH_DETECTOR_CONFIG = {
-  /**
-   * FFT点数，决定频率分辨率（约10.8Hz@44.1kHz）
-   */
-  FFT_SIZE: 4096, 
-  /**
-   * 默认采样率，实际从AudioContext获取
-   */
-  SAMPLE_RATE: 44100, 
-  /**
-   * C2 ≈ 65.41Hz，最低检测频率
-   */
-  MIN_FREQ: 65, 
-  /**
-   * C7 ≈ 2093Hz，最高检测频率
-   */
-  MAX_FREQ: 2093, 
-  /**
-   * 音高容差范围（半音）
-   */
-  VOCAL_RANGE: 8, 
-  /**
-   * 峰值标记范围
-   */
-  TOP_RANGE: 3, 
-  /**
-   * 最大谐波次数
-   */
-  LEVEL_N: 20, 
-  /**
-   * 峰值能量阈值（过滤静音/噪声）
-   */
-  MIN_ENERGY: 150, 
-  /**
-   * 人声能量占比阈值（越高越严格）
-   */
-  WEIGHT_THRESHOLD: 30, 
-};
+import type { AppSettings, PitchBand } from '@/types';
 
 /**
  * 音符名称列表
@@ -52,129 +11,101 @@ export const PITCH_DETECTOR_CONFIG = {
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 /**
- * 颜色方案配置
- * 定义不同主题的颜色配置
+ * 男女声音高区间定义（Hz）
+ * < 85            low         偏低（淡紫）
+ * 85  - 165       male        男声区（淡蓝）
+ * 165 - 180       transition  男女过渡区（黑）
+ * 180 - 255       female      女声区（淡粉）
+ * > 255           high        偏高（淡紫）
  */
-export const COLOR_SCHEMES = {
-  /**
-   * 默认颜色方案
-   */
-  default: {
-    primary: '#333333',
-    secondary: '#666666',
-    gradient: ['#333333', '#666666', '#999999'],
-  },
-  /**
-   * 海洋主题颜色方案
-   */
-  ocean: {
-    primary: '#0066CC',
-    secondary: '#00A3CC',
-    gradient: ['#0066CC', '#0088CC', '#00A3CC'],
-  },
-  /**
-   * 火焰主题颜色方案
-   */
-  flame: {
-    primary: '#FF4500',
-    secondary: '#FF8C00',
-    gradient: ['#FF4500', '#FF6B35', '#FF8C00'],
-  },
-  /**
-   * 森林主题颜色方案
-   */
-  forest: {
-    primary: '#228B22',
-    secondary: '#32CD32',
-    gradient: ['#228B22', '#2E8B57', '#32CD32'],
-  },
-  /**
-   * 紫色主题颜色方案
-   */
-  purple: {
-    primary: '#6B46C1',
-    secondary: '#9F7AEA',
-    gradient: ['#6B46C1', '#805AD5', '#9F7AEA'],
-  },
+export const BAND_RANGES: Record<PitchBand, [number, number]> = {
+  low: [50, 85],
+  male: [85, 165],
+  transition: [165, 180],
+  female: [180, 255],
+  high: [255, 520],
 };
 
 /**
- * 音符颜色映射
- * 为每个音符定义对应的颜色
+ * 音高区间配色（固定，不随主题变化）
+ * 曲线分段着色 / 区间背景 / 徽标
  */
-export const NOTE_COLORS: Record<string, string> = {
-  C: '#FF6B6B',
-  'C#': '#FF8E53',
-  D: '#FFC93C',
-  'D#': '#6BCB77',
-  E: '#4D96FF',
-  F: '#9B59B6',
-  'F#': '#E74C3C',
-  G: '#F39C12',
-  'G#': '#27AE60',
-  A: '#2980B9',
-  'A#': '#8E44AD',
-  B: '#C0392B',
+export const BAND_COLORS: Record<PitchBand, string> = {
+  low: '#BBA7EA',
+  male: '#8FB8EC',
+  transition: '#35343D',
+  female: '#F0A2C0',
+  high: '#BBA7EA',
 };
+
+/** 区间中文名 */
+export const BAND_LABELS: Record<PitchBand, string> = {
+  low: '偏低',
+  male: '男声区',
+  transition: '过渡区',
+  female: '女声区',
+  high: '偏高',
+};
+
+/**
+ * 判断频率所属音高区间
+ */
+export function bandOf(freq: number): PitchBand {
+  if (freq < BAND_RANGES.male[0]) return 'low';
+  if (freq < BAND_RANGES.transition[0]) return 'male';
+  if (freq < BAND_RANGES.female[0]) return 'transition';
+  if (freq <= BAND_RANGES.female[1]) return 'female';
+  return 'high';
+}
+
+/**
+ * 频率 → 钢琴音符（十二平均律，A4 = 440Hz）
+ */
+export function freqToNote(freq: number): { name: string; midi: number; cents: number } {
+  const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+  const name = NOTE_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+  const exact = 440 * Math.pow(2, (midi - 69) / 12);
+  const cents = Math.round(1200 * Math.log2(freq / exact));
+  return { name, midi, cents };
+}
+
+/**
+ * 莫奈取色预设（种子色相）
+ * 主题系统基于 OKLCH 色彩空间由色相生成全套 M3 风格色板
+ */
+export const THEME_PRESETS: { id: string; hue: number; label: string }[] = [
+  { id: 'indigo', hue: 285, label: '雾鸢蓝' },
+  { id: 'sky', hue: 240, label: '晴空蓝' },
+  { id: 'cyan', hue: 205, label: '湖水青' },
+  { id: 'green', hue: 150, label: '柑绿' },
+  { id: 'amber', hue: 95, label: '柚黄' },
+  { id: 'orange', hue: 55, label: '蜜橙' },
+  { id: 'rose', hue: 15, label: '山桃红' },
+  { id: 'purple', hue: 330, label: '堇紫' },
+];
 
 /**
  * 默认应用设置
- * 应用的初始配置
  */
-export const DEFAULT_SETTINGS = {
-  /**
-   * 主题模式
-   */
-  theme: 'system' as const,
-  /**
-   * 图表配置
-   */
-  chart: {
-    /**
-     * 最小频率
-     */
-    minFreq: 50,
-    /**
-     * 最大频率
-     */
-    maxFreq: 1050,
-    /**
-     * 是否显示网格
-     */
-    showGrid: false,
-    /**
-     * 是否显示标签
-     */
-    showLabels: false,
-    /**
-     * 线条宽度
-     */
-    lineWidth: 2,
-    /**
-     * 颜色方案
-     */
-    colorScheme: 'default' as const,
-  },
-  /**
-   * 检测灵敏度
-   */
-  sensitivity: 0.5,
-  /**
-   * 最小能量阈值
-   */
-  minEnergy: 150,
-  /**
-   * 禅模式
-   */
-  zenMode: false,
+export const DEFAULT_SETTINGS: AppSettings = {
+  hue: 15,
+  showGrid: true,
+  maxDurationSec: 120,
+  autoEnterAnalysis: true,
+  micDeviceId: '',
 };
 
-/**
- * 导航菜单项配置
- */
-export const NAV_ITEMS = [
-  { id: 'pitch-tracking' as const, label: '实时音高跟踪', icon: 'Waves' as const },
-  { id: 'spectrum' as const, label: '频谱图', icon: 'Waves' as const },
-  { id: 'analysis' as const, label: '结果分析', icon: 'BarChart3' as const },
-  { id: 'settings' as const, label: '设置', icon: 'Settings' as const },
-];
+/** 音高曲线纵轴范围（Hz） */
+export const PITCH_AXIS: [number, number] = [50, 520];
+
+/** 共振峰曲线纵轴范围（Hz） */
+export const FORMANT_AXIS: [number, number] = [0, 3500];
+
+/** 能量曲线纵轴范围（dB） */
+export const ENERGY_AXIS: [number, number] = [-90, 0];
+
+/** 实时曲线滚动窗口长度（秒） */
+export const LIVE_WINDOW_SEC = 12;
+
+/** 历史记录最多保留条数（防止 localStorage 超限） */
+export const MAX_HISTORY = 40;

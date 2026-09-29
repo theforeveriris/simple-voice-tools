@@ -5,292 +5,125 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * 色板变量默认值（色相 285 雾鸢蓝）。
+   * main.tsx 在渲染前会按持久化设置调用 applyTheme 覆盖，
+   * 这里仅作为首帧回退，保证无闪烁。
+   * 每个 --c-x 同时有 --c-x-rgb 三元组供 Tailwind 透明度修饰符使用。
+   */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 20%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 20%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 20%;
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 20%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 20%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 0%;
+    --c-surface: oklch(0.968 0.01 15);
+    --c-surface-rgb: 251 242 242;
+    --c-card: oklch(0.995 0.005 15);
+    --c-card-rgb: 255 252 252;
+    --c-surface-hi: oklch(0.945 0.016 15);
+    --c-surface-hi-rgb: 247 233 233;
+    --c-ink: oklch(0.27 0.025 15);
+    --c-ink-rgb: 50 33 34;
+    --c-ink-2: oklch(0.52 0.022 15);
+    --c-ink-2-rgb: 117 100 101;
+    --c-accent: oklch(0.5 0.155 15);
+    --c-accent-rgb: 169 49 70;
+    --c-on-accent: oklch(0.99 0.008 15);
+    --c-on-accent-rgb: 255 250 250;
+    --c-accent-soft: oklch(0.905 0.055 15);
+    --c-accent-soft-rgb: 255 210 212;
+    --c-on-accent-soft: oklch(0.36 0.09 15);
+    --c-on-accent-soft-rgb: 100 38 46;
+    --c-accent2: oklch(0.55 0.13 85);
+    --c-accent2-rgb: 148 105 0;
+    --c-accent2-soft: oklch(0.91 0.05 85);
+    --c-accent2-soft-rgb: 241 223 188;
+    --c-on-accent2-soft: oklch(0.36 0.08 85);
+    --c-on-accent2-soft-rgb: 80 57 0;
+    --c-line: oklch(0.915 0.012 15);
+    --c-line-rgb: 235 224 224;
+    /*
+     * shadcn/radix 组件使用的传统语义变量（固定中性色，浅色）。
+     * 动态莫奈色板通过上面的 --c-* 变量提供。
+     */
+    --background: var(--c-surface-rgb);
+    --foreground: 30 28 40;
+    --card: var(--c-card-rgb);
+    --card-foreground: 30 28 40;
+    --popover: var(--c-card-rgb);
+    --popover-foreground: 30 28 40;
+    --primary: 42 40 55;
+    --primary-foreground: 253 253 255;
+    --secondary: 240 239 246;
+    --secondary-foreground: 30 28 40;
+    --muted: 240 239 246;
+    --muted-foreground: 115 113 130;
+    --accent: 240 239 246;
+    --accent-foreground: 30 28 40;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 255 255 255;
+    --border: 228 227 236;
+    --input: 228 227 236;
+    --ring: 42 40 55;
     --radius: 1rem;
-    
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 0 0% 0%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 20%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 0 0% 0%;
-    
-    /* Custom colors */
-    --success: 142 76% 36%;
-    --warning: 38 92% 50%;
-    --info: 217 91% 60%;
-    
-    /* Glass effect */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(0, 0, 0, 0.1);
-  --glass-blur: 16px;
-  --glass-glow: 0 0 20px rgba(255, 255, 255, 0.3);
-  --glass-hover-glow: 0 0 30px rgba(255, 255, 255, 0.4);
   }
 
-  .dark {
-    --background: 0 0% 8%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 8%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 95%;
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 100%;
-    
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 0 0% 100%;
-    
-    --glass-bg: rgba(20, 20, 20, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-glow: 0 0 20px rgba(255, 255, 255, 0.15);
-    --glass-hover-glow: 0 0 30px rgba(255, 255, 255, 0.25);
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
-  
+
   html {
     scroll-behavior: smooth;
   }
-  
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'PingFang SC',
+      'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    overscroll-behavior-y: none;
   }
-  
-  code, pre, .mono {
-    font-family: 'Roboto Mono', monospace;
-  }
-}
 
-@layer components {
-  .glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-  }
-  
-  .glass-card {
-    @apply rounded-2xl transition-all duration-300;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04), var(--glass-glow);
-  }
-  
-  .glass-card:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), var(--glass-hover-glow);
-  }
-  
-  .glass-dark {
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .text-gradient {
-    background: linear-gradient(135deg, #333 0%, #666 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  
-  .btn-primary {
-    @apply px-6 py-3 rounded-xl font-medium transition-all duration-300;
-    @apply bg-primary text-primary-foreground;
-    @apply hover:opacity-90 hover:scale-[1.02];
-    @apply active:scale-[0.98];
-  }
-  
-  .btn-secondary {
-    @apply px-6 py-3 rounded-xl font-medium transition-all duration-300;
-    @apply bg-secondary text-secondary-foreground;
-    @apply hover:bg-muted hover:scale-[1.02];
-    @apply active:scale-[0.98];
-  }
-  
-  .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300;
-    @apply text-muted-foreground hover:text-foreground;
-    @apply hover:bg-secondary;
-  }
-  
-  .nav-item.active {
-    @apply bg-primary text-primary-foreground;
-  }
-  
-  .section-title {
-    @apply text-2xl font-semibold tracking-tight;
-  }
-  
-  .card-hover {
-    @apply transition-all duration-300;
-    @apply hover:shadow-lg hover:shadow-black/5;
-    @apply hover:-translate-y-0.5;
+  code, pre, .mono {
+    font-family: 'Roboto Mono', ui-monospace, monospace;
   }
 }
 
 @layer utilities {
-  .animate-in {
-    animation: animateIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  
-  .animate-slide-in {
-    animation: slideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
-  }
-  
-  .animate-scale-in {
-    animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  }
-  
   .animate-pulse-soft {
-    animation: pulseSoft 2s ease-in-out infinite;
-  }
-  
-  .stagger-1 { animation-delay: 0.1s; }
-  .stagger-2 { animation-delay: 0.2s; }
-  .stagger-3 { animation-delay: 0.3s; }
-  .stagger-4 { animation-delay: 0.4s; }
-  .stagger-5 { animation-delay: 0.5s; }
-  
-  .transition-expo {
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  
-  .transition-fluid {
-    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-}
-
-@keyframes animateIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
+    animation: pulseSoft 1.6s ease-in-out infinite;
   }
 }
 
 @keyframes pulseSoft {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  50% { opacity: 0.45; }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* Scrollbar styling */
+/* 滚动条 */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
+  background: rgb(var(--c-ink-rgb) / 0.14);
+  border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgb(var(--c-ink-rgb) / 0.25);
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Selection styling */
 ::selection {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgb(var(--c-accent-rgb) / 0.18);
 }
 
-.dark ::selection {
-  background: rgba(255, 255, 255, 0.2);
+/* 自定义色相滑块的拖块 */
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #fff;
+  border: none;
+  box-shadow: 0 1px 6px rgba(20, 18, 35, 0.35);
+  cursor: pointer;
 }
