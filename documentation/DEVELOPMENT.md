@@ -53,6 +53,7 @@ src/
 │   │   └── SettingsPage.tsx      # 设置页
 │   └── ui/                       # shadcn/radix 基础组件（按需使用）
 ├── lib/
+│   ├── pwa.ts                    # PWA 安装提示（beforeinstallprompt 捕获/触发）
 │   ├── audio/
 │   │   ├── recorder.ts           # 录音引擎单例：采集/分析循环/记录生成 + computeStats
 │   │   ├── pitch.ts              # YIN 音高检测 + RMS 能量
@@ -66,6 +67,8 @@ src/
 ├── constants/index.ts            # 音高区间/主题预设/默认设置/轴范围
 └── types/index.ts                # 全部类型定义
 documentation/                    # 开发者与算法文档（本目录）
+public/                           # 静态资源：favicon.svg、PWA 图标、OGP 分享图
+scripts/generate-pwa-assets.py    # 用 Pillow 生成 public/ 下的图片资源
 docs/                             # ⚠️ 构建产物输出目录（vite outDir），勿手放文件
 ```
 
@@ -147,6 +150,9 @@ npm run preview   # 本地预览构建产物
 ```
 
 - `base: './'` + `outDir: 'docs/'`：可直接用 GitHub Pages 从 docs 目录发布；
+- PWA：`vite-plugin-pwa` 在构建时生成 `sw.js` + `manifest.webmanifest` 并自动注入
+  注册脚本（`registerType: 'autoUpdate'`，Workbox 预缓存全部静态资源）；
+  安装入口在设置页，依赖浏览器的 `beforeinstallprompt` 事件；
 - `docs/` 构建时会被清空，**不要**把源文档放进去（源文档在 `documentation/`）；
 - 体验示例数据：`?demo=1`（无痕体验分析页）或各页面的"载入示例数据"按钮；
 - 麦克风 API 要求 HTTPS 或 localhost。

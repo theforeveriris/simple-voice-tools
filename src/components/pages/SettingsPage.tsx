@@ -10,13 +10,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { ElementType, ReactNode } from 'react';
 import {
   Palette, Mic, DatabaseBackup, Info, Download, Upload, Trash2, Eraser, Sparkles,
-  BookOpen, ChevronRight,
+  BookOpen, ChevronRight, Smartphone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
+import { usePwaInstall, promptInstall } from '@/lib/pwa';
 import { THEME_PRESETS } from '@/constants';
 import { DocViewer } from '@/components/layout/DocViewer';
 import yinDoc from '../../../documentation/ALGORITHM-YIN.md?raw';
@@ -24,6 +25,7 @@ import lpcDoc from '../../../documentation/ALGORITHM-FORMANT-LPC.md?raw';
 import energyDoc from '../../../documentation/ALGORITHM-ENERGY.md?raw';
 import devDoc from '../../../documentation/DEVELOPMENT.md?raw';
 import type { AppSettings } from '@/types';
+import { cn } from '@/lib/utils';
 
 /** 应用内可阅读的文档（Markdown 源文件位于 documentation/） */
 const DOC_ENTRIES: { title: string; desc: string; md: string }[] = [
@@ -119,6 +121,7 @@ function Swatch({ hue, active, onClick }: { hue: number; active: boolean; onClic
 }
 
 export function SettingsPage() {
+  const install = usePwaInstall();
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
   const records = useHistoryStore((s) => s.records);
@@ -347,6 +350,38 @@ export function SettingsPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        </SettingRow>
+      </SettingsSection>
+
+      {/* 应用（PWA） */}
+      <SettingsSection icon={Smartphone} title="应用">
+        <SettingRow
+          label="安装为桌面应用"
+          desc={
+            install.standalone
+              ? '当前已在应用窗口中运行'
+              : install.canInstall
+                ? '安装到桌面或主屏幕，支持离线使用'
+                : '当前浏览器未提供一键安装，可尝试浏览器菜单中的「安装」或「添加到主屏幕」'
+          }
+        >
+          <button
+            onClick={async () => {
+              const outcome = await promptInstall();
+              if (outcome === 'dismissed') toast.info('已取消安装');
+              else if (outcome === 'unavailable') toast.info('当前环境不支持一键安装');
+            }}
+            disabled={install.standalone || !install.canInstall}
+            className={cn(
+              'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+              install.standalone || !install.canInstall
+                ? 'cursor-default text-ink-2/60'
+                : 'text-accent hover:opacity-70',
+            )}
+          >
+            <Download size={14} />
+            {install.standalone ? '已安装' : install.canInstall ? '安装' : '不可用'}
+          </button>
         </SettingRow>
       </SettingsSection>
 
