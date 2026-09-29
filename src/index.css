@@ -39,28 +39,31 @@
     --c-line: oklch(0.915 0.012 15);
     --c-line-rgb: 235 224 224;
     /*
-     * shadcn/radix 组件使用的传统语义变量（固定中性色，浅色）。
-     * 动态莫奈色板通过上面的 --c-* 变量提供。
+     * shadcn/radix 组件使用的传统语义变量。
+     * 注意：这些变量被 Tailwind 以 hsl(var(--x)) 形式消费，
+     * 必须是「H S% L%」格式的 HSL 三元组（百分比不可省略），
+     * 绝不能填 RGB 三元组 —— hsl(251 242 242) 这类数字参数在
+     * Chromium 中会被解析成纯黄色。数值按山桃红（hue 15）色板换算。
      */
-    --background: var(--c-surface-rgb);
-    --foreground: 30 28 40;
-    --card: var(--c-card-rgb);
-    --card-foreground: 30 28 40;
-    --popover: var(--c-card-rgb);
-    --popover-foreground: 30 28 40;
-    --primary: 42 40 55;
-    --primary-foreground: 253 253 255;
-    --secondary: 240 239 246;
-    --secondary-foreground: 30 28 40;
-    --muted: 240 239 246;
-    --muted-foreground: 115 113 130;
-    --accent: 240 239 246;
-    --accent-foreground: 30 28 40;
+    --background: 0 4% 97%;
+    --foreground: 0 5% 17%;
+    --card: 0 100% 99%;
+    --card-foreground: 0 5% 17%;
+    --popover: 0 100% 99%;
+    --popover-foreground: 0 5% 17%;
+    --primary: 240 4% 16%;
+    --primary-foreground: 0 0% 99%;
+    --secondary: 0 10% 94%;
+    --secondary-foreground: 0 5% 17%;
+    --muted: 0 10% 94%;
+    --muted-foreground: 0 8% 43%;
+    --accent: 0 10% 94%;
+    --accent-foreground: 0 5% 17%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 255 255 255;
-    --border: 228 227 236;
-    --input: 228 227 236;
-    --ring: 42 40 55;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 5% 90%;
+    --input: 0 5% 90%;
+    --ring: 240 4% 16%;
     --radius: 1rem;
   }
 
