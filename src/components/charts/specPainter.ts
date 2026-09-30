@@ -38,6 +38,8 @@ export interface SpecPaintOptions {
   gridColor: string;
   textColor: string;
   showGrid: boolean;
+  /** 播放头位置（秒），null = 不绘制 */
+  playheadT?: number | null;
 }
 
 /**
@@ -149,5 +151,30 @@ export function drawSpectrogram(o: SpecPaintOptions): void {
     };
     drawTrack(series.f1, f1Color);
     drawTrack(series.f2, f2Color);
+  }
+
+  // 播放头（回放位置指示线）
+  const ph = o.playheadT;
+  if (ph != null && isFinite(ph) && ph >= t0 && ph <= t1) {
+    const x = ((ph - t0) / (t1 - t0)) * w;
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 3;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(x - 4.5, 0);
+    ctx.lineTo(x + 4.5, 0);
+    ctx.lineTo(x, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 }

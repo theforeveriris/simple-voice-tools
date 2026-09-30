@@ -97,6 +97,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   micDeviceId: '',
   audioSave: true,
   testMode: 'reading',
+  syncChartRange: true,
 };
 
 /**

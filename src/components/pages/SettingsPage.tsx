@@ -242,6 +242,15 @@ export function SettingsPage() {
             onCheckedChange={(v) => update({ showGrid: v })}
           />
         </SettingRow>
+        <SettingRow
+          label="图表时间轴联动"
+          desc="开启后分析页四个图表共用同一时间区间，统计随区间联动；关闭后每张图可独立缩放（统计与回放跟随音高曲线）"
+        >
+          <Switch
+            checked={settings.syncChartRange}
+            onCheckedChange={(v) => update({ syncChartRange: v })}
+          />
+        </SettingRow>
       </SettingsSection>
 
       {/* 录音 */}
@@ -269,7 +278,7 @@ export function SettingsPage() {
             <SelectTrigger className="w-28 border-0 bg-transparent px-0 text-sm shadow-none">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
               <SelectItem value="30">30 秒</SelectItem>
               <SelectItem value="60">1 分钟</SelectItem>
               <SelectItem value="120">2 分钟</SelectItem>

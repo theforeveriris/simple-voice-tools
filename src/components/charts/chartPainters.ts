@@ -357,6 +357,7 @@ export function drawFormantLine(
 /**
  * 绘制一帧图表
  * @param kind 图表类型
+ * @param playheadT 播放头位置（秒），null = 不绘制
  */
 export function paintChart(
   kind: 'pitch' | 'energy' | 'formant',
@@ -369,6 +370,7 @@ export function paintChart(
   showGrid: boolean,
   showLabels: boolean,
   live: boolean,
+  playheadT?: number | null,
 ): void {
   if (t1 - t0 < 1e-6 || w < 8 || h < 8) return;
   const pal = chartPalette();
@@ -395,5 +397,27 @@ export function paintChart(
     drawTimeGrid(p);
     drawFormantLine(p, series.f1, series, xOf, yFor, pal.accent);
     drawFormantLine(p, series.f2, series, xOf, yFor, pal.accent2);
+  }
+
+  // 播放头（回放位置指示线，画在曲线之上）
+  if (playheadT != null && isFinite(playheadT) && playheadT >= t0 && playheadT <= t1) {
+    const x = xOf(playheadT);
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = pal.accent;
+    ctx.beginPath();
+    ctx.moveTo(x - 4.5, 0);
+    ctx.lineTo(x + 4.5, 0);
+    ctx.lineTo(x, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 }

@@ -170,38 +170,25 @@ function HeroSummary({ record, range }: { record: AnalysisRecord; range: [number
 
 /* -------------------------------- 录音回放 -------------------------------- */
 
-/** 录音回放条：无音频（未保存/已失效）时整块隐藏 */
-function PlaybackCard({ record }: { record: AnalysisRecord }) {
-  const getAudio = useHistoryStore((s) => s.getAudio);
-  const [url, setUrl] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(record.durationSec);
-
-  useEffect(() => {
-    let alive = true;
-    let created: string | null = null;
-    getAudio(record.id).then((blob) => {
-      if (!alive || !blob) return;
-      created = URL.createObjectURL(blob);
-      setUrl(created);
-    });
-    return () => {
-      alive = false;
-      if (created) URL.revokeObjectURL(created);
-    };
-  }, [record.id, getAudio]);
-
+/** 录音回放条（纯展示）：音频元素由页面层持有，播放头位置驱动全部图表 */
+function PlaybackCard({
+  url,
+  playing,
+  position,
+  duration,
+  onToggle,
+  onSeek,
+}: {
+  url: string | null;
+  playing: boolean;
+  position: number | null;
+  duration: number;
+  onToggle: () => void;
+  onSeek: (frac: number) => void;
+}) {
   if (!url) return null;
-
-  const toggle = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audio.paused) void audio.play();
-    else audio.pause();
-  };
-
+  const pos = position ?? 0;
+  const frac = duration > 0 ? Math.max(0, Math.min(1, pos / duration)) : 0;
   const fmt = (s: number) => {
     const m = Math.floor(s / 60);
     return `${m}:${String(Math.floor(s - m * 60)).padStart(2, '0')}`;
@@ -214,7 +201,7 @@ function PlaybackCard({ record }: { record: AnalysisRecord }) {
       className="flex items-center gap-3.5 rounded-[18px] bg-card px-4 py-3 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]"
     >
       <button
-        onClick={toggle}
+        onClick={onToggle}
         className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-on-accent transition-transform active:scale-90"
         aria-label={playing ? '暂停回放' : '播放录音'}
       >
@@ -225,36 +212,15 @@ function PlaybackCard({ record }: { record: AnalysisRecord }) {
           type="range"
           min={0}
           max={1000}
-          value={Math.round(progress * 1000)}
-          onChange={(e) => {
-            const audio = audioRef.current;
-            if (!audio || !isFinite(audio.duration)) return;
-            audio.currentTime = (Number(e.target.value) / 1000) * audio.duration;
-          }}
+          value={Math.round(frac * 1000)}
+          onChange={(e) => onSeek(Number(e.target.value) / 1000)}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
           aria-label="回放进度"
         />
       </div>
       <span className="shrink-0 text-[11px] tabular-nums text-ink-2">
-        {fmt(progress * duration)} / {fmt(duration)}
+        {fmt(pos)} / {fmt(duration)}
       </span>
-      {url && (
-        <audio
-          ref={audioRef}
-          src={url}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onEnded={() => { setPlaying(false); setProgress(0); }}
-          onTimeUpdate={(e) => {
-            const audio = e.currentTarget;
-            if (isFinite(audio.duration) && audio.duration > 0) {
-              setDuration(audio.duration);
-              setProgress(audio.currentTime / audio.duration);
-            }
-          }}
-          className="hidden"
-        />
-      )}
     </motion.div>
   );
 }
@@ -344,6 +310,7 @@ function AnalysisChart({
   heightClass,
   range,
   onRangeChange,
+  playhead,
 }: {
   kind: 'pitch' | 'energy' | 'formant';
   title: string;
@@ -352,6 +319,7 @@ function AnalysisChart({
   heightClass: string;
   range: [number, number];
   onRangeChange: (r: [number, number]) => void;
+  playhead?: number | null;
 }) {
   return (
     <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
@@ -360,7 +328,7 @@ function AnalysisChart({
         {right}
       </div>
       <div className={cn('relative', heightClass)}>
-        <SeriesChart kind={kind} series={record.series} range={range} />
+        <SeriesChart kind={kind} series={record.series} range={range} playhead={playhead} />
       </div>
       <TimeRangeSelector
         series={record.series}
@@ -476,30 +444,151 @@ function EmptyState() {
   );
 }
 
+/** 分析页图表种类（含语谱图），用于独立时间轴模式 */
+type RangedKind = 'pitch' | 'formant' | 'energy' | 'spec';
+
 export function AnalysisPage() {
   const record = useStore((s) => s.currentAnalysis);
-  const [range, setRange] = useState<[number, number]>([0, record?.durationSec ?? 0]);
+  const syncChartRange = useStore((s) => s.settings.syncChartRange);
+  const getAudio = useHistoryStore((s) => s.getAudio);
+  const [sharedRange, setSharedRange] = useState<[number, number]>([0, record?.durationSec ?? 0]);
+  const [ownRanges, setOwnRanges] = useState<Partial<Record<RangedKind, [number, number]>>>({});
   const [noteOpen, setNoteOpen] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
 
-  // 切换记录时重置为全段（渲染期派生重置，避免 effect 级联渲染）
+  // 回放：音频元素挂在页面层，播放头位置驱动全部图表
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioFor, setAudioFor] = useState<{ id: string; url: string } | null>(null);
+  const [audioDur, setAudioDur] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [playTime, setPlayTime] = useState<number | null>(null);
+
+  const fullRange = useMemo<[number, number]>(() => [0, record?.durationSec ?? 0], [record?.durationSec]);
+  const getRange = (kind: RangedKind): [number, number] =>
+    syncChartRange ? sharedRange : (ownRanges[kind] ?? fullRange);
+  const setRangeFor = (kind: RangedKind, r: [number, number]) => {
+    if (syncChartRange) setSharedRange(r);
+    else setOwnRanges((prev) => ({ ...prev, [kind]: r }));
+  };
+
+  // 切换记录时重置区间与回放位置（渲染期派生重置，避免 effect 级联渲染）
   const [loadedRecordId, setLoadedRecordId] = useState<string | null>(record?.id ?? null);
   if (record && record.id !== loadedRecordId) {
     setLoadedRecordId(record.id);
-    setRange([0, record.durationSec]);
+    setSharedRange([0, record.durationSec]);
+    setOwnRanges({});
+    setPlayTime(null);
   }
 
-  // 区间联动统计：全段时直接用原序列，缩放后对切片重算
+  // 加载当前记录的音频；切换记录时停掉上一条回放（onPause 事件同步状态）
+  useEffect(() => {
+    if (!record) return;
+    let alive = true;
+    let created: string | null = null;
+    audioRef.current?.pause();
+    getAudio(record.id).then((blob) => {
+      if (!alive || !blob) return;
+      created = URL.createObjectURL(blob);
+      setAudioFor({ id: record.id, url: created });
+    });
+    return () => {
+      alive = false;
+      if (created) URL.revokeObjectURL(created);
+    };
+  }, [record?.id, getAudio]); // eslint-disable-line react-hooks/exhaustive-deps
+  const audioUrl = audioFor && record && audioFor.id === record.id ? audioFor.url : null;
+
+  // 区间联动统计：跟随音高曲线的区间（联动模式下即共享区间）
+  const pitchRange = getRange('pitch');
   const rangeStats = useMemo(() => {
     if (!record) return null;
-    const isFull = range[0] <= 0.001 && range[1] >= record.durationSec - 0.001;
+    const r = syncChartRange ? sharedRange : (ownRanges.pitch ?? fullRange);
+    const isFull = r[0] <= 0.001 && r[1] >= record.durationSec - 0.001;
     if (isFull) return record.stats;
-    return computeStats(sliceSeries(record.series, range[0], range[1]), record.sampleHz);
-  }, [record, range]);
+    // 嗓音质量三项是整段录音的临床指标，不随区间重算，沿用全段值
+    return {
+      ...computeStats(sliceSeries(record.series, r[0], r[1]), record.sampleHz),
+      jitterPct: record.stats.jitterPct,
+      shimmerPct: record.stats.shimmerPct,
+      hnrDb: record.stats.hnrDb,
+    };
+  }, [record, syncChartRange, sharedRange, ownRanges, fullRange]);
+
+  // 播放终点：选中区间时在其末尾停住，全段交给 ended 事件
+  const playEndRef = useRef<number>(Infinity);
+  if (record) {
+    const [t0, t1] = pitchRange;
+    playEndRef.current = t0 > 0.01 || t1 < record.durationSec - 0.01 ? t1 : Infinity;
+  }
+
+  // 回放中：rAF 驱动播放头，到达区间末尾自动停止
+  useEffect(() => {
+    if (!playing) return;
+    let raf = 0;
+    const loop = () => {
+      const audio = audioRef.current;
+      if (audio) {
+        const t = audio.currentTime;
+        if (playEndRef.current !== Infinity && t >= playEndRef.current - 0.02) {
+          audio.pause();
+          setPlayTime(playEndRef.current);
+          return;
+        }
+        setPlayTime(t);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [playing]);
 
   if (!record || !rangeStats) return <EmptyState />;
 
   const recordWithStats: AnalysisRecord = { ...record, stats: rangeStats };
+
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio || !audioUrl) return;
+    if (playing) {
+      audio.pause();
+      return;
+    }
+    // 媒体尚未开始加载时等一下（正常情况 src 为 blob URL，几乎瞬时就绪）
+    if (audio.readyState === 0) {
+      await new Promise<void>((resolve) => {
+        const done = () => resolve();
+        audio.addEventListener('loadedmetadata', done, { once: true });
+        audio.addEventListener('error', done, { once: true });
+        setTimeout(done, 2000);
+      });
+      if (audio.readyState === 0) {
+        toast.error('回放失败，音频无法解码');
+        return;
+      }
+    }
+    // 注意：MediaRecorder 录制的流式 webm 其 duration 常为 Infinity，
+    // 浏览器播到末尾后才会修正，因此时长未知时不能据此拒绝播放
+    const dur = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : record.durationSec;
+    const [t0, t1] = pitchRange;
+    const partial = t0 > 0.01 || t1 < record.durationSec - 0.01;
+    const end = partial ? t1 : dur;
+    const start = partial ? t0 : 0;
+    // 播放头已在末尾（含音频自然播完的 ended 状态）或区间之外时，回到起点重新播放
+    const atAudioEnd = audio.ended || (isFinite(audio.duration) && audio.duration > 0 && audio.currentTime >= audio.duration - 0.05);
+    if (atAudioEnd || audio.currentTime >= end - 0.05 || audio.currentTime < start - 0.05) {
+      audio.currentTime = start;
+    }
+    setPlayTime(audio.currentTime);
+    void audio.play().catch(() => toast.error('回放失败，音频无法解码'));
+  };
+
+  const seekPlay = (frac: number) => {
+    const audio = audioRef.current;
+    if (!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
+    const t = Math.max(0, Math.min(1, frac)) * audio.duration;
+    audio.currentTime = t;
+    setPlayTime(t);
+  };
 
   const onShare = async () => {
     if (shareBusy) return;
@@ -534,7 +623,7 @@ export function AnalysisPage() {
                   {MODE_META[record.mode].label}
                 </span>
               )}
-              · 统计与图表随下方时间轴联动
+              · {syncChartRange ? '统计与图表随下方时间轴联动' : '各图表时间轴可独立缩放'}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
@@ -575,8 +664,15 @@ export function AnalysisPage() {
         )}
       </div>
 
-      <HeroSummary record={recordWithStats} range={range} />
-      <PlaybackCard key={record.id} record={record} />
+      <HeroSummary record={recordWithStats} range={pitchRange} />
+      <PlaybackCard
+        url={audioUrl}
+        playing={playing}
+        position={playTime}
+        duration={audioDur || record.durationSec}
+        onToggle={togglePlay}
+        onSeek={seekPlay}
+      />
       <StatsTable record={recordWithStats} />
 
       <AnalysisChart
@@ -584,8 +680,9 @@ export function AnalysisPage() {
         title="音高曲线"
         record={recordWithStats}
         heightClass="h-[210px] sm:h-[280px]"
-        range={range}
-        onRangeChange={setRange}
+        range={getRange('pitch')}
+        onRangeChange={(r) => setRangeFor('pitch', r)}
+        playhead={playTime}
       />
       <AnalysisChart
         kind="formant"
@@ -598,16 +695,18 @@ export function AnalysisPage() {
         }
         record={record}
         heightClass="h-[150px] sm:h-[200px]"
-        range={range}
-        onRangeChange={setRange}
+        range={getRange('formant')}
+        onRangeChange={(r) => setRangeFor('formant', r)}
+        playhead={playTime}
       />
       <AnalysisChart
         kind="energy"
         title="音频能量"
         record={record}
         heightClass="h-[130px] sm:h-[180px]"
-        range={range}
-        onRangeChange={setRange}
+        range={getRange('energy')}
+        onRangeChange={(r) => setRangeFor('energy', r)}
+        playhead={playTime}
       />
       {record.spec && (
         <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
@@ -619,19 +718,36 @@ export function AnalysisPage() {
             </div>
           </div>
           <div className="relative h-[190px] sm:h-[260px]">
-            <SpecChart record={record} range={range} />
+            <SpecChart record={record} range={getRange('spec')} playhead={playTime} />
           </div>
           <TimeRangeSelector
             series={record.series}
             total={record.durationSec}
-            value={range}
-            onChange={setRange}
+            value={getRange('spec')}
+            onChange={(r) => setRangeFor('spec', r)}
             className="mt-2.5"
           />
         </div>
       )}
 
       <NoteDialog record={record} open={noteOpen} onOpenChange={setNoteOpen} />
+
+      {/* 回放音频源（页面级，播放头位置由 rAF 循环同步到各图表） */}
+      <audio
+        ref={audioRef}
+        src={audioUrl ?? undefined}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          setPlayTime(null);
+        }}
+        onLoadedMetadata={(e) => {
+          const d = e.currentTarget.duration;
+          if (isFinite(d) && d > 0) setAudioDur(d);
+        }}
+        className="hidden"
+      />
     </div>
   );
 }

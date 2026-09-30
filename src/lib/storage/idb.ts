@@ -95,8 +95,12 @@ export function idbClearRecords(): Promise<void> {
 /* ------------------------------ 音频仓库 ------------------------------ */
 
 export async function idbGetAudio(id: string): Promise<Blob | null> {
-  const blob = await withStore<Blob | undefined>(STORE_AUDIO, 'readonly', (s) => s.get(id));
-  return blob ?? null;
+  const val = await withStore<{ id: string; blob: Blob } | undefined>(
+    STORE_AUDIO,
+    'readonly',
+    (s) => s.get(id),
+  );
+  return val?.blob ?? null;
 }
 
 export function idbPutAudio(id: string, blob: Blob): Promise<void> {

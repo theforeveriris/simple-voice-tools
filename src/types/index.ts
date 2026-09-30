@@ -142,4 +142,6 @@ export interface AppSettings {
   audioSave: boolean;
   /** 当前测试模式（短按圆球所用，长按可切换） */
   testMode: TestMode;
+  /** 四个图表是否共用同一时间轴区间（关闭后可独立缩放，统计跟随音高曲线） */
+  syncChartRange: boolean;
 }

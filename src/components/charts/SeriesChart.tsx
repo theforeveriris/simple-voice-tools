@@ -22,16 +22,20 @@ interface SeriesChartProps {
   series?: RecordSeries;
   /** 静态模式：显示的时间区间 [t0, t1]（秒） */
   range?: [number, number];
+  /** 静态模式：播放头位置（秒），null = 不显示 */
+  playhead?: number | null;
   className?: string;
 }
 
-export function SeriesChart({ kind, live = false, series, range, className }: SeriesChartProps) {
+export function SeriesChart({ kind, live = false, series, range, playhead, className }: SeriesChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sizeRef = useRef({ w: 0, h: 0 });
   const dprRef = useRef(1);
   // 让 rAF 循环与 ResizeObserver 始终读到最新 props
-  const propsRef = useRef({ kind, live, series, range });
-  propsRef.current = { kind, live, series, range };
+  // （drawFrame 仅在 effect / rAF / ResizeObserver 回调中执行，渲染期写入是刻意的）
+  const propsRef = useRef({ kind, live, series, range, playhead });
+  // eslint-disable-next-line react-hooks/refs
+  propsRef.current = { kind, live, series, range, playhead };
 
   const drawFrame = () => {
     const canvas = canvasRef.current;
@@ -57,7 +61,7 @@ export function SeriesChart({ kind, live = false, series, range, className }: Se
         t0, t1, showGrid, false, true,
       );
     } else if (cur.series && cur.range) {
-      paintChart(cur.kind, ctx, w, h, cur.series, cur.range[0], cur.range[1], showGrid, true, false);
+      paintChart(cur.kind, ctx, w, h, cur.series, cur.range[0], cur.range[1], showGrid, true, false, cur.playhead ?? null);
     }
   };
 
@@ -76,14 +80,14 @@ export function SeriesChart({ kind, live = false, series, range, className }: Se
     });
     ro.observe(canvas);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
-  // 静态模式：数据 / 区间变化时重绘
+  // 静态模式：数据 / 区间 / 播放头变化时重绘
   useEffect(() => {
     if (!live) drawFrame();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live, series, range]);
+     
+  }, [live, series, range, playhead]);
 
   // 实时模式：rAF 循环
   useEffect(() => {
@@ -95,7 +99,7 @@ export function SeriesChart({ kind, live = false, series, range, className }: Se
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [live]);
 
   return (

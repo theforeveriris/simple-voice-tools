@@ -16,10 +16,12 @@ interface SpecChartProps {
   record: AnalysisRecord;
   /** 显示的时间区间 [t0, t1]（秒） */
   range: [number, number];
+  /** 播放头位置（秒），null = 不显示 */
+  playhead?: number | null;
   className?: string;
 }
 
-export function SpecChart({ record, range, className }: SpecChartProps) {
+export function SpecChart({ record, range, playhead, className }: SpecChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sizeRef = useRef({ w: 0, h: 0 });
   const dprRef = useRef(1);
@@ -65,6 +67,7 @@ export function SpecChart({ record, range, className }: SpecChartProps) {
       gridColor: pal.grid,
       textColor: pal.textMuted,
       showGrid,
+      playheadT: playhead ?? null,
     });
   };
 
@@ -86,11 +89,11 @@ export function SpecChart({ record, range, className }: SpecChartProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 数据 / 区间变化时重绘
+  // 数据 / 区间 / 播放头变化时重绘
   useEffect(() => {
     drawFrame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [record, range, pixels]);
+  }, [record, range, pixels, playhead]);
 
   return (
     <canvas
