@@ -40,19 +40,23 @@ const TABS: { id: ViewType; label: string; icon: ElementType }[] = [
   { id: 'settings', label: '设置', icon: Settings2 },
 ];
 
-/** 模式选项（扇形排列，自左向右） */
-const MODE_OPTIONS: { id: TestMode; label: string; icon: ElementType; angleDeg: number }[] = [
-  { id: 'reading', label: '朗读引导', icon: BookOpenText, angleDeg: -52 },
-  { id: 'sustained', label: '长音测试', icon: AudioLines, angleDeg: 0 },
-  { id: 'glide', label: '音域滑音', icon: TrendingUp, angleDeg: 52 },
+/** 模式选项（扇形排列，自左向右，角度由索引与张角推得） */
+const MODE_OPTIONS: { id: TestMode; label: string; icon: ElementType }[] = [
+  { id: 'reading', label: '朗读引导', icon: BookOpenText },
+  { id: 'sustained', label: '长音测试', icon: AudioLines },
+  { id: 'glide', label: '音域滑音', icon: TrendingUp },
 ];
 
 /** 长按触发时长（ms） */
 const LONG_PRESS_MS = 480;
 /** 扇形半径（px，自圆球圆心起算） */
 const FAN_RADIUS = 118;
-/** 扇形最大张角（度，选项角度关于竖直对称） */
-const MAX_ANGLE_DEG = 52;
+/** 常规扇形半张角（度）：三选项关于竖直对称，相邻间隔 = 该值 */
+const FAN_SPREAD_DEG = 52;
+/** 窄屏收窄后的半张角（间隔稍小，可减小所需旋转量） */
+const FAN_SPREAD_COMPACT_DEG = 38;
+/** 逆时针旋转上限（度），防止左侧选项低到与圆球同排 */
+const FAN_MAX_ROTATE_DEG = 55;
 
 /** 录音计时（圆球上方的悬浮时间提示） */
 function RecordTimer() {
@@ -115,19 +119,24 @@ function ModeFanSelector({
         className="absolute inset-0 bg-ink/25 backdrop-blur-md"
       />
       {MODE_OPTIONS.map((opt, i) => {
-        const rad = (opt.angleDeg * Math.PI) / 180;
-        // 窄屏（手机竖屏）时圆球贴近右缘，扇形整体平移以落入屏幕：
-        // 平移量对所有选项相同，保持等距弧形不变形（逐个钳制会破坏均匀分布）
+        // 窄屏（手机竖屏）时圆球贴近右缘：间隔稍收窄 + 整体逆时针旋转，
+        // 旋转量按圆球右侧剩余空间求解，选项始终保持等距，
+        // 且都分布在以圆球为圆心的同一弧上（旋转不脱离圆球，平移/逐个钳制会变形）
         const vw = window.innerWidth;
         const fanMargin = 56; // 圆钮半径 + 标签半宽
-        const maxDx = Math.sin((MAX_ANGLE_DEG * Math.PI) / 180) * FAN_RADIUS;
-        let fanShift = 0;
-        if (center.x + maxDx > vw - fanMargin) {
-          fanShift = vw - fanMargin - (center.x + maxDx);
-        } else if (center.x - maxDx < fanMargin) {
-          fanShift = fanMargin - (center.x - maxDx);
+        const roomRight = vw - fanMargin - center.x;
+        let spread = FAN_SPREAD_DEG;
+        let rotateDeg = 0;
+        if (roomRight < Math.sin((FAN_SPREAD_DEG * Math.PI) / 180) * FAN_RADIUS) {
+          spread = FAN_SPREAD_COMPACT_DEG;
+          const ratio = Math.max(-1, Math.min(1, roomRight / FAN_RADIUS));
+          rotateDeg = Math.min(
+            FAN_MAX_ROTATE_DEG,
+            Math.max(0, spread - (Math.asin(ratio) * 180) / Math.PI),
+          );
         }
-        const dx = Math.sin(rad) * FAN_RADIUS + fanShift;
+        const rad = (((i - 1) * spread - rotateDeg) * Math.PI) / 180;
+        const dx = Math.sin(rad) * FAN_RADIUS;
         const dy = -Math.cos(rad) * FAN_RADIUS;
         const Icon = opt.icon;
         return (
