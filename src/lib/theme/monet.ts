@@ -69,8 +69,8 @@ function token(l: number, c: number, h: number): [string, string] {
   return [ok(l, c, h), oklchToRgbTriplet(l, c, h)];
 }
 
-/** 深浅两套明度/饱和度参数：[name, light(l,c), dark(l,c)] */
-const SCALE: Record<string, [[number, number], [number, number]]> = {
+/** 深浅两套明度/饱和度参数：[light(l,c), dark(l,c)]。as const 使 pick 的键检查可穷举 */
+const SCALE = {
   // 页面背景与容器（微色差分层）
   'surface': [[0.968, 0.010], [0.165, 0.012]],
   'card': [[0.995, 0.005], [0.205, 0.014]],
@@ -83,7 +83,11 @@ const SCALE: Record<string, [[number, number], [number, number]]> = {
   'on-accent': [[0.99, 0.008], [0.16, 0.02]],
   'accent-soft': [[0.905, 0.055], [0.30, 0.055]],
   'on-accent-soft': [[0.36, 0.09], [0.90, 0.045]],
-};
+  // 分隔线（极淡）
+  'line': [[0.915, 0.012], [0.28, 0.012]],
+} as const;
+
+type ScaleKey = keyof typeof SCALE;
 
 /**
  * 由种子色相生成全套色板令牌（含浅色/深色两组语义）
@@ -91,7 +95,7 @@ const SCALE: Record<string, [[number, number], [number, number]]> = {
 export function buildTokens(hue: number, dark = false): Record<string, string> {
   const h2 = hue + 70; // 次强调色相（类比 M3 的 tertiary）
   const out: Record<string, string> = {};
-  const pick = (name: string): [number, number] => {
+  const pick = (name: ScaleKey): readonly [number, number] => {
     const [light, darkV] = SCALE[name];
     return dark ? darkV : light;
   };
@@ -100,7 +104,8 @@ export function buildTokens(hue: number, dark = false): Record<string, string> {
     out[`--c-${name}-rgb`] = rgb;
   };
 
-  for (const name of ['surface', 'card', 'surface-hi', 'ink', 'ink-2', 'accent', 'on-accent', 'accent-soft', 'on-accent-soft'] as const) {
+  // 注意：列表里的每个名字必须存在于 SCALE（pick 参数为 ScaleKey，缺键会编译报错）
+  for (const name of ['surface', 'card', 'surface-hi', 'ink', 'ink-2', 'accent', 'on-accent', 'accent-soft', 'on-accent-soft', 'line'] as const) {
     const [l, c] = pick(name);
     set(name, token(l, c, hue));
   }
@@ -108,11 +113,9 @@ export function buildTokens(hue: number, dark = false): Record<string, string> {
   set('accent2', token(dark ? 0.77 : 0.55, dark ? 0.11 : 0.13, h2));
   set('accent2-soft', token(dark ? 0.31 : 0.91, dark ? 0.05 : 0.05, h2));
   set('on-accent2-soft', token(dark ? 0.90 : 0.36, dark ? 0.04 : 0.08, h2));
-  // 分隔线（极淡）
-  set('line', token(dark ? 0.28 : 0.915, 0.012, hue));
 
   // 派生 shadcn/radix 传统语义变量（HSL 三元组），基础组件跟随深浅模式
-  const hsl = (name: string) => {
+  const hsl = (name: ScaleKey) => {
     const [l, c] = pick(name);
     return rgbToHslTriplet(...oklchToRgb(l, c, hue));
   };
