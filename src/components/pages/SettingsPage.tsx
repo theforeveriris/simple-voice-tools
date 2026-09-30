@@ -27,23 +27,17 @@ import {
   type DeviceCodeInfo,
 } from '@/lib/backup/github';
 import { usePwaInstall, promptInstall } from '@/lib/pwa';
-import { THEME_PRESETS } from '@/constants';
-import { DocViewer } from '@/components/layout/DocViewer';
-import yinDoc from '../../../documentation/ALGORITHM-YIN.md?raw';
-import lpcDoc from '../../../documentation/ALGORITHM-FORMANT-LPC.md?raw';
-import energyDoc from '../../../documentation/ALGORITHM-ENERGY.md?raw';
-import cppsDoc from '../../../documentation/ALGORITHM-CPPS.md?raw';
-import devDoc from '../../../documentation/DEVELOPMENT.md?raw';
 import type { AppSettings } from '@/types';
 import { cn } from '@/lib/utils';
 
-/** 应用内可阅读的文档（Markdown 源文件位于 documentation/） */
-const DOC_ENTRIES: { title: string; desc: string; md: string }[] = [
-  { title: '算法 · 音高检测（YIN）', desc: '差分函数 · CMND · 抛物线插值', md: yinDoc },
-  { title: '算法 · 共振峰提取（LPC）', desc: '预加重 · 抽取 · 求根全链路', md: lpcDoc },
-  { title: '算法 · 能量分析（RMS）', desc: '分贝换算 · VAD 门限体系', md: energyDoc },
-  { title: '算法 · 倒谱峰突出度（CPPS）', desc: '实倒谱 · 回归线基线 · 时间平滑', md: cppsDoc },
-  { title: '开发者文档', desc: '架构 · 数据流 · 主题与动效模型', md: devDoc },
+/** 文档条目：点击直接跳转到 GitHub 仓库内对应的 Markdown 源文件 */
+const DOC_BASE_URL = 'https://github.com/theforeveriris/simple-voice-tools/blob/main/documentation';
+const DOC_ENTRIES: { title: string; desc: string; file: string }[] = [
+  { title: '算法 · 音高检测（YIN）', desc: '差分函数 · 归一化 · 抛物线插值', file: 'ALGORITHM-YIN.md' },
+  { title: '算法 · 共振峰提取（LPC）', desc: '预加重 · 抽取 · 求根全链路', file: 'ALGORITHM-FORMANT-LPC.md' },
+  { title: '算法 · 能量分析（RMS）', desc: '分贝换算 · VAD 门限体系', file: 'ALGORITHM-ENERGY.md' },
+  { title: '算法 · 倒谱峰突出度（CPPS）', desc: '实倒谱 · 回归线基线 · 时间平滑', file: 'ALGORITHM-CPPS.md' },
+  { title: '开发者文档', desc: '架构 · 数据流 · 主题与动效模型', file: 'DEVELOPMENT.md' },
 ];
 import {
   Switch,
@@ -115,21 +109,6 @@ function SettingRow({
       </div>
       {children}
     </div>
-  );
-}
-
-/** 主题色圆点（shrink-0 防止在滚动行内被压成椭圆） */
-function Swatch({ hue, active, onClick }: { hue: number; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="size-9 shrink-0 rounded-full transition-transform hover:scale-110 active:scale-95"
-      style={{
-        background: `oklch(0.58 0.15 ${hue})`,
-        boxShadow: active ? '0 0 0 2px var(--c-card), 0 0 0 4px rgb(var(--c-ink-rgb) / 0.35)' : undefined,
-      }}
-      aria-label={`主题色 ${hue}`}
-    />
   );
 }
 
@@ -539,12 +518,7 @@ export function SettingsPage() {
       {/* 外观 */}
       <SettingsSection icon={Palette} title="外观">
         <SettingRow stacked label="主题色">
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
-            {THEME_PRESETS.map((p) => (
-              <Swatch key={p.id} hue={p.hue} active={Math.abs(settings.hue - p.hue) < 4} onClick={() => setHue(p.hue)} />
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <Sparkles size={14} className="shrink-0 text-ink-2" />
             <input
               type="range"
@@ -833,21 +807,24 @@ export function SettingsPage() {
       <SettingsSection icon={Smartphone} title="应用">
         <SettingRow label="安装为桌面应用">
           <button
+            type="button"
             onClick={async () => {
-              const outcome = await promptInstall();
-              if (outcome === 'dismissed') toast.info('已取消安装');
-              else if (outcome === 'unavailable') toast.info('当前环境不支持一键安装');
+              if (install.canInstall) {
+                const outcome = await promptInstall();
+                if (outcome === 'dismissed') toast.info('已取消安装');
+                else if (outcome === 'unavailable') toast.info('当前环境不支持一键安装');
+              } else {
+                toast.info('请在浏览器地址栏点击「安装应用」图标，或在浏览器菜单选择「添加到主屏幕」（iOS Safari）。需在 HTTPS 部署环境（生产页面）下使用，本地开发服务器不提供安装入口。');
+              }
             }}
-            disabled={install.standalone || !install.canInstall}
+            disabled={install.standalone}
             className={cn(
               'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
-              install.standalone || !install.canInstall
-                ? 'cursor-default text-ink-2/60'
-                : 'text-accent hover:opacity-70',
+              install.standalone ? 'cursor-default text-ink-2/60' : 'text-accent hover:opacity-70',
             )}
           >
             <Download size={14} />
-            {install.standalone ? '已安装' : install.canInstall ? '安装' : '不可用'}
+            {install.standalone ? '已安装' : install.canInstall ? '一键安装' : '手动安装'}
           </button>
         </SettingRow>
       </SettingsSection>
@@ -855,7 +832,7 @@ export function SettingsPage() {
       {/* 关于 */}
       <SettingsSection icon={Info} title="关于">
         <div className="pt-1 text-xs leading-relaxed text-ink-2">
-          <p className="text-sm font-semibold text-ink">Simple Voice Tools · 语音工坊</p>
+          <p className="text-sm font-semibold text-ink">Simple Voice Tool</p>
           <p className="mt-1">
             v0.4.0 — 基于 Web Audio API 的语音测试与分析工具：
             YIN 音高检测、LPC 共振峰提取、能量分析、语谱图、
@@ -867,25 +844,26 @@ export function SettingsPage() {
           </p>
         </div>
 
-        {/* 文档：应用内离线阅读 */}
-        <div className="mt-2 flex flex-col">
+        {/* 文档：点击跳转到 GitHub 仓库内对应源文件 */}
+        <div className="mt-2 flex flex-col text-left">
           <p className="pb-1 text-[11px] font-medium uppercase tracking-wide text-ink-2">文档</p>
           {DOC_ENTRIES.map((doc) => (
-            <DocViewer
+            <a
               key={doc.title}
-              title={doc.title}
-              md={doc.md}
-              trigger={
-                <button className="flex items-center justify-between border-t border-black/[0.04] py-3 text-sm font-medium text-ink transition-colors first:border-t-0 hover:text-accent">
-                  <span className="flex items-center gap-2">
-                    <BookOpen size={14} className="text-accent" />
-                    {doc.title}
-                    <span className="text-[11px] font-normal text-ink-2">{doc.desc}</span>
-                  </span>
-                  <ChevronRight size={15} className="text-ink-2" />
-                </button>
-              }
-            />
+              href={`${DOC_BASE_URL}/${doc.file}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-sm font-medium text-ink transition-colors first:border-t-0 hover:text-accent"
+            >
+              <span className="flex min-w-0 items-center gap-2 text-left">
+                <BookOpen size={14} className="shrink-0 text-accent" />
+                <span className="truncate">
+                  {doc.title}
+                  <span className="ml-2 text-[11px] font-normal text-ink-2">{doc.desc}</span>
+                </span>
+              </span>
+              <ChevronRight size={15} className="shrink-0 text-ink-2" />
+            </a>
           ))}
         </div>
       </SettingsSection>

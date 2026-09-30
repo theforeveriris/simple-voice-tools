@@ -277,7 +277,7 @@ async function ensureRepo(token: string, repoName: string): Promise<string> {
   try {
     await gh('/user/repos', token, {
       method: 'POST',
-      body: JSON.stringify({ name: repoName, private: true, description: 'Simple Voice Tools 备份' }),
+      body: JSON.stringify({ name: repoName, private: true, description: 'Simple Voice Tool 备份' }),
     });
   } catch (err) {
     throw new Error(

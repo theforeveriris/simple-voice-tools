@@ -10,7 +10,6 @@ import { useEffect, useState } from 'react';
 import { SeriesChart } from '@/components/charts/SeriesChart';
 import { recorder } from '@/lib/audio/recorder';
 import { freqToNote } from '@/constants';
-import { pickPassage, type ReadingPassage } from '@/lib/texts';
 import { useStore } from '@/store/useStore';
 import type { TestMode } from '@/types';
 import { cn } from '@/lib/utils';
@@ -106,41 +105,20 @@ function FormantLegend() {
   );
 }
 
-/** 长音 / 滑音的一句提示（极简文字，无卡片） */
-const MODE_HINT: Record<Exclude<TestMode, 'reading'>, string> = {
+/** 各模式的一句提示（极简文字，无卡片） */
+const MODE_HINT: Record<TestMode, string> = {
+  reading: '任意朗读一段文字',
   sustained: '持续发出某一元音音节的声音',
   glide: '从低到高缓慢抬高自己的音调',
 };
 
-function ModeHint({ mode }: { mode: Exclude<TestMode, 'reading'> }) {
+function ModeHint({ mode }: { mode: TestMode }) {
   return (
     <p className="mx-auto w-[60%] py-0.5 text-center text-xs text-ink-2">{MODE_HINT[mode]}</p>
   );
 }
 
-/** 朗读引导：只显示随机抽取的《飞鸟集》段落（极简文字，无卡片） */
-function ReadingBanner({ isRecording }: { isRecording: boolean }) {
-  const [passage, setPassage] = useState<ReadingPassage>(() => pickPassage());
-  // 渲染期派生：录音开始的瞬间换一段，保证多次测试语料有变化
-  const [wasRecording, setWasRecording] = useState(false);
-  if (isRecording !== wasRecording) {
-    setWasRecording(isRecording);
-    if (isRecording) setPassage((prev) => pickPassage(prev.id));
-  }
-
-  return (
-    <div className="mx-auto w-[60%] py-0.5 text-center">
-      {passage.lines.map((line, i) => (
-        <p key={i} className="text-center text-[13px] leading-snug text-ink">
-          {line}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 export function TestPage() {
-  const isRecording = useStore((s) => s.isRecording);
   const mode = useStore((s) => s.settings.testMode);
   // 图表延迟挂载：三张 Canvas 的 rAF 绘制循环会占用主线程，
   // 推迟到页面入场与底栏弹簧动画结束（约 300ms）后再启动，保证动效满帧
@@ -156,7 +134,7 @@ export function TestPage() {
     // 三张图按 6 : 5 : 12 分配剩余高度（basis-0 使比例不受内容影响，min-h 防塌缩）
     <div className="-mb-14 flex h-[calc(100dvh-7.25rem)] min-h-[360px] flex-col gap-3 sm:gap-3.5">
       {/* 模式提示（极简文字） */}
-      {mode === 'reading' ? <ReadingBanner isRecording={isRecording} /> : <ModeHint mode={mode} />}
+      <ModeHint mode={mode} />
 
       {/* F1 / F2 共振峰 */}
       <ChartCard

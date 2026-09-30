@@ -8,7 +8,7 @@
  *   扇形唤出三个模式选项——圆球已居中，经典扇形在任何屏宽都放得下。
  *   选定模式后底栏立即合拢，圆球在背景模糊淡出的同时飞回右缘
  *   （模糊遮罩盖住衔接细节），录音在右缘圆球上进行，与短按一致。
- * - 短按圆球以当前模式开始/停止录音（记住上次选择，默认朗读引导）。
+ * - 短按圆球以当前模式开始/停止录音（记住上次选择，默认随意朗读）。
  *   圆球的两个停靠位置用 layoutId 共享元素动画衔接，飞行时从页签上层滑过。
  */
 
@@ -44,7 +44,7 @@ const TABS: { id: ViewType; label: string; icon: ElementType }[] = [
 
 /** 模式选项（扇形排列，自左向右） */
 const MODE_OPTIONS: { id: TestMode; label: string; icon: ElementType }[] = [
-  { id: 'reading', label: '朗读引导', icon: BookOpenText },
+  { id: 'reading', label: '随意朗读', icon: BookOpenText },
   { id: 'sustained', label: '长音测试', icon: AudioLines },
   { id: 'glide', label: '音域滑音', icon: TrendingUp },
 ];

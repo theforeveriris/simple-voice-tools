@@ -105,7 +105,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
  * autoStopSec：模式自带的最长录音秒数（0 = 沿用设置里的最长录音时长）
  */
 export const MODE_META: Record<TestMode, { label: string; desc: string; autoStopSec: number }> = {
-  reading: { label: '朗读引导', desc: '跟读屏幕上的文本', autoStopSec: 0 },
+  reading: { label: '随意朗读', desc: '任意朗读一段文字', autoStopSec: 0 },
   sustained: { label: '长音测试', desc: '持续发「a」测稳定度', autoStopSec: 15 },
   glide: { label: '音域滑音', desc: '低→高滑唱画音域', autoStopSec: 20 },
 };

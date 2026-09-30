@@ -77,7 +77,7 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
   ctx.font = '500 30px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText('语音工坊 · Simple Voice Tools', PAD + 30, PAD + 15);
+  ctx.fillText('Simple Voice Tool', PAD + 30, PAD + 15);
   const d = new Date(record.createdAt);
   const dateStr = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   ctx.textAlign = 'right';
@@ -193,7 +193,7 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
   ctx.fillStyle = t.ink2;
   ctx.font = '400 24px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Simple Voice Tools · 语音工坊 · 本地分析，不上传任何数据', W / 2, H - PAD + 20);
+  ctx.fillText('Simple Voice Tool · 本地分析，不上传任何数据', W / 2, H - PAD + 20);
 
   return canvas;
 }
@@ -280,7 +280,7 @@ export async function exportShareImage(record: AnalysisRecord): Promise<'shared'
   const file = new File([blob], filename, { type: 'image/png' });
 
   if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: '语音工坊 · 分析报告' });
+    await navigator.share({ files: [file], title: 'Simple Voice Tool · 分析报告' });
     return 'shared';
   }
   const url = URL.createObjectURL(blob);

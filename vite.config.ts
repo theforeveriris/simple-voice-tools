@@ -18,8 +18,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'og-image.png'],
       manifest: {
-        name: '语音工坊 · Simple Voice Tools',
-        short_name: '语音工坊',
+        name: 'Simple Voice Tool',
+        short_name: 'Simple Voice Tool',
         description: '基于 Web Audio API 的语音测试与分析工具：YIN 音高检测、LPC 共振峰提取、能量分析。',
         lang: 'zh-CN',
         start_url: './',
