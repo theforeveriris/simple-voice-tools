@@ -228,7 +228,9 @@ export function TestPage() {
   }, []);
 
   return (
-    <div className="flex h-[calc(100dvh-10.75rem)] min-h-[440px] flex-col gap-3 sm:gap-3.5">
+    // 高度精确贴合视口（页头 pt-7 + 底部让位 pb-36 = 10.75rem），
+    // 三张图按比例分配剩余空间，移动端与桌面端都不会溢出或留大空隙
+    <div className="flex h-[calc(100dvh-10.75rem)] min-h-[360px] flex-col gap-3 sm:gap-3.5">
       {/* 页头 */}
       <div className="flex shrink-0 items-end justify-between pt-1">
         <div>
@@ -248,18 +250,19 @@ export function TestPage() {
       {/* 模式引导横幅 */}
       {mode === 'reading' ? <ReadingBanner isRecording={isRecording} /> : <ModeGuideBanner mode={mode} isRecording={isRecording} />}
 
+      {/* 三张图按 6 : 5 : 12 分配剩余高度（basis-0 使比例不受内容影响，min-h 防塌缩） */}
       {/* F1 / F2 共振峰 */}
       <ChartCard
         title="F1 / F2 共振峰曲线"
         right={<FormantLegend />}
-        className="h-[100px] shrink-0 sm:h-[150px]"
+        className="min-h-[72px] shrink basis-0 grow-[6]"
       >
         {chartsReady && <SeriesChart kind="formant" live />}
         {showHint && <IdleHint />}
       </ChartCard>
 
       {/* 音频能量 */}
-      <ChartCard title="音频能量" className="h-[84px] shrink-0 sm:h-[128px]">
+      <ChartCard title="音频能量" className="min-h-[60px] shrink basis-0 grow-[5]">
         {chartsReady && <SeriesChart kind="energy" live />}
         {showHint && <IdleHint />}
       </ChartCard>
@@ -268,7 +271,7 @@ export function TestPage() {
       <ChartCard
         title="音高曲线"
         right={<LivePitchReadout />}
-        className="min-h-[170px] flex-1 sm:min-h-[220px]"
+        className="min-h-[130px] shrink basis-0 grow-[12]"
       >
         {chartsReady && <SeriesChart kind="pitch" live />}
         {showHint && <IdleHint />}

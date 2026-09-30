@@ -114,7 +114,12 @@ function ModeFanSelector({
       />
       {MODE_OPTIONS.map((opt, i) => {
         const rad = (opt.angleDeg * Math.PI) / 180;
-        const dx = Math.sin(rad) * FAN_RADIUS;
+        // 窄屏（手机竖屏）时圆球贴近右缘，扇形按视口宽度钳制横向位移，
+        // 保证选项圆钮与标签完整落在屏幕内（56 ≈ 圆钮半径 + 标签半宽）
+        const vw = window.innerWidth;
+        const clampMargin = 56;
+        const rawDx = Math.sin(rad) * FAN_RADIUS;
+        const dx = Math.min(Math.max(center.x + rawDx, clampMargin), vw - clampMargin) - center.x;
         const dy = -Math.cos(rad) * FAN_RADIUS;
         const Icon = opt.icon;
         return (

@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Toaster } from 'sonner';
 import { BottomBar } from '@/components/layout/BottomBar';
+import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { TestPage } from '@/components/pages/TestPage';
 import { AnalysisPage } from '@/components/pages/AnalysisPage';
 import { HistoryPage } from '@/components/pages/HistoryPage';
@@ -56,10 +57,12 @@ function App() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
         >
-          {currentTab === 'test' && <TestPage />}
-          {currentTab === 'analysis' && <AnalysisPage />}
-          {currentTab === 'history' && <HistoryPage />}
-          {currentTab === 'settings' && <SettingsPage />}
+          <PageErrorBoundary pageKey={currentTab}>
+            {currentTab === 'test' && <TestPage />}
+            {currentTab === 'analysis' && <AnalysisPage />}
+            {currentTab === 'history' && <HistoryPage />}
+            {currentTab === 'settings' && <SettingsPage />}
+          </PageErrorBoundary>
         </motion.div>
       </main>
 
