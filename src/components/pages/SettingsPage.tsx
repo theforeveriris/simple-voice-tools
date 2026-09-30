@@ -82,7 +82,7 @@ function SettingsSection({
         <Icon size={15} className="text-accent" />
         {title}
       </p>
-      <div className="flex flex-col gap-1">{children}</div>
+      <div className="flex flex-col gap-0.5">{children}</div>
     </div>
   );
 }
@@ -108,7 +108,7 @@ function SettingRow({
     );
   }
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-black/[0.04] py-2.5 first:border-t-0">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-black/[0.04] py-2 first:border-t-0">
       <div>
         <p className="text-sm font-medium text-ink">{label}</p>
         {desc && <p className="mt-0.5 text-[11px] text-ink-2">{desc}</p>}
@@ -126,9 +126,7 @@ function Swatch({ hue, active, onClick }: { hue: number; active: boolean; onClic
       className="size-9 shrink-0 rounded-full transition-transform hover:scale-110 active:scale-95"
       style={{
         background: `oklch(0.58 0.15 ${hue})`,
-        boxShadow: active
-          ? '0 0 0 2px var(--c-card), 0 0 0 4px rgb(var(--c-ink-rgb) / 0.35)'
-          : '0 1px 4px rgba(0,0,0,0.18)',
+        boxShadow: active ? '0 0 0 2px var(--c-card), 0 0 0 4px rgb(var(--c-ink-rgb) / 0.35)' : undefined,
       }}
       aria-label={`主题色 ${hue}`}
     />
