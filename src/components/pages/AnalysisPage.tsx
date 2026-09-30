@@ -293,7 +293,8 @@ function StatsTable({ record }: { record: AnalysisRecord }) {
           ['Jitter（基频微扰）', s.jitterPct != null ? `${s.jitterPct.toFixed(2)} %` : '—'],
           ['Shimmer（振幅微扰）', s.shimmerPct != null ? `${s.shimmerPct.toFixed(2)} %` : '—'],
           ['HNR（谐噪比）', s.hnrDb != null ? `${s.hnrDb.toFixed(1)} dB` : '—'],
-          ['说明', <span key="hint" className="text-[10px] font-normal text-ink-2">需保存录音音频</span>],
+          ['CPPS（倒谱峰突出度）', s.cppsDb != null ? `${s.cppsDb.toFixed(1)} dB` : '—'],
+          ['说明', <span key="hint" className="text-[10px] font-normal text-ink-2">需保存录音音频 · CPPS 亦适用于连续语音</span>],
         ]}
       />
     </div>
@@ -444,8 +445,8 @@ function EmptyState() {
   );
 }
 
-/** 分析页图表种类（含语谱图），用于独立时间轴模式 */
-type RangedKind = 'pitch' | 'formant' | 'energy' | 'spec';
+/** 分析页图表种类（含语谱图/声域图），用于独立时间轴模式 */
+type RangedKind = 'pitch' | 'formant' | 'energy' | 'spec' | 'vrp';
 
 export function AnalysisPage() {
   const record = useStore((s) => s.currentAnalysis);
@@ -455,6 +456,8 @@ export function AnalysisPage() {
   const [ownRanges, setOwnRanges] = useState<Partial<Record<RangedKind, [number, number]>>>({});
   const [noteOpen, setNoteOpen] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  /** 共振峰卡片视图：时域曲线 / 元音空间散点 */
+  const [formantView, setFormantView] = useState<'curve' | 'scatter'>('curve');
 
   // 回放：音频元素挂在页面层，播放头位置驱动全部图表
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -505,12 +508,13 @@ export function AnalysisPage() {
     const r = syncChartRange ? sharedRange : (ownRanges.pitch ?? fullRange);
     const isFull = r[0] <= 0.001 && r[1] >= record.durationSec - 0.001;
     if (isFull) return record.stats;
-    // 嗓音质量三项是整段录音的临床指标，不随区间重算，沿用全段值
+    // 嗓音质量四项是整段录音的临床指标，不随区间重算，沿用全段值
     return {
       ...computeStats(sliceSeries(record.series, r[0], r[1]), record.sampleHz),
       jitterPct: record.stats.jitterPct,
       shimmerPct: record.stats.shimmerPct,
       hnrDb: record.stats.hnrDb,
+      cppsDb: record.stats.cppsDb,
     };
   }, [record, syncChartRange, sharedRange, ownRanges, fullRange]);
 
@@ -684,21 +688,62 @@ export function AnalysisPage() {
         onRangeChange={(r) => setRangeFor('pitch', r)}
         playhead={playTime}
       />
-      <AnalysisChart
-        kind="formant"
-        title="F1 / F2 共振峰"
-        right={
-          <div className="flex items-center gap-3 text-[11px] text-ink-2">
-            <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" />F1</span>
-            <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />F2</span>
+      {/* 共振峰卡片：曲线 / 元音空间散点双视图 */}
+      <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+        <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+          <span className="text-xs font-medium tracking-wide text-ink-2">F1 / F2 共振峰</span>
+          <div className="flex shrink-0 items-center gap-2.5">
+            {formantView === 'curve' ? (
+              <div className="flex items-center gap-3 text-[11px] text-ink-2">
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" />F1</span>
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />F2</span>
+              </div>
+            ) : (
+              <span className="hidden text-[10px] text-ink-2 sm:inline">虚线圈为参考元音</span>
+            )}
+            <div className="flex items-center rounded-full bg-surface-hi p-0.5 text-[11px]">
+              <button
+                onClick={() => setFormantView('curve')}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  formantView === 'curve' ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
+                )}
+              >
+                曲线
+              </button>
+              <button
+                onClick={() => setFormantView('scatter')}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  formantView === 'scatter' ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
+                )}
+              >
+                散点
+              </button>
+            </div>
           </div>
-        }
-        record={record}
-        heightClass="h-[150px] sm:h-[200px]"
-        range={getRange('formant')}
-        onRangeChange={(r) => setRangeFor('formant', r)}
-        playhead={playTime}
-      />
+        </div>
+        <div className={cn('relative', formantView === 'scatter' ? 'h-[210px] sm:h-[280px]' : 'h-[150px] sm:h-[200px]')}>
+          <SeriesChart
+            kind={formantView === 'scatter' ? 'vowelSpace' : 'formant'}
+            series={record.series}
+            range={getRange('formant')}
+            playhead={playTime}
+          />
+        </div>
+        <TimeRangeSelector
+          series={record.series}
+          total={record.durationSec}
+          value={getRange('formant')}
+          onChange={(r) => setRangeFor('formant', r)}
+          className="mt-2.5"
+        />
+        {formantView === 'scatter' && (
+          <p className="mt-1.5 text-center text-[10px] text-ink-2">
+            横轴 F2 越靠左舌位越前 · 纵轴 F1 越靠上开口越小 · 点越密表示驻留越久
+          </p>
+        )}
+      </div>
       <AnalysisChart
         kind="energy"
         title="音频能量"
@@ -727,6 +772,33 @@ export function AnalysisPage() {
             onChange={(r) => setRangeFor('spec', r)}
             className="mt-2.5"
           />
+        </div>
+      )}
+      {/* 声域图（VRP）：仅滑音模式记录显示 */}
+      {record.mode === 'glide' && (
+        <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+          <div className="mb-1.5 flex items-center justify-between px-0.5">
+            <span className="text-xs font-medium tracking-wide text-ink-2">声域图 · 音高 × 响度</span>
+            <span className="text-[10px] text-ink-2">色深 = 驻留时长</span>
+          </div>
+          <div className="relative h-[260px] sm:h-[340px]">
+            <SeriesChart
+              kind="vrp"
+              series={record.series}
+              range={getRange('vrp')}
+              playhead={playTime}
+            />
+          </div>
+          <TimeRangeSelector
+            series={record.series}
+            total={record.durationSec}
+            value={getRange('vrp')}
+            onChange={(r) => setRangeFor('vrp', r)}
+            className="mt-2.5"
+          />
+          <p className="mt-1.5 text-[10px] leading-relaxed text-ink-2">
+            纵轴为十二平均律半音（C2–C6），横轴为满量程相对响度（dBFS）。响度未做绝对声压校准，受麦克风灵敏度与嘴距影响。
+          </p>
         </div>
       )}
 

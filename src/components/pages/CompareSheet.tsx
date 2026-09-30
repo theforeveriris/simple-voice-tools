@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X, TrendingUp } from 'lucide-react';
 import { BAND_COLORS, BAND_RANGES, BAND_LABELS, bandOf, MODE_META } from '@/constants';
-import { chartPalette } from '@/components/charts/chartPainters';
+import { chartPalette, collectVowelPoints, drawVowelSpaceFrame, drawVowelPoints, drawVowelCentroid, drawVowelRefs, vowelXY } from '@/components/charts/chartPainters';
 import { useStore } from '@/store/useStore';
 import type { AnalysisRecord } from '@/types';
 
@@ -92,6 +92,56 @@ function drawOverlay(
   drawSeries(b, pal.accent2);
 }
 
+/** 叠加两条记录的元音空间散点（A/B 双色 + 各自质心 × 标记） */
+function drawVowelOverlay(
+  canvas: HTMLCanvasElement,
+  a: AnalysisRecord,
+  b: AnalysisRecord,
+): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(w * dpr));
+  canvas.height = Math.max(1, Math.round(h * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  if (w < 40 || h < 40) return;
+
+  const pal = chartPalette();
+  const ptsA = collectVowelPoints(a.series, 0, a.durationSec);
+  const ptsB = collectVowelPoints(b.series, 0, b.durationSec);
+  drawVowelSpaceFrame(ctx, w, h, pal, false);
+  drawVowelPoints(ctx, w, h, ptsA, pal.accent, { alpha: 0.16 });
+  drawVowelPoints(ctx, w, h, ptsB, pal.accent2, { alpha: 0.16 });
+  drawVowelCentroid(ctx, w, h, ptsA, pal.accent);
+  drawVowelCentroid(ctx, w, h, ptsB, pal.accent2);
+  drawVowelRefs(ctx, w, h, pal, false);
+
+  // 质心旁标注 A / B
+  const labelCentroid = (pts: { f1: number; f2: number }[], tag: string, color: string) => {
+    if (pts.length === 0) return;
+    let sf1 = 0;
+    let sf2 = 0;
+    for (const p of pts) {
+      sf1 += p.f1;
+      sf2 += p.f2;
+    }
+    const [x, y] = vowelXY(sf1 / pts.length, sf2 / pts.length, w, h);
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.font = 'bold 10px "Inter Tight", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(tag, x + 7, y + 4);
+    ctx.restore();
+  };
+  labelCentroid(ptsA, 'A', pal.accent);
+  labelCentroid(ptsB, 'B', pal.accent2);
+}
+
 export function CompareSheet({
   pair,
   onClose,
@@ -113,6 +163,17 @@ export function CompareSheet({
     return () => ro.disconnect();
   }, [a, b]);
 
+  const vowelCanvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = vowelCanvasRef.current;
+    if (!canvas) return;
+    const paint = () => drawVowelOverlay(canvas, a, b);
+    paint();
+    const ro = new ResizeObserver(paint);
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, [a, b]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -124,6 +185,7 @@ export function CompareSheet({
   const sA = a.stats;
   const sB = b.stats;
   const hasVQ = sA.jitterPct != null || sB.jitterPct != null;
+  const hasVowel = sA.avgF1 != null || sB.avgF1 != null;
 
   const rows: [string, string, string, string][] = [
     ['平均基频', `${sA.avgF0.toFixed(1)} Hz`, `${sB.avgF0.toFixed(1)} Hz`, `${deltaText(sA.avgF0, sB.avgF0)} Hz`],
@@ -138,6 +200,9 @@ export function CompareSheet({
           ['Jitter', sA.jitterPct != null ? `${sA.jitterPct.toFixed(2)}%` : '—', sB.jitterPct != null ? `${sB.jitterPct.toFixed(2)}%` : '—', `${deltaText(sA.jitterPct, sB.jitterPct, 2)}%`],
           ['Shimmer', sA.shimmerPct != null ? `${sA.shimmerPct.toFixed(2)}%` : '—', sB.shimmerPct != null ? `${sB.shimmerPct.toFixed(2)}%` : '—', `${deltaText(sA.shimmerPct, sB.shimmerPct, 2)}%`],
           ['HNR', sA.hnrDb != null ? `${sA.hnrDb.toFixed(1)} dB` : '—', sB.hnrDb != null ? `${sB.hnrDb.toFixed(1)} dB` : '—', `${deltaText(sA.hnrDb, sB.hnrDb)} dB`],
+          ...(sA.cppsDb != null || sB.cppsDb != null
+            ? ([['CPPS', sA.cppsDb != null ? `${sA.cppsDb.toFixed(1)} dB` : '—', sB.cppsDb != null ? `${sB.cppsDb.toFixed(1)} dB` : '—', `${deltaText(sA.cppsDb, sB.cppsDb)} dB`]] as [string, string, string, string][])
+            : []),
         ] as [string, string, string, string][])
       : []),
   ];
@@ -200,6 +265,23 @@ export function CompareSheet({
           <canvas ref={canvasRef} className="block h-[220px] w-full sm:h-[280px]" aria-label="对比音高曲线" />
           {!showGrid && <p className="mt-1 text-center text-[10px] text-ink-2">设置中开启网格辅助线可显示音区刻度</p>}
         </div>
+
+        {/* 元音空间叠加（任一记录有共振峰数据时显示） */}
+        {hasVowel && (
+          <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+            <div className="mb-1.5 flex items-center justify-between px-0.5">
+              <span className="text-xs font-medium tracking-wide text-ink-2">元音空间（F1 × F2）</span>
+              <div className="flex items-center gap-3 text-[11px] text-ink-2">
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" />A</span>
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />B</span>
+              </div>
+            </div>
+            <canvas ref={vowelCanvasRef} className="block h-[240px] w-full sm:h-[300px]" aria-label="对比元音空间散点" />
+            <p className="mt-1 text-center text-[10px] text-ink-2">
+              越靠左舌位越前，越靠上开口越小；× 为各自散点质心，虚线圈为参考元音 i / a / u
+            </p>
+          </div>
+        )}
 
         {/* 指标对比表 */}
         <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">

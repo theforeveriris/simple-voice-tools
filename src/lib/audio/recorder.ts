@@ -9,6 +9,7 @@
 import { detectPitchYin, rmsDb } from './pitch';
 import { extractFormants } from './formants';
 import { computeVoiceQuality } from './voiceQuality';
+import { computeCpps } from './cpp';
 import { spectrumRowToBands, base64FromBytes } from './spectrogram';
 import { SPEC_BANDS, SPEC_MAX_ROWS } from '@/constants';
 import type { AnalysisRecord, RecordSeries, TestMode, VoiceStats } from '@/types';
@@ -85,6 +86,7 @@ export function computeStats(series: RecordSeries, sampleHz: number): VoiceStats
     jitterPct: null,
     shimmerPct: null,
     hnrDb: null,
+    cppsDb: null,
   };
 }
 
@@ -346,9 +348,11 @@ class VoiceRecorder {
       const ctx = new AudioContext();
       const audioBuffer = await ctx.decodeAudioData(buf);
       void ctx.close();
-      const vq = computeVoiceQuality(audioBuffer.getChannelData(0), audioBuffer.sampleRate);
+      const pcm = audioBuffer.getChannelData(0);
+      const vq = computeVoiceQuality(pcm, audioBuffer.sampleRate);
+      const cppsDb = computeCpps(pcm, audioBuffer.sampleRate);
       return {
-        record: { ...record, stats: { ...record.stats, ...vq } },
+        record: { ...record, stats: { ...record.stats, ...vq, cppsDb } },
         audio: blob,
       };
     } catch (err) {

@@ -4,7 +4,7 @@
  * 曲线按音高区间分段着色，网格为淡灰虚线，整体遵循 M3 莫奈色板。
  */
 
-import { BAND_COLORS, BAND_RANGES, PITCH_AXIS, ENERGY_AXIS, FORMANT_AXIS } from '@/constants';
+import { BAND_COLORS, BAND_RANGES, PITCH_AXIS, ENERGY_AXIS, FORMANT_AXIS, VOWEL_AXIS_F1, VOWEL_AXIS_F2, VOWEL_REFS, VRP_NOTE_MIN, VRP_NOTE_MAX, freqToNote } from '@/constants';
 import type { PitchBand } from '@/types';
 
 /**
@@ -352,7 +352,260 @@ export function drawFormantLine(
   ctx.restore();
 }
 
+/* -------------------------------- 元音空间 -------------------------------- */
+
+/** 对数轴归一化：v ∈ [min,max] → 0..1（越界截断） */
+function logNorm(v: number, [min, max]: [number, number]): number {
+  const c = Math.max(min, Math.min(max, v));
+  return (Math.log(c) - Math.log(min)) / (Math.log(max) - Math.log(min));
+}
+
+/** 元音平面坐标：x = F2 倒置（高 F2=舌位靠前 在左），y = F1 倒置（低 F1=开口小 在上） */
+export function vowelXY(f1: number, f2: number, w: number, h: number): [number, number] {
+  return [(1 - logNorm(f2, VOWEL_AXIS_F2)) * w, logNorm(f1, VOWEL_AXIS_F1) * h];
+}
+
+/** 收集区间内的有效元音点（有声帧且 F1/F2 同帧检出） */
+export function collectVowelPoints(series: SeriesLike, t0: number, t1: number): { f1: number; f2: number }[] {
+  const pts: { f1: number; f2: number }[] = [];
+  for (let i = 0; i < series.t.length; i++) {
+    const t = series.t[i];
+    if (t < t0 - 0.05 || t > t1 + 0.05) continue;
+    const f1 = series.f1[i];
+    const f2 = series.f2[i];
+    if (series.f0[i] == null || f1 == null || f2 == null || !isFinite(f1) || !isFinite(f2)) continue;
+    pts.push({ f1, f2 });
+  }
+  return pts;
+}
+
+/** 元音空间网格与刻度（F1 横线 / F2 纵线，均为对数位） */
+export function drawVowelSpaceFrame(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  pal: ChartPalette,
+  showLabels: boolean,
+): void {
+  const f1Ticks = [250, 500, 1000];
+  const f2Ticks = [800, 1500, 2500];
+  ctx.save();
+  ctx.setLineDash(DASH);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = pal.grid;
+  for (const v of f1Ticks) dashedLine(ctx, 0, logNorm(v, VOWEL_AXIS_F1) * h, w, logNorm(v, VOWEL_AXIS_F1) * h);
+  for (const v of f2Ticks) {
+    const x = (1 - logNorm(v, VOWEL_AXIS_F2)) * w;
+    dashedLine(ctx, x, 0, x, h);
+  }
+  if (showLabels) {
+    ctx.fillStyle = pal.textMuted;
+    ctx.globalAlpha = 0.75;
+    ctx.font = '9px "Inter Tight", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    for (const v of f1Ticks) ctx.fillText(`${v}Hz`, 4, logNorm(v, VOWEL_AXIS_F1) * h - 5);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    for (const v of f2Ticks) {
+      const x = (1 - logNorm(v, VOWEL_AXIS_F2)) * w;
+      if (x > 18 && x < w - 18) ctx.fillText(`${v}`, x, h - 2);
+    }
+  }
+  ctx.restore();
+}
+
+/** 一组元音散点（低透明度同色叠加，密度自然形成热度） */
+export function drawVowelPoints(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  points: { f1: number; f2: number }[],
+  color: string,
+  opts?: { alpha?: number; radius?: number },
+): void {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.globalAlpha = opts?.alpha ?? 0.2;
+  const r = opts?.radius ?? 2.2;
+  for (const pt of points) {
+    const [x, y] = vowelXY(pt.f1, pt.f2, w, h);
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** 质心 × 标记（对比视图中标记两组散点的中心） */
+export function drawVowelCentroid(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  points: { f1: number; f2: number }[],
+  color: string,
+): void {
+  if (points.length === 0) return;
+  let sf1 = 0;
+  let sf2 = 0;
+  for (const p of points) {
+    sf1 += p.f1;
+    sf2 += p.f2;
+  }
+  const [x, y] = vowelXY(sf1 / points.length, sf2 / points.length, w, h);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.95;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - 4.5, y - 4.5);
+  ctx.lineTo(x + 4.5, y + 4.5);
+  ctx.moveTo(x + 4.5, y - 4.5);
+  ctx.lineTo(x - 4.5, y + 4.5);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** 参考元音虚线圈（i/a/u，跟随主题淡化处理） */
+export function drawVowelRefs(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  pal: ChartPalette,
+  showLabels: boolean,
+): void {
+  for (const ref of VOWEL_REFS) {
+    const [x, y] = vowelXY(ref.f1, ref.f2, w, h);
+    ctx.save();
+    ctx.strokeStyle = pal.textMuted;
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([2.5, 2.5]);
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    if (showLabels) {
+      ctx.setLineDash([]);
+      ctx.fillStyle = pal.textMuted;
+      ctx.font = '9px "Inter Tight", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${ref.label} ${ref.zh}`, x, y - 8);
+    }
+    ctx.restore();
+  }
+}
+
+/* ------------------------------- 声域图 VRP ------------------------------- */
+
+/**
+ * VRP 声域图热力图：半音（纵轴，固定 C2–C6）× 响度（横轴 dBFS，自适应 5–95 分位），
+ * 色深 = 驻留帧数。经典的 phonetogram 视图，直观呈现音域与各音高上的力度分布。
+ */
+export function drawVrpHeatmap(p: PaintContext, series: SeriesLike): void {
+  const { ctx, w, h, t0, t1, pal, showLabels } = p;
+
+  // 收集区间内有声帧 → (半音格, 1dB 桶) 计数
+  const cells = new Map<string, number>();
+  const dbs: number[] = [];
+  for (let i = 0; i < series.t.length; i++) {
+    const t = series.t[i];
+    if (t < t0 - 0.05 || t > t1 + 0.05) continue;
+    const f0 = series.f0[i];
+    const db = series.rmsDb[i];
+    if (f0 == null || !isFinite(f0) || !isFinite(db)) continue;
+    const midi = Math.round(69 + 12 * Math.log2(f0 / 440));
+    dbs.push(db);
+    const bucket = Math.floor(db);
+    const key = `${midi},${bucket}`;
+    cells.set(key, (cells.get(key) ?? 0) + 1);
+  }
+
+  const [noteMin, noteMax] = [VRP_NOTE_MIN, VRP_NOTE_MAX];
+  const yFor = (midi: number) => h - ((midi - noteMin) / (noteMax - noteMin)) * h;
+  const rowH = h / (noteMax - noteMin);
+
+  // 响度轴范围：有声帧 5–95 分位 ± 2dB，过窄时兜底
+  dbs.sort((a, b) => a - b);
+  const q = (frac: number) => dbs[Math.min(dbs.length - 1, Math.max(0, Math.floor(dbs.length * frac)))];
+  const lo = dbs.length ? Math.floor(q(0.05) - 2) : -60;
+  const hi = dbs.length ? Math.ceil(q(0.95) + 2) : -20;
+  const span = Math.max(12, hi - lo);
+  const xFor = (db: number) => ((db - lo) / span) * w;
+
+  // 八度参考线（C3/C4/C5）
+  ctx.save();
+  ctx.setLineDash(DASH);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = pal.grid;
+  ctx.font = '9px "Inter Tight", system-ui, sans-serif';
+  for (const midi of [48, 60, 72]) {
+    if (midi <= noteMin || midi >= noteMax) continue;
+    const y = yFor(midi);
+    dashedLine(ctx, 0, y, w, y);
+    if (showLabels) {
+      ctx.fillStyle = pal.textMuted;
+      ctx.globalAlpha = 0.8;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      const hz = Math.round(440 * Math.pow(2, (midi - 69) / 12));
+      ctx.fillText(`${freqToNote(hz).name} · ${hz}Hz`, 4, y - 2);
+    }
+  }
+  ctx.restore();
+
+  if (cells.size === 0) {
+    if (showLabels) {
+      ctx.save();
+      ctx.fillStyle = pal.textMuted;
+      ctx.globalAlpha = 0.6;
+      ctx.font = '11px "Inter Tight", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('该区间内没有可绘制的有声帧', w / 2, h / 2);
+      ctx.restore();
+    }
+    return;
+  }
+
+  // 热力格（色深 ∝ √驻留帧数）
+  let maxCount = 1;
+  for (const c of cells.values()) if (c > maxCount) maxCount = c;
+  ctx.save();
+  ctx.fillStyle = pal.accent;
+  for (const [key, count] of cells) {
+    const comma = key.indexOf(',');
+    const midi = Number(key.slice(0, comma));
+    const bucket = Number(key.slice(comma + 1));
+    const x = xFor(bucket);
+    const cw = Math.max(1.5, xFor(bucket + 1) - x - 0.5);
+    const yTop = yFor(midi + 0.5);
+    ctx.globalAlpha = 0.12 + 0.78 * Math.sqrt(count / maxCount);
+    ctx.fillRect(x, yTop, cw, Math.max(2, rowH - 0.5));
+  }
+  ctx.restore();
+
+  // 响度轴刻度
+  if (showLabels) {
+    ctx.save();
+    ctx.fillStyle = pal.textMuted;
+    ctx.globalAlpha = 0.75;
+    ctx.font = '9px "Inter Tight", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const stepDb = span > 44 ? 20 : span > 22 ? 10 : 5;
+    for (let db = Math.ceil(lo / stepDb) * stepDb; db <= lo + span; db += stepDb) {
+      const x = xFor(db);
+      if (x > 14 && x < w - 14) ctx.fillText(`${db}`, x, h - 2);
+    }
+    ctx.restore();
+  }
+}
+
 /* --------------------------------- 总入口 --------------------------------- */
+
+export type PaintKind = 'pitch' | 'energy' | 'formant' | 'vowelSpace' | 'vrp';
 
 /**
  * 绘制一帧图表
@@ -360,7 +613,7 @@ export function drawFormantLine(
  * @param playheadT 播放头位置（秒），null = 不绘制
  */
 export function paintChart(
-  kind: 'pitch' | 'energy' | 'formant',
+  kind: PaintKind,
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
@@ -390,13 +643,19 @@ export function paintChart(
     drawValueGrid(p, yFor, [0, -30, -60].map((v) => ({ v, label: `${v}dB` })));
     drawTimeGrid(p);
     drawEnergy(p, series, xOf, yFor);
-  } else {
+  } else if (kind === 'formant') {
     const [aMin, aMax] = FORMANT_AXIS;
     const yFor = (f: number) => h - ((f - aMin) / (aMax - aMin)) * h;
     drawValueGrid(p, yFor, [1000, 2000, 3000].map((v) => ({ v, label: `${v}Hz` })));
     drawTimeGrid(p);
     drawFormantLine(p, series.f1, series, xOf, yFor, pal.accent);
     drawFormantLine(p, series.f2, series, xOf, yFor, pal.accent2);
+  } else if (kind === 'vowelSpace') {
+    drawVowelSpaceFrame(ctx, w, h, pal, showLabels);
+    drawVowelPoints(ctx, w, h, collectVowelPoints(series, t0, t1), pal.accent);
+    drawVowelRefs(ctx, w, h, pal, showLabels);
+  } else if (kind === 'vrp') {
+    drawVrpHeatmap(p, series);
   }
 
   // 播放头（回放位置指示线，画在曲线之上）

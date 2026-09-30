@@ -88,6 +88,7 @@ export function createDemoRecord(): AnalysisRecord {
       jitterPct: 0.72,
       shimmerPct: 3.4,
       hnrDb: 15.8,
+      cppsDb: 14.2,
     },
     mode: 'reading',
     spec: { bands: SPEC_BANDS, data: base64FromBytes(flat) },

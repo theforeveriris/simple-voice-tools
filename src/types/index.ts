@@ -89,6 +89,8 @@ export interface VoiceStats {
   shimmerPct?: number | null;
   /** 谐噪比 HNR 估计（dB），由 YIN 周期性置信度换算，需录音音频，无音频时为 null */
   hnrDb?: number | null;
+  /** 平滑倒谱峰突出度 CPPS（dB），对连续语音稳健的嗓音质量指标，需录音音频，旧记录为 undefined */
+  cppsDb?: number | null;
 }
 
 /**
@@ -144,4 +146,8 @@ export interface AppSettings {
   testMode: TestMode;
   /** 四个图表是否共用同一时间轴区间（关闭后可独立缩放，统计跟随音高曲线） */
   syncChartRange: boolean;
+  /** GitHub 云备份：用户自己的 OAuth App / GitHub App Client ID（仅存本地） */
+  githubClientId?: string;
+  /** GitHub 云备份：目标私有仓库名 */
+  githubRepo?: string;
 }

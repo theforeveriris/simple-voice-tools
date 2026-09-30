@@ -122,6 +122,29 @@ export const ENERGY_AXIS: [number, number] = [-90, 0];
 /** 实时曲线滚动窗口长度（秒） */
 export const LIVE_WINDOW_SEC = 12;
 
+/* ------------------------------ 元音空间散点图 ------------------------------ */
+
+/** 元音空间 F1 纵轴范围（Hz，对数刻度，倒置：低 F1=开口小 在上） */
+export const VOWEL_AXIS_F1: [number, number] = [200, 1100];
+/** 元音空间 F2 横轴范围（Hz，对数刻度，倒置：高 F2=舌位靠前 在左） */
+export const VOWEL_AXIS_F2: [number, number] = [500, 3400];
+
+/**
+ * 元音空间参考元音（典型共振峰位置，取 Peterson & Barney 平均值附近）
+ * 叠加为半透明虚线圈，帮助定位自己的发音落点
+ */
+export const VOWEL_REFS: { label: string; zh: string; f1: number; f2: number }[] = [
+  { label: 'i', zh: '衣', f1: 280, f2: 2250 },
+  { label: 'a', zh: '啊', f1: 730, f2: 1090 },
+  { label: 'u', zh: '乌', f1: 300, f2: 870 },
+];
+
+/* -------------------------------- 声域图 VRP -------------------------------- */
+
+/** VRP 声域图纵轴范围（MIDI 音符号）：C2=36 到 C6=84，覆盖绝大多数人声 */
+export const VRP_NOTE_MIN = 36;
+export const VRP_NOTE_MAX = 84;
+
 /** 历史记录最多保留条数（记录与音频均存于 IndexedDB，容量充裕） */
 export const MAX_HISTORY = 200;
 

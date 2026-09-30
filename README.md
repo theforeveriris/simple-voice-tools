@@ -18,15 +18,24 @@
 - **分析**：声纹概览卡（平均基频 + 音域标尺）、四组统计表格、四张图表
   （音高 / 共振峰 / 能量 / 语谱图）。所有图表共享同一个时间轴区间，
   拖动双滑块缩放、按住窗口中间整体平移，**统计与音域标尺随选中区间实时联动**
+- **元音空间散点**：共振峰卡片一键切换「曲线 / 散点」，以经典元音四边形
+  （F1 倒轴 × F2 倒轴，对数刻度）呈现全部有声帧的落点密度，
+  叠加 i / a / u 参考元音；两两对比视图中双记录散点叠加并标记质心
+- **声域图（VRP）**：滑音模式记录专属的 phonetogram 热力图——
+  半音（C2–C6）× 响度（dBFS）矩阵，色深 = 驻留时长，直观呈现音域与力度分布
 - **录音回放**：录音音频（Opus/AAC 压缩）与分析数据一同存入浏览器 IndexedDB，
   分析页可随时回放
-- **嗓音质量**：Jitter（基频微扰）/ Shimmer（振幅微扰）/ HNR（谐噪比）三项
-  临床常用指标，由录音音频离线计算（需开启「保存录音音频」）
+- **嗓音质量**：Jitter（基频微扰）/ Shimmer（振幅微扰）/ HNR（谐噪比）/
+  CPPS（倒谱峰突出度）四项指标，由录音音频离线计算（需开启「保存录音音频」）；
+  CPPS 对连续语音（朗读模式）同样稳健，与 J/S 互补
 - **历史**：记录存于 IndexedDB（最多 200 条），按时间倒序；顶部「列表 / 趋势」切换，
   趋势图展示平均基频与 P10–P90 音域随日期的变化；长按卡片进入多选，
   支持批量删除与两两对比（Δ 指标表 + 音高曲线叠加）；记录可加备注、可搜索
 - **设置**：莫奈取色主题（8 个预设 + 自定义色相）、数据导入/导出（JSON / 汇总 CSV）、
   录音时长限制、麦克风设备选择、录音音频保存开关
+- **备份**：完整备份（ZIP，记录 + 全部录音音频）与一键恢复；存储用量面板
+  （配额占用 / 音频体积 / 持久化存储申请）；可选 GitHub 私有库云备份
+  （Device Flow 授权，写入你自己的仓库，未变化文件自动跳过）
 - **导出**：分析报告一键生成 PNG 分享图（Canvas 绘制的品牌报告卡，跟随主题色，
   支持系统分享面板）；单条记录可导出帧级 CSV
 - **应用内文档**：设置 → 关于 中可离线阅读算法原理与开发者文档
@@ -40,6 +49,7 @@
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | 音高检测原理：YIN 差分函数、CMND、抛物线插值 |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | 共振峰提取原理：预加重、抽取、LPC、多项式求根 |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | 能量分析原理：RMS、分贝换算、VAD 门限体系 |
+| [documentation/ALGORITHM-CPPS.md](documentation/ALGORITHM-CPPS.md) | 倒谱峰突出度原理：实倒谱、回归线基线、时间平滑 |
 
 以上文档也可在应用内离线阅读：**设置 → 关于 → 文档**。
 
@@ -54,7 +64,9 @@
   - **LPC 线性预测**共振峰提取（Levinson-Durbin + Durand-Kerner 求根）
   - RMS 能量电平与 VAD 门限
   - **Jitter / Shimmer / HNR** 嗓音质量（峰检测周期序列 + YIN 置信度换算）
+  - **CPPS 倒谱峰突出度**（自写基-2 FFT → 实倒谱 → 回归线基线 → 时间平滑分布统计）
   - **FFT 语谱图**（对数频带量化存储 + magma 伪彩色渲染）
+- fflate（ZIP 完整备份打包）；GitHub 云备份走 Device Flow + REST API，零后端
 
 ## 开发说明
 
@@ -103,11 +115,13 @@ npm run preview
 
 - 使用了 `getUserMedia`，需要在 HTTPS 或 localhost 环境下运行
 - 麦克风权限需要用户手动授权
-- 所有数据（分析记录 + 录音音频）仅保存在本机浏览器的 IndexedDB 中，
-  不会上传到任何服务器；导出 JSON 不包含音频
-- 嗓音质量指标（Jitter/Shimmer/HNR）需要开启「保存录音音频」，旧记录或关闭
+- 所有数据（分析记录 + 录音音频）默认仅保存在本机浏览器的 IndexedDB 中；
+  只有你主动「完整备份」或连接 GitHub 云备份时数据才会导出/上传到你自己选择的目标
+- 嗓音质量指标（Jitter/Shimmer/HNR/CPPS）需要开启「保存录音音频」，旧记录或关闭
   音频保存时显示为「—」
 - 检测准确性可能受环境噪音影响，建议在安静环境中测试
+- GitHub 云备份使用你自己的 GitHub App / OAuth App Client ID（Device Flow 授权）；
+  GitHub App 需勾选 Enable Device Flow、授予 Contents 读写权限并安装到备份仓库
 - PWA 图标与分享图由 `python scripts/generate-pwa-assets.py` 生成（需要 Pillow）
 
 ## 浏览器兼容性

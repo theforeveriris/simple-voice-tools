@@ -12,7 +12,7 @@ import type { RecordSeries } from '@/types';
 import { paintChart } from './chartPainters';
 import { cn } from '@/lib/utils';
 
-export type ChartKind = 'pitch' | 'energy' | 'formant';
+export type ChartKind = 'pitch' | 'energy' | 'formant' | 'vowelSpace' | 'vrp';
 
 interface SeriesChartProps {
   kind: ChartKind;

@@ -58,7 +58,18 @@ src/
 │   │   ├── recorder.ts           # 录音引擎单例：采集/分析循环/记录生成 + computeStats
 │   │   ├── pitch.ts              # YIN 音高检测 + RMS 能量
 │   │   ├── formants.ts           # LPC 共振峰提取
+│   │   ├── voiceQuality.ts       # Jitter/Shimmer/HNR（峰检测周期序列）
+│   │   ├── cpp.ts                # CPPS（自写 FFT → 实倒谱 → 回归线基线）
+│   │   ├── spectrogram.ts        # 语谱频带量化 + base64 编解码 + magma 伪彩色
 │   │   └── demo.ts               # 示例数据生成（?demo=1 / 载入示例按钮）
+│   ├── storage/
+│   │   └── idb.ts                # IndexedDB：records / audio / kv 三仓库（DB v2）
+│   ├── export/
+│   │   ├── csv.ts                # 帧级 CSV / 汇总 CSV
+│   │   ├── shareCard.ts          # PNG 分享报告卡
+│   │   └── backup.ts             # ZIP 完整备份/恢复（fflate）
+│   ├── backup/
+│   │   └── github.ts             # GitHub 私有库云备份（Device Flow + Contents API）
 │   └── theme/
 │       └── monet.ts              # OKLCH 莫奈色板生成 → CSS 变量
 ├── store/
@@ -83,15 +94,18 @@ docs/                             # ⚠️ 构建产物输出目录（vite outDi
 - 最长时长由循环内检查，触发 `onAutoStop` 回调（由 store 落库并跳转）；
 - `stop()`：停止轨道/关闭上下文 → 缓冲 2:1 降采样（60fps→30Hz）→ NaN→null →
   `computeStats` 聚合 → 生成 `AnalysisRecord`。不足 1 秒返回 null（不保存）；
+- `finishRecord(record)`：等待 MediaRecorder 冲刷 → `decodeAudioData` 解码 PCM →
+  `computeVoiceQuality`（Jitter/Shimmer/HNR）+ `computeCpps`（倒谱峰突出度）→
+  合并进 stats；音频 Blob 由调用方连同记录一起落库；
 - 实时图表通过 `recorder.getLive()` 每帧直接读缓冲，**不经过 React 状态**（避免 60fps 重渲染）。
 
 ### 状态管理
 
 - `useStore`：`currentTab` / `isRecording` / `currentAnalysis`（内存）/ `settings`（持久化）。
   录音的启动失败会抛出异常，由 RecordBall 捕获并 toast；
-- `useHistoryStore`：`records`（新记录插头部）+ 增删清导入。写入前 `trimToQuota`：
-  超过 3.5MB 软上限或 40 条上限时从最旧开始丢弃，保护 localStorage 配额；
-- persist key：`svt:settings:v1` / `svt:history:v1`。
+- `useHistoryStore`：`records`（新记录插头部）+ 增删清导入。IndexedDB（`svt` 库 v2，
+  records / audio / kv 三个仓库）承载持久化；kv 仓库存放 GitHub 备份令牌等敏感态，
+  不进 localStorage。写入失败降级为内存态并 toast；
 
 ### 图表渲染
 
@@ -136,7 +150,7 @@ docs/                             # ⚠️ 构建产物输出目录（vite outDi
 | 图表直接读引擎缓冲，不走 React 状态 | 60fps 重渲染整个页面代价过高 |
 | LPC 每 2 帧一次 + EMA 平滑 | 求根较贵；30Hz 对共振峰曲线足够 |
 | 存储 2:1 降采样（30Hz） | 体积减半，曲线视觉无损 |
-| localStorage 软上限 3.5MB / 40 条 | 超配额浏览器会整体拒绝写入 |
+| 记录/音频存 IndexedDB（200 条上限） | 绕开 localStorage 配额；音频 Blob 与记录同 id 关联 |
 | 测试页图表延迟 300ms 挂载 | 保证底栏动画满帧（实测 p95 16.8ms） |
 | 音高用 YIN 替代频谱谐波法 | 半音量化画不出平滑曲线（见算法文档） |
 
@@ -174,6 +188,7 @@ npm run preview   # 本地预览构建产物
 | [ALGORITHM-YIN.md](./ALGORITHM-YIN.md) | 音高检测：差分函数、CMND、抛物线插值 |
 | [ALGORITHM-FORMANT-LPC.md](./ALGORITHM-FORMANT-LPC.md) | 共振峰：预加重/抽取/LPC/求根全链路 |
 | [ALGORITHM-ENERGY.md](./ALGORITHM-ENERGY.md) | 能量：RMS、分贝、VAD 门限体系 |
+| [ALGORITHM-CPPS.md](./ALGORITHM-CPPS.md) | 倒谱峰突出度：实倒谱、回归线基线、时间平滑 |
 | [README.md](../README.md) | 项目介绍与使用说明 |
 
 应用内路径：**设置 → 关于 → 文档**，可离线阅读以上算法文档。

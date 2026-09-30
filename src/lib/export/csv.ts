@@ -49,7 +49,7 @@ export function recordsToSummaryCsv(records: AnalysisRecord[]): string {
     'avg_f0_hz', 'median_f0_hz', 'min_f0_hz', 'max_f0_hz', 'p10_f0_hz', 'p90_f0_hz', 'std_f0_hz',
     'male_pct', 'female_pct', 'transition_pct',
     'avg_f1_hz', 'avg_f2_hz', 'avg_db', 'peak_db',
-    'jitter_pct', 'shimmer_pct', 'hnr_db',
+    'jitter_pct', 'shimmer_pct', 'hnr_db', 'cpps_db',
   ].join(',');
   const lines = records.map((r) => {
     const s = r.stats;
@@ -64,6 +64,7 @@ export function recordsToSummaryCsv(records: AnalysisRecord[]): string {
       s.malePct, s.femalePct, s.transitionPct,
       cell(s.avgF1, 0), cell(s.avgF2, 0), cell(s.avgDb, 1), cell(s.peakDb, 1),
       cell(s.jitterPct ?? null, 3), cell(s.shimmerPct ?? null, 2), cell(s.hnrDb ?? null, 1),
+      cell(s.cppsDb ?? null, 1),
     ].join(',');
   });
   return [header, ...lines].join('\n');

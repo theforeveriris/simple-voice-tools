@@ -1,16 +1,18 @@
 /**
  * IndexedDB 存储层（零依赖封装）
- * 两个对象仓库：
+ * 三个对象仓库：
  *   records — 分析记录（不含音频），keyPath = id
  *   audio   — 录音音频 Blob，keyPath = id（与分析记录同 id 关联）
+ *   kv      — 杂项键值（GitHub 备份 token 等敏感态，不进 localStorage）
  * 所有操作返回 Promise；打开失败时全局降级为「不可用」，由上层提示。
  */
 
 const DB_NAME = 'svt';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORE_RECORDS = 'records';
 export const STORE_AUDIO = 'audio';
+export const STORE_KV = 'kv';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 let unavailable = false;
@@ -31,6 +33,9 @@ function openDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(STORE_AUDIO)) {
           db.createObjectStore(STORE_AUDIO, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(STORE_KV)) {
+          db.createObjectStore(STORE_KV);
         }
       };
       req.onsuccess = () => resolve(req.result);
@@ -115,4 +120,27 @@ export function idbDeleteAudio(id: string): Promise<void> {
 
 export function idbClearAudio(): Promise<void> {
   return withStore(STORE_AUDIO, 'readwrite', (s) => s.clear());
+}
+
+/** 枚举全部音频条目（用于备份与存储用量统计；blob.size 不读取内容，开销小） */
+export async function idbGetAllAudio<T>(): Promise<T[]> {
+  return withStore<T[]>(STORE_AUDIO, 'readonly', (s) => s.getAll());
+}
+
+/* ------------------------------- 键值仓库 ------------------------------- */
+
+export async function idbGetKV<T>(key: string): Promise<T | undefined> {
+  return withStore<T | undefined>(STORE_KV, 'readonly', (s) => s.get(key) as IDBRequest<T | undefined>);
+}
+
+export function idbPutKV(key: string, value: unknown): Promise<void> {
+  return withStore(STORE_KV, 'readwrite', (s) => {
+    s.put(value, key);
+  });
+}
+
+export function idbDeleteKV(key: string): Promise<void> {
+  return withStore(STORE_KV, 'readwrite', (s) => {
+    s.delete(key);
+  });
 }
