@@ -3,15 +3,18 @@
  *
  * - 苹果式悬浮 Dock：微圆角、无边框、微阴影，四个页签（测试/分析/历史/设置），
  *   选中项有 layoutId 胶囊滑移动效与图标弹性微动效。
- * - 在测试页时：右侧浮出与底栏等高的录音圆球，二者作为整体保持居中
- *   （底栏仅微微左移让出圆球位置）；录音中圆球带呼吸光晕，点击停止。
- * - 短按圆球以当前模式开始录音（记住上次选择，默认朗读引导）；
- *   长按约 0.5s 在圆球上方扇形展开三个模式选项，背景模糊暗化，
- *   点选任意模式立即以该模式开始录音。
+ * - 长按录音圆球：底栏从中缝分开（左组：测试/分析，右组：历史/设置），
+ *   圆球从右缘飞入中缝落座，整个底栏保持居中；落座后以圆球为圆心
+ *   扇形唤出三个模式选项——圆球已居中，经典扇形在任何屏宽都放得下。
+ *   选择模式立即开始录音，录音期间保持分体布局；结束后圆球飞回右缘、
+ *   底栏合拢。圆球的两个停靠位置用 layoutId 共享元素动画衔接，
+ *   飞行时从页签上层滑过。
+ * - 短按圆球以当前模式开始/停止录音（记住上次选择，默认朗读引导），
+ *   录音同样落入中缝。
  */
 
-import { useEffect, useRef, useState } from 'react';
-import type { ElementType, PointerEvent as ReactPointerEvent } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import type { ElementType, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -40,7 +43,7 @@ const TABS: { id: ViewType; label: string; icon: ElementType }[] = [
   { id: 'settings', label: '设置', icon: Settings2 },
 ];
 
-/** 模式选项（扇形排列，自左向右，角度由索引与张角推得） */
+/** 模式选项（扇形排列，自左向右） */
 const MODE_OPTIONS: { id: TestMode; label: string; icon: ElementType }[] = [
   { id: 'reading', label: '朗读引导', icon: BookOpenText },
   { id: 'sustained', label: '长音测试', icon: AudioLines },
@@ -57,6 +60,8 @@ const FAN_SPREAD_DEG = 52;
 const FAN_SPREAD_COMPACT_DEG = 38;
 /** 逆时针旋转上限（度），防止左侧选项低到与圆球同排 */
 const FAN_MAX_ROTATE_DEG = 55;
+/** 圆球落座后底栏中缝的宽度（圆球 56 + 两侧呼吸 8） */
+const BALL_SLOT_W = 64;
 
 /** 录音计时（圆球上方的悬浮时间提示） */
 function RecordTimer() {
@@ -121,7 +126,8 @@ function ModeFanSelector({
       {MODE_OPTIONS.map((opt, i) => {
         // 窄屏（手机竖屏）时圆球贴近右缘：间隔稍收窄 + 整体逆时针旋转，
         // 旋转量按圆球右侧剩余空间求解，选项始终保持等距，
-        // 且都分布在以圆球为圆心的同一弧上（旋转不脱离圆球，平移/逐个钳制会变形）
+        // 且都分布在以圆球为圆心的同一弧上（旋转不脱离圆球，平移/逐个钳制会变形）。
+        // 圆球落座底栏中缝后 center.x 即屏幕中心，常规扇形恒能放下，此分支仅作兜底。
         const vw = window.innerWidth;
         const fanMargin = 56; // 圆钮半径 + 标签半宽
         const roomRight = vw - fanMargin - center.x;
@@ -151,8 +157,7 @@ function ModeFanSelector({
           >
             <button
               onClick={() => onChoose(opt.id)}
-              style={{ transform: `translate(-50%, -50%) rotate(${(((i - 1) * spread - rotateDeg)).toFixed(2)}deg)` }}
-              className="flex flex-col items-center gap-2"
+              className="flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
               aria-label={`${opt.label}：${MODE_META[opt.id].desc}`}
             >
               <motion.span
@@ -183,33 +188,21 @@ function ModeFanSelector({
   );
 }
 
-/** 录音圆球：短按开始（当前模式）/ 停止录音，长按展开模式选择 */
-function RecordBall() {
+/** 圆球本体（两种停靠位置共用：录音按钮 + 呼吸光晕 + 计时） */
+function BallCore({ onLongPress }: { onLongPress: () => void }) {
   const isRecording = useStore((s) => s.isRecording);
   const startRecording = useStore((s) => s.startRecording);
   const stopRecording = useStore((s) => s.stopRecording);
-  const updateSettings = useStore((s) => s.updateSettings);
 
-  const [selectorOpen, setSelectorOpen] = useState(false);
-  const [center, setCenter] = useState({ x: 0, y: 0 });
-  const ballRef = useRef<HTMLDivElement>(null);
   const pressTimer = useRef<number | null>(null);
   const longPressFired = useRef(false);
   const pressOrigin = useRef({ x: 0, y: 0 });
-
-  const openSelector = () => {
-    const rect = ballRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setCenter({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-    setSelectorOpen(true);
-    navigator.vibrate?.(12);
-  };
 
   const onPointerDown = (e: ReactPointerEvent) => {
     if (isRecording) return;
     longPressFired.current = false;
     pressOrigin.current = { x: e.clientX, y: e.clientY };
-    pressTimer.current = window.setTimeout(openSelector, LONG_PRESS_MS);
+    pressTimer.current = window.setTimeout(onLongPress, LONG_PRESS_MS);
   };
 
   const onPointerMove = (e: ReactPointerEvent) => {
@@ -245,27 +238,10 @@ function RecordBall() {
     }
   };
 
-  const chooseMode = async (mode: TestMode) => {
-    setSelectorOpen(false);
-    updateSettings({ testMode: mode });
-    try {
-      await startRecording();
-    } catch {
-      toast.error('无法访问麦克风，请检查浏览器权限设置');
-    }
-  };
-
   useEffect(() => clearPress, []);
 
   return (
-    <motion.div
-      ref={ballRef}
-      initial={{ scale: 0, opacity: 0, y: '-50%' }}
-      animate={{ scale: 1, opacity: 1, y: '-50%' }}
-      exit={{ scale: 0, opacity: 0, y: '-50%' }}
-      transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-      className="pointer-events-auto absolute left-full top-1/2 ml-3 size-14"
-    >
+    <>
       <AnimatePresence>{isRecording && <RecordTimer />}</AnimatePresence>
 
       {/* 呼吸光晕（录音中） */}
@@ -328,104 +304,273 @@ function RecordBall() {
           </motion.span>
         </AnimatePresence>
       </motion.button>
-
-      {/* 模式扇形选择器 */}
-      <AnimatePresence>
-        {selectorOpen && (
-          <ModeFanSelector center={center} onClose={() => setSelectorOpen(false)} onChoose={chooseMode} />
-        )}
-      </AnimatePresence>
-    </motion.div>
+    </>
   );
 }
 
 /**
- * 底部悬浮导航栏
- * 导航栏与录音圆球组成一个居中的整体；离开测试页时圆球收起，
- * 导航栏通过 layout 动画平滑回到正中。
+ * 录音圆球：两个停靠位置（右缘悬浮 / 底栏中缝）用同一 layoutId 衔接，
+ * 切换时 framer 自动从旧位置飞行到新位置，穿过页签时位于上层。
+ * entrance 仅在首次进入测试页时为 true（播放缩放入场）；
+ * layoutId 衔接飞行时必须关闭入场动画，否则透明度会跳变。
+ */
+function RecordBall({
+  docked,
+  entrance = false,
+  onLongPress,
+}: {
+  docked: boolean;
+  entrance?: boolean;
+  onLongPress: () => void;
+}) {
+  return (
+    <motion.div
+      layoutId="record-ball"
+      transition={SPRING}
+      initial={!docked && entrance ? { scale: 0, opacity: 0 } : false}
+      animate={{ scale: 1, opacity: 1 }}
+      className="pointer-events-auto absolute z-10 size-14"
+      style={
+        docked
+          ? { left: '50%', top: '50%', marginLeft: -28, marginTop: -28 }
+          : { left: 'calc(100% + 12px)', top: '50%', marginTop: -28 }
+      }
+    >
+      <BallCore onLongPress={onLongPress} />
+    </motion.div>
+  );
+}
+
+interface DockProps {
+  currentTab: ViewType;
+  split: boolean;
+  ballDocked: boolean;
+  /** 悬浮球是否播放入场动画（首次进入测试页；layoutId 衔接时必须关闭） */
+  ballEntrance: boolean;
+  slotRef: RefObject<HTMLDivElement | null>;
+  onLongPress: () => void;
+}
+
+/**
+ * 底栏本体（memo：模式扇形的打开/关闭不会触发底栏重渲染，
+ * 避免 framer layout 在 CSS/弹簧动画进行中被重新快照造成二次移动）。
+ */
+const Dock = memo(function Dock({
+  currentTab,
+  split,
+  ballDocked,
+  ballEntrance,
+  slotRef,
+  onLongPress,
+}: DockProps) {
+  const setTab = useStore((s) => s.setTab);
+  const isTest = currentTab === 'test';
+
+  const renderTab = (tab: { id: ViewType; label: string; icon: ElementType }) => {
+    const active = currentTab === tab.id;
+    const Icon = tab.icon;
+    return (
+      <motion.button
+        key={tab.id}
+        layout
+        onClick={() => setTab(tab.id)}
+        whileTap={{ scale: 0.9 }}
+        className="relative flex items-center rounded-2xl px-3.5 py-2.5"
+        aria-label={tab.label}
+      >
+        {/* 选中胶囊（跨页签平滑滑动） */}
+        {active && (
+          <motion.span
+            layoutId="nav-pill"
+            transition={SPRING}
+            className="absolute inset-0 rounded-2xl bg-accent-soft"
+          />
+        )}
+        <motion.span
+          className="relative z-10 grid place-items-center"
+          animate={active ? { scale: [1, 1.28, 1] } : { scale: 1 }}
+          transition={{ duration: 0.38, ease: 'easeOut' }}
+        >
+          <Icon
+            size={21}
+            strokeWidth={active ? 2.4 : 2}
+            className={cn('transition-colors duration-200', active ? 'text-accent' : 'text-ink-2')}
+          />
+        </motion.span>
+        {/*
+          标签宽度必须瞬间到位、不做 width 动画：
+          若宽度逐帧展开，底栏的真实布局会每帧重新居中，
+          与 layout FLIP 动画叠加产生"二次移动"。
+          宽度瞬变让小球退场 + 标签挂载合并为一次重排，
+          底栏只做一次纯净的滑动；文字用快速淡入消除突现感。
+        */}
+        {active && !isTest && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.14 }}
+            className="relative z-10 whitespace-nowrap pl-[7px] text-sm font-medium text-on-accent-soft"
+          >
+            {tab.label}
+          </motion.span>
+        )}
+      </motion.button>
+    );
+  };
+
+  return (
+    <motion.div
+      animate={{ x: ballDocked ? 0 : isTest ? -34 : 0 }}
+      transition={SPRING}
+      className="pointer-events-auto relative flex items-center"
+    >
+      <motion.nav
+        layout
+        transition={SPRING}
+        className="flex items-center gap-0.5 rounded-[24px] bg-card/85 p-1.5 shadow-[0_12px_40px_-8px_rgba(28,25,45,0.18),0_3px_12px_rgba(28,25,45,0.06)] backdrop-blur-xl"
+      >
+        {/* 左组：测试 / 分析 */}
+        <div className="flex items-center gap-0.5">{TABS.slice(0, 2).map(renderTab)}</div>
+
+        {/* 中缝：长按/录音时张开，圆球落座于此 */}
+        <motion.div
+          ref={slotRef}
+          initial={false}
+          animate={{ width: split ? BALL_SLOT_W : 0 }}
+          transition={SPRING}
+          className="relative shrink-0"
+        >
+          {isTest && ballDocked && <RecordBall docked onLongPress={onLongPress} />}
+        </motion.div>
+
+        {/* 右组：历史 / 设置 */}
+        <div className="flex items-center gap-0.5">{TABS.slice(2).map(renderTab)}</div>
+      </motion.nav>
+
+      {/* 悬浮圆球：分体时让位给中缝里的圆球（layoutId 衔接飞行） */}
+      {isTest && !ballDocked && (
+        <RecordBall docked={false} entrance={ballEntrance} onLongPress={onLongPress} />
+      )}
+    </motion.div>
+  );
+});
+
+/**
+ * 底部悬浮导航栏：状态编排（分体 = 长按选择中 或 录音中）
  */
 export function BottomBar() {
   const currentTab = useStore((s) => s.currentTab);
-  const setTab = useStore((s) => s.setTab);
+  const isRecording = useStore((s) => s.isRecording);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const startRecording = useStore((s) => s.startRecording);
   const isTest = currentTab === 'test';
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [fanCenter, setFanCenter] = useState<{ x: number; y: number } | null>(null);
+  const [ballDocked, setBallDocked] = useState(false);
+  // 圆球是否已经落座过：layoutId 衔接飞行时必须关闭悬浮球的入场动画
+  const [everDocked, setEverDocked] = useState(false);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const fanTimer = useRef<number | null>(null);
+
+  // 分体布局：模式选择中 或 录音中（仅在测试页）
+  const split = isTest && (menuOpen || isRecording);
+
+  // 圆球停靠位置（渲染期派生）：分体立即落座；
+  // 合拢时不立即收回，等中缝收窄动画结束后再飞回右缘，落点才是最终位置
+  const [prevSplit, setPrevSplit] = useState(split);
+  if (split !== prevSplit) {
+    setPrevSplit(split);
+    if (split) {
+      setBallDocked(true);
+      setEverDocked(true);
+    }
+  }
+
+  useEffect(() => {
+    if (split) return;
+    const t = setTimeout(() => setBallDocked(false), 340);
+    return () => clearTimeout(t);
+  }, [split]);
+
+  // 切换页面时收起未完成的模式选择（渲染期派生）
+  const [prevTest, setPrevTest] = useState(isTest);
+  if (isTest !== prevTest) {
+    setPrevTest(isTest);
+    if (!isTest) {
+      if (fanTimer.current !== null) {
+        window.clearTimeout(fanTimer.current);
+        fanTimer.current = null;
+      }
+      setMenuOpen(false);
+      setFanCenter(null);
+    }
+  }
+
+  const openMenu = useCallback(() => {
+    setMenuOpen(true);
+    navigator.vibrate?.(12);
+    // 等圆球落座、底栏分开后再唤出扇形选项
+    fanTimer.current = window.setTimeout(() => {
+      fanTimer.current = null;
+      const r = slotRef.current?.getBoundingClientRect();
+      if (r) setFanCenter({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    }, 320);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    if (fanTimer.current !== null) {
+      window.clearTimeout(fanTimer.current);
+      fanTimer.current = null;
+    }
+    setMenuOpen(false);
+    setFanCenter(null);
+  }, []);
+
+  const chooseMode = useCallback(
+    async (mode: TestMode) => {
+      if (fanTimer.current !== null) {
+        window.clearTimeout(fanTimer.current);
+        fanTimer.current = null;
+      }
+      setFanCenter(null);
+      updateSettings({ testMode: mode });
+      try {
+        await startRecording();
+      } catch {
+        toast.error('无法访问麦克风，请检查浏览器权限设置');
+      } finally {
+        // 等录音真正启动（或失败）后再撤出 menuOpen：
+        // 成功时由 isRecording 无缝接管分体（圆球不回飞）；
+        // 失败时圆球一次性平滑飞回右缘，避免"先回程再折返"的抖动
+        setMenuOpen(false);
+      }
+    },
+    [updateSettings, startRecording],
+  );
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-5">
       {/*
-        运动模型（全部为 transform，零重排，杜绝"二次移动"）：
-        - 小球绝对定位（left-full），永不占文档流，缩放进出不影响布局；
-        - 底栏布局宽度只由页签决定，justify-center 使其永远精确居中；
-        - 测试页时整个容器用纯 transform 左移 34px（= 小球56px+间距12px 的一半），
-          使"底栏 + 小球"组合视觉居中，底栏仅微微左移。
+        运动模型：
+        - 分体时圆球在底栏中缝，整体由 justify-center 精确居中；
+        - 非分体时圆球悬浮于右缘，整体用纯 transform 左移 34px
+          （= 小球56px+间距12px 的一半）使"底栏+小球"视觉居中；
+        - 中缝宽度由 framer 弹簧驱动，页签组随文档流平滑滑开；
+        - 圆球换位由 layoutId 共享元素动画完成，其余组件不为它重渲染
+          （Dock memo），避免 layout 快照与进行中的动画叠加。
       */}
-      <motion.div
-        animate={{ x: isTest ? -34 : 0 }}
-        transition={SPRING}
-        className="pointer-events-auto relative flex items-center"
-      >
-        <motion.nav
-          layout
-          transition={SPRING}
-          className="flex items-center gap-0.5 rounded-[24px] bg-card/85 p-1.5 shadow-[0_12px_40px_-8px_rgba(28,25,45,0.18),0_3px_12px_rgba(28,25,45,0.06)] backdrop-blur-xl"
-        >
-          {TABS.map((tab) => {
-            const active = currentTab === tab.id;
-            const Icon = tab.icon;
-            return (
-              <motion.button
-                key={tab.id}
-                layout
-                onClick={() => setTab(tab.id)}
-                whileTap={{ scale: 0.9 }}
-                className="relative flex items-center rounded-2xl px-3.5 py-2.5"
-                aria-label={tab.label}
-              >
-                {/* 选中胶囊（跨页签平滑滑动） */}
-                {active && (
-                  <motion.span
-                    layoutId="nav-pill"
-                    transition={SPRING}
-                    className="absolute inset-0 rounded-2xl bg-accent-soft"
-                  />
-                )}
-                <motion.span
-                  className="relative z-10 grid place-items-center"
-                  animate={active ? { scale: [1, 1.28, 1] } : { scale: 1 }}
-                  transition={{ duration: 0.38, ease: 'easeOut' }}
-                >
-                  <Icon
-                    size={21}
-                    strokeWidth={active ? 2.4 : 2}
-                    className={cn('transition-colors duration-200', active ? 'text-accent' : 'text-ink-2')}
-                  />
-                </motion.span>
-                {/*
-                  标签宽度必须瞬间到位、不做 width 动画：
-                  若宽度逐帧展开，底栏的真实布局会每帧重新居中，
-                  与 layout FLIP 动画叠加产生"二次移动"。
-                  宽度瞬变让小球退场 + 标签挂载合并为一次重排，
-                  底栏只做一次纯净的滑动；文字用快速淡入消除突现感。
-                */}
-                {active && !isTest && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.14 }}
-                    className="relative z-10 whitespace-nowrap pl-[7px] text-sm font-medium text-on-accent-soft"
-                  >
-                    {tab.label}
-                  </motion.span>
-                )}
-              </motion.button>
-            );
-          })}
-        </motion.nav>
+      <Dock
+        currentTab={currentTab}
+        split={split}
+        ballDocked={ballDocked}
+        ballEntrance={!everDocked}
+        slotRef={slotRef}
+        onLongPress={openMenu}
+      />
 
-        {/* 录音圆球：绝对定位在底栏右侧，仅测试页出现，缩放进出零布局影响 */}
-        <AnimatePresence>
-          {isTest && <RecordBall />}
-        </AnimatePresence>
-      </motion.div>
+      {/* 模式扇形（落座后唤出，渲染到 body） */}
+      {fanCenter && <ModeFanSelector center={fanCenter} onClose={closeMenu} onChoose={chooseMode} />}
     </div>
   );
 }
