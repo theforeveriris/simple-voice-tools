@@ -230,16 +230,16 @@ export function CompareSheet({
         </div>
 
         {/* A / B 标识 */}
-        <div className="mt-4 grid grid-cols-2 gap-2.5">
+        <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {([['A', a], ['B', b]] as const).map(([tag, rec]) => (
-            <div key={tag} className="rounded-[18px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
-              <div className="flex items-center gap-2">
-                <span className={`grid size-6 place-items-center rounded-full text-[11px] font-bold text-white ${tag === 'A' ? 'bg-accent' : 'bg-accent2'}`}>
+            <div key={tag} className="min-w-0 rounded-[18px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white ${tag === 'A' ? 'bg-accent' : 'bg-accent2'}`}>
                   {tag}
                 </span>
-                <span className="text-xs text-ink-2">{fmtDate(rec.createdAt)}</span>
+                <span className="min-w-0 text-xs text-ink-2">{fmtDate(rec.createdAt)}</span>
                 {rec.mode && (
-                  <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
                     {MODE_META[rec.mode].label}
                   </span>
                 )}

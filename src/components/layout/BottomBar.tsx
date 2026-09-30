@@ -62,33 +62,6 @@ const FAN_MAX_ROTATE_DEG = 55;
 /** 圆球落座后底栏中缝的宽度（圆球 56 + 两侧呼吸 8） */
 const BALL_SLOT_W = 64;
 
-/** 录音计时（圆球上方的悬浮时间提示） */
-function RecordTimer() {
-  const startedAtRef = useState(() => Date.now())[0];
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAtRef) / 1000));
-    }, 250);
-    return () => clearInterval(timer);
-  }, [startedAtRef]);
-
-  const m = Math.floor(elapsed / 60);
-  const s = elapsed % 60;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 6, scale: 0.9 }}
-      className="absolute -top-10 left-1/2 -translate-x-1/2 rounded-md bg-ink px-2.5 py-1 text-[11px] font-medium tabular-nums text-card shadow-lg"
-    >
-      <span className="mr-1.5 inline-block size-1.5 animate-pulse-soft rounded-full bg-red-400 align-middle" />
-      {String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}
-    </motion.div>
-  );
-}
-
 /**
  * 模式选择覆盖层
  * 渲染到 body（祖先链上的 transform 动画会使 fixed 相对定位失效），
@@ -187,7 +160,7 @@ function ModeFanSelector({
   );
 }
 
-/** 圆球本体（两种停靠位置共用：录音按钮 + 呼吸光晕 + 计时） */
+/** 圆球本体（两种停靠位置共用：录音按钮 + 呼吸光晕） */
 function BallCore({ onLongPress }: { onLongPress: () => void }) {
   const isRecording = useStore((s) => s.isRecording);
   const startRecording = useStore((s) => s.startRecording);
@@ -241,8 +214,6 @@ function BallCore({ onLongPress }: { onLongPress: () => void }) {
 
   return (
     <>
-      <AnimatePresence>{isRecording && <RecordTimer />}</AnimatePresence>
-
       {/* 呼吸光晕（录音中） */}
       <AnimatePresence>
         {isRecording && (
