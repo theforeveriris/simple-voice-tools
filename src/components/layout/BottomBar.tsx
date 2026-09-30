@@ -6,11 +6,10 @@
  * - 长按录音圆球：底栏从中缝分开（左组：测试/分析，右组：历史/设置），
  *   圆球从右缘飞入中缝落座，整个底栏保持居中；落座后以圆球为圆心
  *   扇形唤出三个模式选项——圆球已居中，经典扇形在任何屏宽都放得下。
- *   选择模式立即开始录音，录音期间保持分体布局；结束后圆球飞回右缘、
- *   底栏合拢。圆球的两个停靠位置用 layoutId 共享元素动画衔接，
- *   飞行时从页签上层滑过。
- * - 短按圆球以当前模式开始/停止录音（记住上次选择，默认朗读引导），
- *   录音同样落入中缝。
+ *   选定模式后底栏立即合拢，圆球在背景模糊淡出的同时飞回右缘
+ *   （模糊遮罩盖住衔接细节），录音在右缘圆球上进行，与短按一致。
+ * - 短按圆球以当前模式开始/停止录音（记住上次选择，默认朗读引导）。
+ *   圆球的两个停靠位置用 layoutId 共享元素动画衔接，飞行时从页签上层滑过。
  */
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -460,7 +459,6 @@ const Dock = memo(function Dock({
  */
 export function BottomBar() {
   const currentTab = useStore((s) => s.currentTab);
-  const isRecording = useStore((s) => s.isRecording);
   const updateSettings = useStore((s) => s.updateSettings);
   const startRecording = useStore((s) => s.startRecording);
   const isTest = currentTab === 'test';
@@ -473,25 +471,17 @@ export function BottomBar() {
   const slotRef = useRef<HTMLDivElement>(null);
   const fanTimer = useRef<number | null>(null);
 
-  // 分体布局：模式选择中 或 录音中（仅在测试页）
-  const split = isTest && (menuOpen || isRecording);
+  // 分体布局：仅模式选择中（仅在测试页）；选定后立即合拢，
+  // 圆球与背景模糊淡出同步飞回右缘，录音在右缘圆球上进行
+  const split = isTest && menuOpen;
 
-  // 圆球停靠位置（渲染期派生）：分体立即落座；
-  // 合拢时不立即收回，等中缝收窄动画结束后再飞回右缘，落点才是最终位置
+  // 圆球停靠位置（渲染期派生）：分体立即落座，退出立即飞回
   const [prevSplit, setPrevSplit] = useState(split);
   if (split !== prevSplit) {
     setPrevSplit(split);
-    if (split) {
-      setBallDocked(true);
-      setEverDocked(true);
-    }
+    setBallDocked(split);
+    if (split) setEverDocked(true);
   }
-
-  useEffect(() => {
-    if (split) return;
-    const t = setTimeout(() => setBallDocked(false), 340);
-    return () => clearTimeout(t);
-  }, [split]);
 
   // 切换页面时收起未完成的模式选择（渲染期派生）
   const [prevTest, setPrevTest] = useState(isTest);
@@ -499,6 +489,7 @@ export function BottomBar() {
     setPrevTest(isTest);
     if (!isTest) {
       if (fanTimer.current !== null) {
+        // eslint-disable-next-line react-hooks/refs -- 渲染期幂等取消挂起的定时器，与渲染输出无依赖
         window.clearTimeout(fanTimer.current);
         fanTimer.current = null;
       }
@@ -533,17 +524,15 @@ export function BottomBar() {
         window.clearTimeout(fanTimer.current);
         fanTimer.current = null;
       }
+      // 分体立即收拢，圆球与背景模糊淡出同步飞回右缘（模糊盖住衔接细节），
+      // 录音在右缘圆球上进行
+      setMenuOpen(false);
       setFanCenter(null);
       updateSettings({ testMode: mode });
       try {
         await startRecording();
       } catch {
         toast.error('无法访问麦克风，请检查浏览器权限设置');
-      } finally {
-        // 等录音真正启动（或失败）后再撤出 menuOpen：
-        // 成功时由 isRecording 无缝接管分体（圆球不回飞）；
-        // 失败时圆球一次性平滑飞回右缘，避免"先回程再折返"的抖动
-        setMenuOpen(false);
       }
     },
     [updateSettings, startRecording],
