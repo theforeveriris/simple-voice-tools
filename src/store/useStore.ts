@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import type { AnalysisRecord, AppSettings, ViewType } from '@/types';
 import { DEFAULT_SETTINGS, MODE_META } from '@/constants';
 import { recorder } from '@/lib/audio/recorder';
+import { t } from '@/i18n';
 import { useHistoryStore } from './useHistoryStore';
 
 interface AppState {
@@ -16,7 +17,7 @@ interface AppState {
   currentTab: ViewType;
   setTab: (tab: ViewType) => void;
 
-  /** 是否正在录音 */
+  /** 是否正在录音（含权限等待期间） */
   isRecording: boolean;
   /** 当前展示的分析记录（录音完成后或从历史打开） */
   currentAnalysis: AnalysisRecord | null;
@@ -50,29 +51,42 @@ export const useStore = create<AppState>()(
       startRecording: async () => {
         if (get().isRecording) return;
         const { settings } = get();
-        // 模式自带时长上限（长音/滑音），朗读模式沿用设置里的最长录音时长
-        const modeAutoStop = MODE_META[settings.testMode].autoStopSec;
+        const meta = MODE_META[settings.testMode];
+        // 提前置位：权限弹窗等待期间也保持全局录音态，
+        // 任何页面都能看到录音球并停止（否则自动停止回调会因状态为 false 而漏停）
+        set({ isRecording: true });
         try {
           await recorder.start({
             deviceId: settings.micDeviceId || undefined,
-            maxDurationSec: modeAutoStop || settings.maxDurationSec || undefined,
+            maxDurationSec: meta.autoStopSec || settings.maxDurationSec || undefined,
+            silenceStopSec: meta.silenceStopSec,
+            targetRange: settings.targetEnabled
+              ? [settings.targetF0Min, settings.targetF0Max]
+              : null,
             mode: settings.testMode,
             saveAudio: settings.audioSave,
             onAutoStop: () => void get().stopRecording(),
           });
         } catch (error) {
           console.error('录音启动失败:', error);
+          set({ isRecording: false });
           throw error;
         }
-        set({ isRecording: true });
       },
 
       stopRecording: async () => {
         if (!get().isRecording) return;
         set({ isRecording: false });
+
+        // 权限等待期间取消：中止启动流程即可，无记录也不提示
+        if (recorder.isStarting()) {
+          recorder.cancelStart();
+          return;
+        }
+
         const raw = recorder.stop();
         if (!raw) {
-          toast.error('录音时间太短（至少 1 秒），未保存');
+          toast.error(t('toast.tooShort'));
           return;
         }
         // 音频解码 + 嗓音质量计算（失败时自动降级为无音频记录）
@@ -82,7 +96,7 @@ export const useStore = create<AppState>()(
         if (get().settings.autoEnterAnalysis) {
           set({ currentTab: 'analysis' });
         }
-        toast.success('测试完成，已生成分析报告');
+        toast.success(t('toast.recordDone'));
       },
     }),
     {

@@ -91,6 +91,8 @@ export const THEME_PRESETS: { id: string; hue: number; label: string }[] = [
  */
 export const DEFAULT_SETTINGS: AppSettings = {
   hue: 15,
+  theme: 'system',
+  language: 'zh-CN',
   showGrid: true,
   maxDurationSec: 120,
   autoEnterAnalysis: true,
@@ -98,16 +100,23 @@ export const DEFAULT_SETTINGS: AppSettings = {
   audioSave: true,
   testMode: 'reading',
   syncChartRange: true,
+  targetEnabled: false,
+  targetF0Min: 165,
+  targetF0Max: 255,
 };
 
 /**
  * 测试模式元信息
  * autoStopSec：模式自带的最长录音秒数（0 = 沿用设置里的最长录音时长）
+ * silenceStopSec：发声开始后持续静音达到该秒数自动结束（0 = 不启用）
  */
-export const MODE_META: Record<TestMode, { label: string; desc: string; autoStopSec: number }> = {
-  reading: { label: '随意朗读', desc: '任意朗读一段文字', autoStopSec: 0 },
-  sustained: { label: '长音测试', desc: '持续发「a」测稳定度', autoStopSec: 15 },
-  glide: { label: '音域滑音', desc: '低→高滑唱画音域', autoStopSec: 20 },
+export const MODE_META: Record<TestMode, {
+  autoStopSec: number;
+  silenceStopSec: number;
+}> = {
+  reading: { autoStopSec: 0, silenceStopSec: 0 },
+  sustained: { autoStopSec: 0, silenceStopSec: 1 },
+  glide: { autoStopSec: 20, silenceStopSec: 0 },
 };
 
 /** 音高曲线纵轴范围（Hz） */

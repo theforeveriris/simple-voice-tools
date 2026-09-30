@@ -334,7 +334,8 @@ export async function pushBackup(
   const token = await getValidToken(clientId);
   const owner = await ensureRepo(token, repoName);
   const store = useHistoryStore.getState();
-  const records = store.records;
+  // 全量记录：界面列表有截断，备份必须读 IndexedDB 全量，否则会静默漏掉更早的记录
+  const records = await store.getAllRecords();
   if (records.length === 0) throw new Error('本地没有记录可备份');
 
   onProgress?.(0, 1, '读取录音音频');

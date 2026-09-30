@@ -35,6 +35,8 @@ function persist(fn: () => Promise<void>) {
 
 interface HistoryState {
   records: AnalysisRecord[];
+  /** 全量记录条数（含未进入内存视图的部分），用于列表截断提示 */
+  totalCount: number;
   /** IDB 数据是否已加载完成 */
   ready: boolean;
   /** 应用启动时调用：加载数据 + 旧版迁移 */
@@ -51,6 +53,13 @@ interface HistoryState {
   importRecords: (incoming: AnalysisRecord[]) => number;
   /** 读取某条记录的音频（无音频返回 null） */
   getAudio: (id: string) => Promise<Blob | null>;
+  /**
+   * 全量记录（导出/备份专用）。
+   * 界面视图有 MAX_HISTORY 截断，IDB 中保留全部记录；
+   * 备份必须走本方法，否则超出截断窗口的记录会被静默漏掉。
+   * IDB 不可用时降级为内存记录。
+   */
+  getAllRecords: () => Promise<AnalysisRecord[]>;
 }
 
 function dedupeSorted(records: AnalysisRecord[]): AnalysisRecord[] {
@@ -60,6 +69,7 @@ function dedupeSorted(records: AnalysisRecord[]): AnalysisRecord[] {
 
 export const useHistoryStore = create<HistoryState>()((set, get) => ({
   records: [],
+  totalCount: 0,
   ready: false,
 
   hydrate: async () => {
@@ -68,13 +78,14 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       loaded = await idbGetAllRecords<AnalysisRecord>();
     } catch (err) {
       console.error('IndexedDB 读取失败:', err);
-      set({ ready: true });
+      set({ ready: true, totalCount: get().records.length });
       return;
     }
 
     // 旧版 localStorage 迁移：一次性导入并移除旧键
-    if (loaded.length === 0 && !localStorage.getItem(MIGRATED_KEY)) {
-      try {
+    // （localStorage 在部分隐私模式下会抛异常，需整体兜底，不能让迁移失败阻断加载）
+    try {
+      if (loaded.length === 0 && !localStorage.getItem(MIGRATED_KEY)) {
         const raw = localStorage.getItem(LEGACY_KEY);
         const legacy = raw ? (JSON.parse(raw) as { state?: { records?: AnalysisRecord[] } }) : null;
         const legacyRecords = legacy?.state?.records;
@@ -82,19 +93,26 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
           loaded = legacyRecords;
           await idbPutRecords(legacyRecords);
         }
-      } catch (err) {
-        console.error('旧数据迁移失败:', err);
       }
       localStorage.setItem(MIGRATED_KEY, '1');
       localStorage.removeItem(LEGACY_KEY);
+    } catch (err) {
+      console.error('旧数据迁移失败:', err);
     }
 
     // 与内存中已有记录合并（水合前可能有新写入，如 ?demo=1 的示例数据）
-    set((state) => ({ records: dedupeSorted([...loaded, ...state.records]), ready: true }));
+    set((state) => {
+      const all = [...new Map([...loaded, ...state.records].map((r) => [r.id, r])).values()]
+        .sort((a, b) => b.createdAt - a.createdAt);
+      return { records: all.slice(0, MAX_HISTORY), totalCount: all.length, ready: true };
+    });
   },
 
   addRecord: (record, audioBlob) => {
-    set((state) => ({ records: dedupeSorted([record, ...state.records]) }));
+    set((state) => ({
+      records: dedupeSorted([record, ...state.records]),
+      totalCount: state.totalCount + 1,
+    }));
     persist(async () => {
       await idbPutRecord(record);
       if (audioBlob) await idbPutAudio(record.id, audioBlob);
@@ -136,7 +154,7 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
     }
     if (added.length > 0) {
       const merged = dedupeSorted([...existing.values()]);
-      set({ records: merged });
+      set((state) => ({ records: merged, totalCount: state.totalCount + added.length }));
       persist(() => idbPutRecords(added));
     }
     return added.length;
@@ -147,4 +165,17 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       console.error('音频读取失败:', err);
       return null;
     }),
+
+  getAllRecords: async () => {
+    try {
+      const loaded = await idbGetAllRecords<AnalysisRecord>();
+      // 合并内存中尚未落库（或刚落库）的记录，按 id 去重
+      const map = new Map(loaded.map((r) => [r.id, r]));
+      for (const r of get().records) map.set(r.id, r);
+      return [...map.values()].sort((a, b) => b.createdAt - a.createdAt);
+    } catch {
+      // IDB 不可用：至少导出内存中的记录
+      return get().records;
+    }
+  },
 }));

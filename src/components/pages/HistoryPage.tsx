@@ -1,8 +1,10 @@
 /**
  * 历史页面
  * 顶部「列表 / 趋势」切换：
- *   列表 — 记录卡片（可搜索、长按进入多选，多选下支持批量删除与两两对比）
- *   趋势 — 跨记录趋势图（平均基频 + P10–P90 音域随日期变化）
+ *   列表 — 记录卡片（可搜索、长按进入多选，多选下支持批量删除与两两对比；
+ *          删除可在 5 秒内撤销）
+ *   趋势 — 跨记录趋势图（平均基频 + P10–P90 音域随日期变化），
+ *          支持按测试模式过滤（不同模式的基频不可直接比较）
  * 点击任意记录进入对应分析页。
  */
 
@@ -13,15 +15,18 @@ import {
   Trash2, ChevronRight, SquareTerminal, FileQuestion,
   Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { MiniSpark } from '@/components/charts/MiniSpark';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { CompareSheet } from './CompareSheet';
-import { freqToNote, bandOf, BAND_COLORS, BAND_LABELS, MODE_META } from '@/constants';
-import { toast } from 'sonner';
-import type { AnalysisRecord } from '@/types';
+import { freqToNote, bandOf, BAND_COLORS, MAX_HISTORY } from '@/constants';
+import { t } from '@/i18n';
+import { useI18n } from '@/i18n/hook';
+import { localeTag } from '@/i18n';
+import type { AnalysisRecord, TestMode } from '@/types';
 import { cn } from '@/lib/utils';
 
 const LONG_PRESS_MS = 480;
@@ -125,7 +130,7 @@ function RecordCard({
       <div className="hidden w-16 shrink-0 text-center sm:block">
         <p className="text-xs font-semibold tabular-nums text-ink">{date}</p>
         <p className="text-lg font-semibold tabular-nums leading-tight text-ink">{time}</p>
-        <p className="text-[10px] tabular-nums text-ink-2">{record.stats.durationSec.toFixed(0)} 秒</p>
+        <p className="text-[10px] tabular-nums text-ink-2">{record.stats.durationSec.toFixed(0)} s</p>
       </div>
 
       <div className="hidden h-10 w-px shrink-0 bg-black/[0.05] sm:block" />
@@ -142,21 +147,21 @@ function RecordCard({
             <span className="text-[11px] font-semibold text-accent">{note.name}</span>
             <span className="flex items-center gap-1 text-[10px] font-semibold text-ink-2">
               <span className="size-1.5 rounded-full" style={{ background: BAND_COLORS[band] }} />
-              {BAND_LABELS[band]}
+              {t(`band.${band}`)}
             </span>
             {record.mode && (
               <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-                {MODE_META[record.mode].label}
+                {t(`mode.${record.mode}`)}
               </span>
             )}
           </div>
           <p className="mt-0.5 truncate text-[11px] text-ink-2">
             {/* 移动端显示日期与时长（日期栏已隐藏），桌面端显示区间统计 */}
             <span className="sm:hidden">
-              {date} {time} · {record.stats.durationSec.toFixed(0)} 秒 · 响度 {record.stats.avgDb.toFixed(0)} dB
+              {date} {time} · {record.stats.durationSec.toFixed(0)} s · {record.stats.avgDb.toFixed(0)} dB
             </span>
             <span className="hidden sm:inline">
-              男声区 {record.stats.malePct}% · 女声区 {record.stats.femalePct}% · 响度 {record.stats.avgDb.toFixed(0)} dB
+              {t('band.male')} {record.stats.malePct}% · {t('band.female')} {record.stats.femalePct}% · {record.stats.avgDb.toFixed(0)} dB
             </span>
           </p>
           {record.note && (
@@ -173,7 +178,7 @@ function RecordCard({
             <span
               className={cn(
                 'grid size-6 place-items-center rounded-full border-2 transition-colors',
-                selected ? 'border-accent bg-accent text-white' : 'border-black/20',
+                selected ? 'border-accent bg-accent text-on-accent' : 'border-black/20',
               )}
               aria-hidden
             >
@@ -187,7 +192,7 @@ function RecordCard({
                   onDelete();
                 }}
                 className="grid size-8 place-items-center text-ink-2 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"
-                aria-label="删除该记录"
+                aria-label={t('history.deleteAria')}
               >
                 <Trash2 size={15} />
               </button>
@@ -215,20 +220,20 @@ function EmptyHistory() {
     <div className="grid min-h-[60vh] place-items-center">
       <div className="flex flex-col items-center gap-3 text-center">
         <FileQuestion size={30} strokeWidth={1.6} className="text-accent" />
-        <p className="text-sm text-ink-2">还没有测试记录，去做一次测试吧</p>
+        <p className="text-sm text-ink-2">{t('history.empty')}</p>
         <div className="mt-1 flex items-center gap-2">
           <button
             onClick={() => setTab('test')}
             className="flex items-center gap-1.5 px-1 py-2 text-sm font-medium text-accent transition-opacity hover:opacity-70"
           >
             <SquareTerminal size={15} />
-            去测试
+            {t('common.goTest')}
           </button>
           <button
             onClick={loadDemo}
             className="px-1 py-2 text-sm font-medium text-ink-2 transition-opacity hover:opacity-70"
           >
-            载入示例数据
+            {t('common.loadDemo')}
           </button>
         </div>
       </div>
@@ -236,9 +241,51 @@ function EmptyHistory() {
   );
 }
 
+/** 删除并支持 5 秒内撤销：预取音频 Blob 留在内存，撤销时原样恢复 */
+async function removeWithUndo(
+  list: AnalysisRecord[],
+  store: {
+    removeRecord: (id: string) => void;
+    addRecord: (record: AnalysisRecord, audioBlob?: Blob) => void;
+    getAudio: (id: string) => Promise<Blob | null>;
+  },
+) {
+  // 音频预取：数量多时可能占用大量内存，仅少量记录保留音频，多量只恢复记录本身
+  const audio = new Map<string, Blob>();
+  if (list.length <= 20) {
+    for (const r of list) {
+      const blob = await store.getAudio(r.id);
+      if (blob) audio.set(r.id, blob);
+    }
+  }
+  for (const r of list) store.removeRecord(r.id);
+  toast.success(list.length > 1 ? t('toast.deletedMany', { n: list.length }) : t('toast.deletedOne'), {
+    duration: 6000,
+    action: {
+      label: t('common.undo'),
+      onClick: () => {
+        for (const r of list) store.addRecord(r, audio.get(r.id));
+        toast.success(t('toast.undoDone'));
+      },
+    },
+  });
+}
+
+/** 趋势图的测试模式过滤：不同模式（朗读/长音/滑音）的基频统计不可直接比较 */
+const TREND_FILTERS: { id: 'all' | TestMode; labelKey: 'common.all' | 'mode.reading' | 'mode.sustained' | 'mode.glide' }[] = [
+  { id: 'all', labelKey: 'common.all' },
+  { id: 'reading', labelKey: 'mode.reading' },
+  { id: 'sustained', labelKey: 'mode.sustained' },
+  { id: 'glide', labelKey: 'mode.glide' },
+];
+
 export function HistoryPage() {
+  useI18n();
   const records = useHistoryStore((s) => s.records);
+  const totalCount = useHistoryStore((s) => s.totalCount);
   const removeRecord = useHistoryStore((s) => s.removeRecord);
+  const addRecord = useHistoryStore((s) => s.addRecord);
+  const getAudio = useHistoryStore((s) => s.getAudio);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
 
@@ -247,6 +294,7 @@ export function HistoryPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [comparePair, setComparePair] = useState<[AnalysisRecord, AnalysisRecord] | null>(null);
+  const [trendFilter, setTrendFilter] = useState<'all' | TestMode>('all');
 
   const open = (record: AnalysisRecord) => {
     setCurrentAnalysis(record);
@@ -259,8 +307,8 @@ export function HistoryPage() {
     return records.filter((r) => {
       const hay = [
         r.note ?? '',
-        r.mode ? MODE_META[r.mode].label : '',
-        new Date(r.createdAt).toLocaleString('zh-CN'),
+        r.mode ? t(`mode.${r.mode}`) : '',
+        new Date(r.createdAt).toLocaleString(localeTag()),
         r.stats.avgF0.toFixed(0),
       ]
         .join(' ')
@@ -268,6 +316,11 @@ export function HistoryPage() {
       return hay.includes(q);
     });
   }, [records, query]);
+
+  const trendRecords = useMemo(
+    () => (trendFilter === 'all' ? records : records.filter((r) => r.mode === trendFilter)),
+    [records, trendFilter],
+  );
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -289,15 +342,13 @@ export function HistoryPage() {
   };
 
   const remove = (record: AnalysisRecord) => {
-    removeRecord(record.id);
-    toast.success('已删除该记录');
+    void removeWithUndo([record], { removeRecord, addRecord, getAudio });
   };
 
   const batchRemove = () => {
-    const n = selectedIds.size;
-    for (const id of selectedIds) removeRecord(id);
+    const picked = records.filter((r) => selectedIds.has(r.id));
     exitSelection();
-    toast.success(`已删除 ${n} 条记录`);
+    void removeWithUndo(picked, { removeRecord, addRecord, getAudio });
   };
 
   const tryCompare = () => {
@@ -313,27 +364,27 @@ export function HistoryPage() {
       <div className="flex w-fit items-center gap-0.5 rounded-full bg-card p-1 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
         {(
           [
-            { id: 'list', label: '列表', icon: ListFilter },
-            { id: 'trend', label: '趋势', icon: TrendingUp },
+            { id: 'list', label: t('history.viewList'), icon: ListFilter },
+            { id: 'trend', label: t('history.viewTrend'), icon: TrendingUp },
           ] as const
-        ).map((t) => {
-          const active = view === t.id;
-          const Icon = t.icon;
+        ).map((tab) => {
+          const active = view === tab.id;
+          const Icon = tab.icon;
           return (
             <button
-              key={t.id}
+              key={tab.id}
               onClick={() => {
-                setView(t.id);
+                setView(tab.id);
                 exitSelection();
               }}
               className="relative flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium"
-              aria-label={`${t.label}视图`}
+              aria-label={`${tab.label}视图`}
             >
               {active && (
                 <motion.span layoutId="history-view-pill" className="absolute inset-0 rounded-full bg-accent-soft" />
               )}
               <Icon size={13} className={cn('relative z-10', active ? 'text-accent' : 'text-ink-2')} />
-              <span className={cn('relative z-10', active ? 'text-accent' : 'text-ink-2')}>{t.label}</span>
+              <span className={cn('relative z-10', active ? 'text-accent' : 'text-ink-2')}>{tab.label}</span>
             </button>
           );
         })}
@@ -344,10 +395,33 @@ export function HistoryPage() {
           <EmptyHistory />
         ) : (
           <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
-            <TrendChart records={records} onOpen={open} />
-            <p className="mt-1 text-center text-[10px] text-ink-2">
-              竖条为 P10–P90 音域 · 圆点为平均基频 · 单击查看数值，再次单击打开记录
-            </p>
+            {/* 模式过滤：长音/滑音的基频与朗读不可比 */}
+            <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+              {TREND_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setTrendFilter(f.id)}
+                  className={cn(
+                    'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
+                    trendFilter === f.id
+                      ? 'bg-accent text-on-accent'
+                      : 'bg-surface-hi text-ink-2 hover:text-ink',
+                  )}
+                >
+                  {t(f.labelKey)}
+                </button>
+              ))}
+            </div>
+            {trendRecords.length === 0 ? (
+              <p className="py-16 text-center text-sm text-ink-2">{t('history.trendEmpty')}</p>
+            ) : (
+              <>
+                <TrendChart records={trendRecords} connectLine={trendFilter !== 'all'} onOpen={open} />
+                <p className="mt-1 text-center text-[10px] text-ink-2">
+                  {t('history.trendHint')}
+                </p>
+              </>
+            )}
           </div>
         )
       ) : records.length === 0 ? (
@@ -360,18 +434,18 @@ export function HistoryPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索备注、日期或模式"
+              placeholder={t('history.searchPlaceholder')}
               className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-2/70"
             />
             {query && (
-              <button onClick={() => setQuery('')} className="text-ink-2 hover:text-ink" aria-label="清除搜索">
+              <button onClick={() => setQuery('')} className="text-ink-2 hover:text-ink" aria-label={t('common.reset')}>
                 <X size={14} />
               </button>
             )}
           </div>
 
           {filtered.length === 0 ? (
-            <p className="py-12 text-center text-sm text-ink-2">没有匹配「{query}」的记录</p>
+            <p className="py-12 text-center text-sm text-ink-2">{t('history.noMatch', { q: query })}</p>
           ) : (
             <div className="flex flex-col gap-2.5 pb-2">
               <AnimatePresence initial={false}>
@@ -388,6 +462,12 @@ export function HistoryPage() {
                   />
                 ))}
               </AnimatePresence>
+              {/* 界面只渲染最近 MAX_HISTORY 条；完整数据在 IDB 中，导出/备份包含全部 */}
+              {totalCount > records.length && (
+                <p className="pt-1 text-center text-[10px] text-ink-2">
+                  {t('history.truncated', { limit: MAX_HISTORY, total: totalCount })}
+                </p>
+              )}
             </div>
           )}
         </>
@@ -403,7 +483,7 @@ export function HistoryPage() {
             className="fixed inset-x-0 bottom-24 z-40 flex justify-center px-5"
           >
             <div className="flex items-center gap-1.5 rounded-full bg-ink py-1.5 pl-5 pr-1.5 text-card shadow-xl">
-              <span className="text-xs font-medium tabular-nums">已选 {selectedIds.size} 条</span>
+              <span className="text-xs font-medium tabular-nums">{t('history.selectedCount', { n: selectedIds.size })}</span>
               <button
                 onClick={tryCompare}
                 disabled={selectedIds.size !== 2}
@@ -413,7 +493,7 @@ export function HistoryPage() {
                 )}
               >
                 <GitCompareArrows size={13} />
-                对比
+                {t('history.compare')}
               </button>
               <button
                 onClick={batchRemove}
@@ -424,12 +504,12 @@ export function HistoryPage() {
                 )}
               >
                 <Trash2 size={13} />
-                删除
+                {t('common.delete')}
               </button>
               <button
                 onClick={exitSelection}
                 className="grid size-8 place-items-center rounded-full text-card/80 hover:text-card"
-                aria-label="退出多选"
+                aria-label={t('history.exitSelectionAria')}
               >
                 <X size={15} />
               </button>

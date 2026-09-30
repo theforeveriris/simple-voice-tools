@@ -42,11 +42,12 @@ export function downloadBlob(filename: string, blob: Blob): void {
 
 /**
  * 打包并下载完整备份
+ * 记录取自 IndexedDB 全量（界面列表有 200 条截断，直接读内存会漏掉更早的记录）
  * @returns 导出的记录条数与音频条数
  */
 export async function exportFullBackup(): Promise<{ records: number; audio: number }> {
   const store = useHistoryStore.getState();
-  const records = store.records;
+  const records = await store.getAllRecords();
   if (records.length === 0) return { records: 0, audio: 0 };
 
   const payload = {

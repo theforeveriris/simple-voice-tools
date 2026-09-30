@@ -16,18 +16,34 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
+import { useI18n } from '@/i18n/hook';
 
 function App() {
   const currentTab = useStore((s) => s.currentTab);
   const hue = useStore((s) => s.settings.hue);
+  const theme = useStore((s) => s.settings.theme);
   const addRecord = useHistoryStore((s) => s.addRecord);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
 
-  // 应用莫奈主题色
+  // 语言切换（同步 <html lang> 与词典）
+  useI18n();
+
+  const isDark = theme === 'dark'
+    || (theme === 'system'
+      && typeof window !== 'undefined'
+      && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  // 应用莫奈主题色（含深浅模式；system 下监听系统切换）
   useEffect(() => {
-    applyTheme(hue);
-  }, [hue]);
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => applyTheme(hue, theme === 'dark' || (theme === 'system' && mq.matches));
+    apply();
+    if (theme === 'system') {
+      mq.addEventListener('change', apply);
+      return () => mq.removeEventListener('change', apply);
+    }
+  }, [hue, theme]);
 
   // 开发辅助：?demo=1 生成一条示例记录，便于无麦克风环境体验
   useEffect(() => {
@@ -42,7 +58,12 @@ function App() {
 
   return (
     <div className="min-h-dvh bg-surface text-ink">
-      <Toaster position="top-center" richColors toastOptions={{ style: { borderRadius: '8px' } }} />
+      <Toaster
+        position="top-center"
+        richColors
+        theme={isDark ? 'dark' : 'light'}
+        toastOptions={{ style: { borderRadius: '8px' } }}
+      />
 
       <main className="mx-auto w-full max-w-5xl px-5 pt-7 pb-36">
         {/*

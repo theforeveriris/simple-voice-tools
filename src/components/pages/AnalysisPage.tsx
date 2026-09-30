@@ -3,9 +3,11 @@
  * 结构（自上而下）：
  *   1. 页头：日期 / 模式徽标 + 分享图 / CSV / 备注操作
  *   2. 声纹概览卡：平均基频 + 音域标尺（跟随当前查看区间）
- *   3. 录音回放条（保存过音频时显示）
- *   4. 统计表格：音高 / 共振峰 / 能量 / 嗓音质量四组（跟随区间）
- *   5. 四个图表（音高、共振峰、能量、语谱图），共享同一个
+ *   3. 基线对比条（设置中钉选基线时显示）
+ *   4. 录音回放条（保存过音频时显示）
+ *   5. 长音分析卡（长音模式记录专属：MPT / 稳定度 / 衰减）
+ *   6. 统计表格：音高 / 共振峰 / 能量 / 嗓音质量四组（跟随区间）
+ *   7. 四个图表（音高、共振峰、能量、语谱图），共享同一个
  *      时间轴区间选择（任一图表下方拖动，全部同步 + 统计联动）。
  *
  * 未经过录音直接进入时显示空态提示。
@@ -16,19 +18,23 @@ import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
   ChartNoAxesColumn, ChevronRight, Sparkles, Play, Pause, Share2,
-  FileSpreadsheet, Pencil, Music2,
+  FileSpreadsheet, Pencil, Music2, GitCompareArrows, Timer, Activity, Waves,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { computeStats } from '@/lib/audio/recorder';
+import { computeSustainedMetrics } from '@/lib/audio/sustained';
 import { recordToFrameCsv, downloadText } from '@/lib/export/csv';
 import { exportShareImage } from '@/lib/export/shareCard';
 import { SeriesChart } from '@/components/charts/SeriesChart';
 import { SpecChart } from '@/components/charts/SpecChart';
 import { TimeRangeSelector } from '@/components/charts/TimeRangeSelector';
-import { freqToNote, bandOf, BAND_COLORS, BAND_LABELS, MODE_META } from '@/constants';
+import { freqToNote, bandOf, BAND_COLORS } from '@/constants';
+import { t } from '@/i18n';
+import { useI18n } from '@/i18n/hook';
+import { localeTag } from '@/i18n';
 import type { AnalysisRecord, RecordSeries } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Textarea } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -74,19 +80,20 @@ function RangeRuler({ record }: { record: AnalysisRecord }) {
           <span className="h-full" style={{ width: `${Number(posPct(255)) - Number(posPct(180))}%`, background: `${BAND_COLORS.female}45` }} />
           <span className="h-full flex-1" style={{ background: `${BAND_COLORS.high}30` }} />
         </div>
-        {/* P10–P90 音域括条 */}
+        {/* P10–P90 音域括条（颜色取自主题变量，深浅模式均可见） */}
         <div
-          className="absolute top-1/2 h-2.5 -translate-y-1/2 rounded-full border-2 border-white/90 shadow-[0_0_0_1px_rgba(40,38,52,0.35)] transition-all duration-700"
+          className="absolute top-1/2 h-2.5 -translate-y-1/2 rounded-full border-2 shadow transition-all duration-700"
           style={{
             left: `${posPct(Math.max(RULER_MIN, p10F0))}%`,
             width: `${Number(posPct(Math.min(RULER_MAX, p90F0))) - Number(posPct(Math.max(RULER_MIN, p10F0)))}%`,
-            background: 'rgba(40,38,52,0.28)',
+            background: 'rgb(var(--c-ink-rgb) / 0.28)',
+            borderColor: 'rgb(var(--c-card-rgb) / 0.9)',
           }}
         />
         {/* 平均基频游标 */}
         <div
-          className="absolute top-1/2 z-10 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink shadow ring-2 ring-white transition-all duration-700"
-          style={{ left: `${posPct(Math.min(RULER_MAX, Math.max(RULER_MIN, avgF0)))}%` }}
+          className="absolute top-1/2 z-10 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink shadow ring-2 transition-all duration-700"
+          style={{ left: `${posPct(Math.min(RULER_MAX, Math.max(RULER_MIN, avgF0)))}%`, ['--tw-ring-color' as string]: 'rgb(var(--c-card-rgb))' }}
         />
       </div>
       {/* 刻度 */}
@@ -98,10 +105,10 @@ function RangeRuler({ record }: { record: AnalysisRecord }) {
         ))}
       </div>
       <div className="mt-1 flex items-center justify-between text-[11px]">
-        <span className="text-ink-2">音域 P10–P90：<span className="tabular-nums text-ink">{p10F0.toFixed(0)}–{p90F0.toFixed(0)} Hz</span></span>
+        <span className="text-ink-2">{t('analysis.rangeP10P90', { a: p10F0.toFixed(0), b: p90F0.toFixed(0) })}</span>
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
           <span className="size-1.5 rounded-full" style={{ background: BAND_COLORS[band] }} />
-          {BAND_LABELS[band]}
+          {t(`band.${band}`)}
         </span>
       </div>
     </div>
@@ -146,14 +153,14 @@ function HeroSummary({
       <div className="flex items-center justify-between gap-2">
         <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-ink-2">
           <Sparkles size={12} className="shrink-0 text-accent" />
-          平均基频
+          {t('analysis.avgF0')}
           <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-            {isPartial ? `区间 ${fmt(range[0])}–${fmt(range[1])}` : '全段'}
+            {isPartial ? t('analysis.chipRange', { a: fmt(range[0]), b: fmt(range[1]) }) : t('analysis.chipFull')}
           </span>
           {record.mode && (
             <span className="flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
               <Music2 size={9} />
-              {MODE_META[record.mode].label}
+              {t(`mode.${record.mode}`)}
             </span>
           )}
         </p>
@@ -169,10 +176,10 @@ function HeroSummary({
             <span className="text-sm font-semibold text-accent">{note.name}</span>
           </div>
           <p className="mt-1 text-[11px] text-ink-2">
-            音高偏差 {note.cents >= 0 ? '+' : ''}{note.cents} cents · 基于当前区间有声帧
+            {t('analysis.pitchDev', { cents: note.cents >= 0 ? `+${note.cents}` : String(note.cents) })}
           </p>
           <p className="mt-0.5 text-[11px] tabular-nums text-ink-2">
-            {new Date(record.createdAt).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            {new Date(record.createdAt).toLocaleString(localeTag(), { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
         <div className="min-w-[280px] flex-1 lg:max-w-md">
@@ -180,12 +187,91 @@ function HeroSummary({
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-        <StatChip label="录音时长" value={`${record.stats.durationSec.toFixed(1)} 秒`} />
-        <StatChip label="平均 F1" value={record.stats.avgF1 != null ? `${record.stats.avgF1.toFixed(0)} Hz` : '—'} />
-        <StatChip label="平均 F2" value={record.stats.avgF2 != null ? `${record.stats.avgF2.toFixed(0)} Hz` : '—'} />
-        <StatChip label="平均响度" value={`${record.stats.avgDb.toFixed(1)} dB`} />
+        <StatChip label={t('analysis.statDuration')} value={`${record.stats.durationSec.toFixed(1)} ${t('analysis.unitSec')}`} />
+        <StatChip label={t('analysis.statF1')} value={record.stats.avgF1 != null ? `${record.stats.avgF1.toFixed(0)} Hz` : '—'} />
+        <StatChip label={t('analysis.statF2')} value={record.stats.avgF2 != null ? `${record.stats.avgF2.toFixed(0)} Hz` : '—'} />
+        <StatChip label={t('analysis.statDb')} value={`${record.stats.avgDb.toFixed(1)} dB`} />
       </div>
     </motion.div>
+  );
+}
+
+/* ------------------------------- 基线对比条 ------------------------------- */
+
+/** 与基线记录的快速 Δ 对比（基线在 设置 → 训练 中钉选） */
+function BaselineStrip({ record, baseline }: { record: AnalysisRecord; baseline: AnalysisRecord }) {
+  const dAvg = record.stats.avgF0 - baseline.stats.avgF0;
+  const dP10 = record.stats.p10F0 - baseline.stats.p10F0;
+  const dP90 = record.stats.p90F0 - baseline.stats.p90F0;
+  const sign = (v: number, digits = 1) => `${v > 0 ? '+' : ''}${v.toFixed(digits)}`;
+  const fmtDate = (ts: number) =>
+    new Date(ts).toLocaleString(localeTag(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-[18px] bg-card px-4 py-3 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+        <GitCompareArrows size={14} className="text-accent" />
+        {t('analysis.baselineTitle')}
+      </span>
+      <span className="text-[11px] tabular-nums text-ink-2">
+        {t('analysis.baselineDesc', { date: fmtDate(baseline.createdAt), f0: baseline.stats.avgF0.toFixed(1) })}
+        {baseline.note ? ` · ${baseline.note}` : ''}
+      </span>
+      <span className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold tabular-nums">
+        <span className={cn(dAvg >= 0 ? 'text-accent' : 'text-accent2')}>
+          F0 {sign(dAvg)} Hz
+        </span>
+        <span className="text-ink-2">
+          P10 {sign(dP10, 0)} · P90 {sign(dP90, 0)} Hz
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/* ------------------------------ 长音分析卡 ------------------------------ */
+
+/** 长音模式专属指标：MPT / 音高稳定度 / 响度衰减 */
+function SustainedCard({ record }: { record: AnalysisRecord }) {
+  const m = useMemo(() => computeSustainedMetrics(record), [record]);
+  return (
+    <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+      <div className="mb-2.5 flex items-center justify-between px-0.5">
+        <span className="text-xs font-semibold text-ink">{t('analysis.sustainedTitle')}</span>
+        {record.mode && <span className="text-[10px] text-ink-2">{t(`mode.${record.mode}`)}</span>}
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="flex items-center gap-3 rounded-2xl bg-surface-hi/60 px-4 py-3">
+          <Timer size={18} className="shrink-0 text-accent" />
+          <div>
+            <p className="text-[11px] text-ink-2">{t('analysis.sustainedMpt')}</p>
+            <p className="text-lg font-semibold tabular-nums text-ink">
+              {t('analysis.mptValue', { n: m.mptSec.toFixed(1) })}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl bg-surface-hi/60 px-4 py-3">
+          <Activity size={18} className="shrink-0 text-accent" />
+          <div>
+            <p className="text-[11px] text-ink-2">{t('analysis.sustainedCv')}</p>
+            <p className="text-lg font-semibold tabular-nums text-ink">
+              {m.cvPct != null ? t('analysis.cvValue', { n: m.cvPct.toFixed(1) }) : '—'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl bg-surface-hi/60 px-4 py-3">
+          <Waves size={18} className="shrink-0 text-accent" />
+          <div>
+            <p className="text-[11px] text-ink-2">{t('analysis.sustainedDecay')}</p>
+            <p className="text-lg font-semibold tabular-nums text-ink">
+              {m.decayDbPerSec != null
+                ? t('analysis.decayValue', { n: `${m.decayDbPerSec > 0 ? '+' : ''}${m.decayDbPerSec.toFixed(2)}` })
+                : '—'}
+            </p>
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 text-[10px] leading-relaxed text-ink-2">{t('analysis.sustainedExplain')}</p>
+    </div>
   );
 }
 
@@ -224,7 +310,7 @@ function PlaybackCard({
       <button
         onClick={onToggle}
         className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-on-accent transition-transform active:scale-90"
-        aria-label={playing ? '暂停回放' : '播放录音'}
+        aria-label={playing ? t('analysis.pauseAria') : t('analysis.playAria')}
       >
         {playing ? <Pause size={15} fill="currentColor" strokeWidth={0} /> : <Play size={15} fill="currentColor" strokeWidth={0} className="translate-x-[1px]" />}
       </button>
@@ -236,7 +322,7 @@ function PlaybackCard({
           value={Math.round(frac * 1000)}
           onChange={(e) => onSeek(Number(e.target.value) / 1000)}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
-          aria-label="回放进度"
+          aria-label={t('analysis.progressAria')}
         />
       </div>
       <span className="shrink-0 text-[11px] tabular-nums text-ink-2">
@@ -276,46 +362,49 @@ function StatsTable({ record }: { record: AnalysisRecord }) {
   return (
     <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatGroup
-        title="音高统计"
+        title={t('analysis.groupPitch')}
         rows={[
-          ['平均基频', `${s.avgF0.toFixed(1)} Hz（${freqToNote(s.avgF0).name}）`],
-          ['中位基频', fmtHz(s.medianF0)],
-          ['最低 / 最高', `${s.minF0.toFixed(0)} / ${s.maxF0.toFixed(0)} Hz`],
-          ['P10 / P90', `${s.p10F0.toFixed(0)} / ${s.p90F0.toFixed(0)} Hz`],
-          ['基频标准差', `${s.stdF0.toFixed(1)} Hz`],
-          ['男声区占比', `${s.malePct}%`],
-          ['女声区占比', `${s.femalePct}%`],
-          ['过渡区占比', `${s.transitionPct}%`],
+          [t('analysis.rowAvgF0'), `${s.avgF0.toFixed(1)} Hz（${freqToNote(s.avgF0).name}）`],
+          [t('analysis.rowMedianF0'), fmtHz(s.medianF0)],
+          [t('analysis.rowMinMaxF0'), `${s.minF0.toFixed(0)} / ${s.maxF0.toFixed(0)} Hz`],
+          [t('analysis.rowP10P90'), `${s.p10F0.toFixed(0)} / ${s.p90F0.toFixed(0)} Hz`],
+          [t('analysis.rowStdF0'), `${s.stdF0.toFixed(1)} Hz`],
+          [t('analysis.rowMalePct'), `${s.malePct}%`],
+          [t('analysis.rowFemalePct'), `${s.femalePct}%`],
+          [t('analysis.rowTransPct'), `${s.transitionPct}%`],
+          ...(s.inTargetPct != null
+            ? ([[t('analysis.rowTargetPct'), `${s.inTargetPct}%`]] as [string, ReactNode][])
+            : []),
         ]}
       />
       <StatGroup
-        title="共振峰统计"
+        title={t('analysis.groupFormant')}
         rows={[
-          ['平均 F1', fmtHz(s.avgF1, 0)],
-          ['F1 波动范围', s.f1Range ? `${s.f1Range[0].toFixed(0)} – ${s.f1Range[1].toFixed(0)} Hz` : '—'],
-          ['平均 F2', fmtHz(s.avgF2, 0)],
-          ['F2 波动范围', s.f2Range ? `${s.f2Range[0].toFixed(0)} – ${s.f2Range[1].toFixed(0)} Hz` : '—'],
-          ['F1 / F2 比值', s.avgF1 && s.avgF2 ? (s.avgF2 / s.avgF1).toFixed(2) : '—'],
+          [t('analysis.rowAvgF1'), fmtHz(s.avgF1, 0)],
+          [t('analysis.rowF1Range'), s.f1Range ? `${s.f1Range[0].toFixed(0)} – ${s.f1Range[1].toFixed(0)} Hz` : '—'],
+          [t('analysis.rowAvgF2'), fmtHz(s.avgF2, 0)],
+          [t('analysis.rowF2Range'), s.f2Range ? `${s.f2Range[0].toFixed(0)} – ${s.f2Range[1].toFixed(0)} Hz` : '—'],
+          [t('analysis.rowF1F2Ratio'), s.avgF1 && s.avgF2 ? (s.avgF2 / s.avgF1).toFixed(2) : '—'],
         ]}
       />
       <StatGroup
-        title="能量与时长"
+        title={t('analysis.groupEnergy')}
         rows={[
-          ['录音时长', `${s.durationSec.toFixed(1)} 秒`],
-          ['有效发声占比', `${voicedPct}%`],
-          ['平均响度', `${s.avgDb.toFixed(1)} dB`],
-          ['峰值响度', `${s.peakDb.toFixed(1)} dB`],
-          ['采样帧数', `${s.totalSamples}（${s.sampleHz.toFixed(0)} Hz）`],
+          [t('analysis.rowDuration'), `${s.durationSec.toFixed(1)} ${t('analysis.unitSec')}`],
+          [t('analysis.rowVoicedPct'), `${voicedPct}%`],
+          [t('analysis.rowAvgDb'), `${s.avgDb.toFixed(1)} dB`],
+          [t('analysis.rowPeakDb'), `${s.peakDb.toFixed(1)} dB`],
+          [t('analysis.rowFrames'), `${s.totalSamples}（${s.sampleHz.toFixed(0)} Hz）`],
         ]}
       />
       <StatGroup
-        title="嗓音质量"
+        title={t('analysis.groupVq')}
         rows={[
-          ['Jitter（基频微扰）', s.jitterPct != null ? `${s.jitterPct.toFixed(2)} %` : '—'],
-          ['Shimmer（振幅微扰）', s.shimmerPct != null ? `${s.shimmerPct.toFixed(2)} %` : '—'],
-          ['HNR（谐噪比）', s.hnrDb != null ? `${s.hnrDb.toFixed(1)} dB` : '—'],
-          ['CPPS（倒谱峰突出度）', s.cppsDb != null ? `${s.cppsDb.toFixed(1)} dB` : '—'],
-          ['说明', <span key="hint" className="text-[10px] font-normal text-ink-2">需保存录音音频 · CPPS 亦适用于连续语音</span>],
+          [t('analysis.rowJitter'), s.jitterPct != null ? `${s.jitterPct.toFixed(2)} %` : '—'],
+          [t('analysis.rowShimmer'), s.shimmerPct != null ? `${s.shimmerPct.toFixed(2)} %` : '—'],
+          [t('analysis.rowHnr'), s.hnrDb != null ? `${s.hnrDb.toFixed(1)} dB` : '—'],
+          [t('analysis.rowCpps'), s.cppsDb != null ? `${s.cppsDb.toFixed(1)} dB` : '—'],
+          [t('analysis.rowNote'), <span key="hint" className="text-[10px] font-normal text-ink-2">{t('analysis.vqHint')}</span>],
         ]}
       />
     </div>
@@ -389,19 +478,19 @@ function NoteDialog({
     updateRecord(updated);
     setCurrentAnalysis(updated);
     onOpenChange(false);
-    toast.success(text.trim() ? '已保存备注' : '已清除备注');
+    toast.success(text.trim() ? t('toast.noteSaved') : t('toast.noteCleared'));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-3xl border-0 bg-card sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-ink">编辑备注</DialogTitle>
+          <DialogTitle className="text-ink">{t('analysis.noteTitle')}</DialogTitle>
         </DialogHeader>
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="给这条记录起个名字，如「晨起嗓音」「训练第 3 周」"
+          placeholder={t('analysis.notePlaceholder')}
           className="min-h-24 rounded-2xl border-black/10 bg-surface-hi text-sm text-ink"
           maxLength={60}
         />
@@ -410,13 +499,13 @@ function NoteDialog({
             onClick={() => onOpenChange(false)}
             className="px-1 py-2 text-sm font-medium text-ink-2 transition-opacity hover:opacity-70"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             onClick={save}
             className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-on-accent transition-opacity hover:opacity-90"
           >
-            保存
+            {t('common.save')}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -445,20 +534,20 @@ function EmptyState() {
         className="flex flex-col items-center gap-3 text-center"
       >
         <ChartNoAxesColumn size={30} strokeWidth={1.6} className="text-accent" />
-        <p className="text-sm text-ink-2">请先进行测试以获得数据进行分析</p>
+        <p className="text-sm text-ink-2">{t('analysis.emptyHint')}</p>
         <div className="mt-1 flex items-center gap-2">
           <button
             onClick={() => setTab('test')}
             className="flex items-center gap-1 px-1 py-2 text-sm font-medium text-accent transition-opacity hover:opacity-70"
           >
-            去测试
+            {t('common.goTest')}
             <ChevronRight size={15} />
           </button>
           <button
             onClick={loadDemo}
             className="px-1 py-2 text-sm font-medium text-ink-2 transition-opacity hover:opacity-70"
           >
-            载入示例数据
+            {t('common.loadDemo')}
           </button>
         </div>
       </motion.div>
@@ -470,9 +559,14 @@ function EmptyState() {
 type RangedKind = 'pitch' | 'formant' | 'energy' | 'spec' | 'vrp';
 
 export function AnalysisPage() {
+  useI18n();
   const record = useStore((s) => s.currentAnalysis);
   const syncChartRange = useStore((s) => s.settings.syncChartRange);
+  const baselineId = useStore((s) => s.settings.baselineRecordId);
   const getAudio = useHistoryStore((s) => s.getAudio);
+  const baselineRecord = useHistoryStore((s) =>
+    baselineId ? s.records.find((r) => r.id === baselineId) ?? null : null,
+  );
   const [sharedRange, setSharedRange] = useState<[number, number]>([0, record?.durationSec ?? 0]);
   const [ownRanges, setOwnRanges] = useState<Partial<Record<RangedKind, [number, number]>>>({});
   const [noteOpen, setNoteOpen] = useState(false);
@@ -522,20 +616,20 @@ export function AnalysisPage() {
   }, [record?.id, getAudio]); // eslint-disable-line react-hooks/exhaustive-deps
   const audioUrl = audioFor && record && audioFor.id === record.id ? audioFor.url : null;
 
-  // 区间联动统计：跟随音高曲线的区间（联动模式下即共享区间）
+  // 区间联动统计：跟随音高曲线的区间（联动模式下即共享区间）。
+  // 统一由序列重算（含全段）：保证与区间统计口径一致（如响度只计发声帧）；
+  // 嗓音质量四项与靶标达成率是整段录音的临床指标，沿用录音时的整段值
   const pitchRange = getRange('pitch');
   const rangeStats = useMemo(() => {
     if (!record) return null;
     const r = syncChartRange ? sharedRange : (ownRanges.pitch ?? fullRange);
-    const isFull = r[0] <= 0.001 && r[1] >= record.durationSec - 0.001;
-    if (isFull) return record.stats;
-    // 嗓音质量四项是整段录音的临床指标，不随区间重算，沿用全段值
     return {
       ...computeStats(sliceSeries(record.series, r[0], r[1]), record.sampleHz),
       jitterPct: record.stats.jitterPct,
       shimmerPct: record.stats.shimmerPct,
       hnrDb: record.stats.hnrDb,
       cppsDb: record.stats.cppsDb,
+      inTargetPct: record.stats.inTargetPct,
     };
   }, [record, syncChartRange, sharedRange, ownRanges, fullRange]);
 
@@ -553,13 +647,13 @@ export function AnalysisPage() {
     const loop = () => {
       const audio = audioRef.current;
       if (audio) {
-        const t = audio.currentTime;
-        if (playEndRef.current !== Infinity && t >= playEndRef.current - 0.02) {
+        const time = audio.currentTime;
+        if (playEndRef.current !== Infinity && time >= playEndRef.current - 0.02) {
           audio.pause();
           setPlayTime(playEndRef.current);
           return;
         }
-        setPlayTime(t);
+        setPlayTime(time);
       }
       raf = requestAnimationFrame(loop);
     };
@@ -570,6 +664,8 @@ export function AnalysisPage() {
   if (!record || !rangeStats) return <EmptyState />;
 
   const recordWithStats: AnalysisRecord = { ...record, stats: rangeStats };
+  const showBaseline = baselineRecord && baselineRecord.id !== record.id
+    && (baselineRecord.stats.avgF0 > 0 || record.stats.avgF0 > 0);
 
   const togglePlay = async () => {
     const audio = audioRef.current;
@@ -587,7 +683,7 @@ export function AnalysisPage() {
         setTimeout(done, 2000);
       });
       if (audio.readyState === 0) {
-        toast.error('回放失败，音频无法解码');
+        toast.error(t('toast.playFail'));
         return;
       }
     }
@@ -604,15 +700,15 @@ export function AnalysisPage() {
       audio.currentTime = start;
     }
     setPlayTime(audio.currentTime);
-    void audio.play().catch(() => toast.error('回放失败，音频无法解码'));
+    void audio.play().catch(() => toast.error(t('toast.playFail')));
   };
 
   const seekPlay = (frac: number) => {
     const audio = audioRef.current;
     if (!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
-    const t = Math.max(0, Math.min(1, frac)) * audio.duration;
-    audio.currentTime = t;
-    setPlayTime(t);
+    const time = Math.max(0, Math.min(1, frac)) * audio.duration;
+    audio.currentTime = time;
+    setPlayTime(time);
   };
 
   const onShare = async () => {
@@ -620,9 +716,9 @@ export function AnalysisPage() {
     setShareBusy(true);
     try {
       const outcome = await exportShareImage(record);
-      if (outcome === 'downloaded') toast.success('报告图已生成并下载');
+      if (outcome === 'downloaded') toast.success(t('toast.shareDownloaded'));
     } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') toast.error('分享图生成失败');
+      if ((err as Error)?.name !== 'AbortError') toast.error(t('toast.shareFail'));
     } finally {
       setShareBusy(false);
     }
@@ -630,7 +726,7 @@ export function AnalysisPage() {
 
   const onExportCsv = () => {
     downloadText(`voice-frames-${record.id.slice(0, 8)}.csv`, recordToFrameCsv(record));
-    toast.success('已导出帧级 CSV 数据');
+    toast.success(t('toast.frameCsvExported'));
   };
 
   return (
@@ -644,16 +740,16 @@ export function AnalysisPage() {
               onClick={onShare}
               disabled={shareBusy}
               className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
-              aria-label="导出分享图片"
-              title="导出分享图片（PNG）"
+              aria-label={t('analysis.shareAria')}
+              title={t('analysis.shareTitle')}
             >
               <Share2 size={16} />
             </button>
             <button
               onClick={onExportCsv}
               className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
-              aria-label="导出帧级 CSV"
-              title="导出帧级 CSV 数据"
+              aria-label={t('analysis.csvAria')}
+              title={t('analysis.csvTitle')}
             >
               <FileSpreadsheet size={16} />
             </button>
@@ -663,14 +759,15 @@ export function AnalysisPage() {
                 'grid size-9 place-items-center rounded-full transition-colors hover:bg-surface-hi hover:text-accent',
                 record.note ? 'text-accent' : 'text-ink-2',
               )}
-              aria-label="编辑备注"
-              title="编辑备注"
+              aria-label={t('analysis.noteAria')}
+              title={t('analysis.noteAria')}
             >
               <Pencil size={15} />
             </button>
           </>
         }
       />
+      {showBaseline && baselineRecord && <BaselineStrip record={record} baseline={baselineRecord} />}
       <PlaybackCard
         url={audioUrl}
         playing={playing}
@@ -679,11 +776,12 @@ export function AnalysisPage() {
         onToggle={togglePlay}
         onSeek={seekPlay}
       />
+      {record.mode === 'sustained' && <SustainedCard record={record} />}
       <StatsTable record={recordWithStats} />
 
       <AnalysisChart
         kind="pitch"
-        title="音高曲线"
+        title={t('analysis.titlePitch')}
         record={recordWithStats}
         heightClass="h-[210px] sm:h-[280px]"
         range={getRange('pitch')}
@@ -693,7 +791,7 @@ export function AnalysisPage() {
       {/* 共振峰卡片：曲线 / 元音空间散点双视图 */}
       <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
         <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-          <span className="text-xs font-medium tracking-wide text-ink-2">F1 / F2 共振峰</span>
+          <span className="text-xs font-medium tracking-wide text-ink-2">{t('analysis.titleFormant')}</span>
           <div className="flex shrink-0 items-center gap-2.5">
             {formantView === 'curve' ? (
               <div className="flex items-center gap-3 text-[11px] text-ink-2">
@@ -701,7 +799,7 @@ export function AnalysisPage() {
                 <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />F2</span>
               </div>
             ) : (
-              <span className="hidden text-[10px] text-ink-2 sm:inline">虚线圈为参考元音</span>
+              <span className="hidden text-[10px] text-ink-2 sm:inline">{t('analysis.scatterRefHint')}</span>
             )}
             <div className="flex items-center rounded-full bg-surface-hi p-0.5 text-[11px]">
               <button
@@ -711,7 +809,7 @@ export function AnalysisPage() {
                   formantView === 'curve' ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
                 )}
               >
-                曲线
+                {t('analysis.viewCurve')}
               </button>
               <button
                 onClick={() => setFormantView('scatter')}
@@ -720,7 +818,7 @@ export function AnalysisPage() {
                   formantView === 'scatter' ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
                 )}
               >
-                散点
+                {t('analysis.viewScatter')}
               </button>
             </div>
           </div>
@@ -742,13 +840,13 @@ export function AnalysisPage() {
         />
         {formantView === 'scatter' && (
           <p className="mt-1.5 text-center text-[10px] text-ink-2">
-            横轴 F2 越靠左舌位越前 · 纵轴 F1 越靠上开口越小 · 点越密表示驻留越久
+            {t('analysis.scatterExplain')}
           </p>
         )}
       </div>
       <AnalysisChart
         kind="energy"
-        title="音频能量"
+        title={t('analysis.titleEnergy')}
         record={record}
         heightClass="h-[130px] sm:h-[180px]"
         range={getRange('energy')}
@@ -758,10 +856,10 @@ export function AnalysisPage() {
       {record.spec && (
         <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
           <div className="mb-1.5 flex items-center justify-between px-0.5">
-            <span className="text-xs font-medium tracking-wide text-ink-2">语谱图</span>
+            <span className="text-xs font-medium tracking-wide text-ink-2">{t('analysis.titleSpec')}</span>
             <div className="flex items-center gap-3 text-[11px] text-ink-2">
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" />F1 轨迹</span>
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />F2 轨迹</span>
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" />{t('analysis.specF1Legend')}</span>
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />{t('analysis.specF2Legend')}</span>
             </div>
           </div>
           <div className="relative h-[190px] sm:h-[260px]">
@@ -780,8 +878,8 @@ export function AnalysisPage() {
       {record.mode === 'glide' && (
         <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
           <div className="mb-1.5 flex items-center justify-between px-0.5">
-            <span className="text-xs font-medium tracking-wide text-ink-2">声域图 · 音高 × 响度</span>
-            <span className="text-[10px] text-ink-2">色深 = 驻留时长</span>
+            <span className="text-xs font-medium tracking-wide text-ink-2">{t('analysis.titleVrp')}</span>
+            <span className="text-[10px] text-ink-2">{t('analysis.vrpDepthHint')}</span>
           </div>
           <div className="relative h-[260px] sm:h-[340px]">
             <SeriesChart
@@ -799,7 +897,7 @@ export function AnalysisPage() {
             className="mt-2.5"
           />
           <p className="mt-1.5 text-[10px] leading-relaxed text-ink-2">
-            纵轴为十二平均律半音（C2–C6），横轴为满量程相对响度（dBFS）。响度未做绝对声压校准，受麦克风灵敏度与嘴距影响。
+            {t('analysis.vrpExplain')}
           </p>
         </div>
       )}

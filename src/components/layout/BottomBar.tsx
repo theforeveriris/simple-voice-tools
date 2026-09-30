@@ -29,24 +29,26 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import type { ViewType, TestMode } from '@/types';
-import { MODE_META } from '@/constants';
 import { toast } from 'sonner';
+import { t } from '@/i18n';
+import { useI18n } from '@/i18n/hook';
 import { cn } from '@/lib/utils';
 
 const SPRING = { type: 'spring' as const, stiffness: 380, damping: 32, mass: 0.9 };
 
-const TABS: { id: ViewType; label: string; icon: ElementType }[] = [
-  { id: 'test', label: '测试', icon: SquareTerminal },
-  { id: 'analysis', label: '分析', icon: ChartNoAxesColumn },
-  { id: 'history', label: '历史', icon: History },
-  { id: 'settings', label: '设置', icon: Settings2 },
+/** 页签文案走 i18n；label 取词典，组件内以 t(nav.xxx) 读取 */
+const TABS: { id: ViewType; labelKey: 'nav.test' | 'nav.analysis' | 'nav.history' | 'nav.settings'; icon: ElementType }[] = [
+  { id: 'test', labelKey: 'nav.test', icon: SquareTerminal },
+  { id: 'analysis', labelKey: 'nav.analysis', icon: ChartNoAxesColumn },
+  { id: 'history', labelKey: 'nav.history', icon: History },
+  { id: 'settings', labelKey: 'nav.settings', icon: Settings2 },
 ];
 
 /** 模式选项（扇形排列，自左向右） */
-const MODE_OPTIONS: { id: TestMode; label: string; icon: ElementType }[] = [
-  { id: 'reading', label: '随意朗读', icon: BookOpenText },
-  { id: 'sustained', label: '长音测试', icon: AudioLines },
-  { id: 'glide', label: '音域滑音', icon: TrendingUp },
+const MODE_OPTIONS: { id: TestMode; labelKey: 'mode.reading' | 'mode.sustained' | 'mode.glide'; icon: ElementType }[] = [
+  { id: 'reading', labelKey: 'mode.reading', icon: BookOpenText },
+  { id: 'sustained', labelKey: 'mode.sustained', icon: AudioLines },
+  { id: 'glide', labelKey: 'mode.glide', icon: TrendingUp },
 ];
 
 /** 长按触发时长（ms） */
@@ -130,7 +132,7 @@ function ModeFanSelector({
             <button
               onClick={() => onChoose(opt.id)}
               className="flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
-              aria-label={`${opt.label}：${MODE_META[opt.id].desc}`}
+              aria-label={`${t(opt.labelKey)}：${t(`mode.${opt.id}Desc`)}`}
             >
               <motion.span
                 whileTap={{ scale: 0.88 }}
@@ -139,7 +141,7 @@ function ModeFanSelector({
                 <Icon size={22} strokeWidth={2} className="text-accent" />
               </motion.span>
               <span className="whitespace-nowrap rounded-full bg-ink px-2.5 py-1 text-[10px] font-medium text-card shadow">
-                {opt.label}
+                {t(opt.labelKey)}
               </span>
             </button>
           </motion.div>
@@ -153,7 +155,7 @@ function ModeFanSelector({
         transition={{ delay: 0.25 }}
         className="absolute inset-x-0 top-7 text-center text-xs text-white/90"
       >
-        点击空白处取消
+        {t('nav.fanCancelHint')}
       </motion.p>
     </div>,
     document.body,
@@ -205,7 +207,7 @@ function BallCore({ onLongPress }: { onLongPress: () => void }) {
       try {
         await startRecording();
       } catch {
-        toast.error('无法访问麦克风，请检查浏览器权限设置');
+        toast.error(t('toast.micError'));
       }
     }
   };
@@ -255,7 +257,7 @@ function BallCore({ onLongPress }: { onLongPress: () => void }) {
         animate={isRecording ? { scale: [1, 1.04, 1] } : { scale: 1 }}
         transition={isRecording ? { duration: 1.7, ease: 'easeInOut', repeat: Infinity } : SPRING}
         className="relative grid size-full select-none place-items-center rounded-full bg-accent text-on-accent shadow-[0_8px_22px_-6px_rgb(var(--c-accent-rgb)/0.55),0_3px_10px_rgb(var(--c-accent-rgb)/0.25)]"
-        aria-label={isRecording ? '停止录音' : '开始录音（长按选择模式）'}
+        aria-label={isRecording ? t('nav.recordStopAria') : t('nav.recordStartAria')}
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
@@ -336,9 +338,10 @@ const Dock = memo(function Dock({
   const setTab = useStore((s) => s.setTab);
   const isTest = currentTab === 'test';
 
-  const renderTab = (tab: { id: ViewType; label: string; icon: ElementType }) => {
+  const renderTab = (tab: (typeof TABS)[number]) => {
     const active = currentTab === tab.id;
     const Icon = tab.icon;
+    const label = t(tab.labelKey);
     return (
       <motion.button
         key={tab.id}
@@ -346,7 +349,7 @@ const Dock = memo(function Dock({
         onClick={() => setTab(tab.id)}
         whileTap={{ scale: 0.9 }}
         className="relative flex items-center rounded-2xl px-3.5 py-2.5"
-        aria-label={tab.label}
+        aria-label={label}
       >
         {/* 选中胶囊（跨页签平滑滑动） */}
         {active && (
@@ -381,7 +384,7 @@ const Dock = memo(function Dock({
             transition={{ duration: 0.14 }}
             className="relative z-10 whitespace-nowrap pl-[7px] text-sm font-medium text-on-accent-soft"
           >
-            {tab.label}
+            {label}
           </motion.span>
         )}
       </motion.button>
@@ -390,7 +393,7 @@ const Dock = memo(function Dock({
 
   return (
     <motion.div
-      animate={{ x: ballDocked ? 0 : isTest ? -34 : 0 }}
+      animate={{ x: ballDocked ? 0 : -34 }}
       transition={SPRING}
       className="pointer-events-auto relative flex items-center"
     >
@@ -410,15 +413,18 @@ const Dock = memo(function Dock({
           transition={SPRING}
           className="relative shrink-0"
         >
-          {isTest && ballDocked && <RecordBall docked onLongPress={onLongPress} />}
+          {ballDocked && <RecordBall docked onLongPress={onLongPress} />}
         </motion.div>
 
         {/* 右组：历史 / 设置 */}
         <div className="flex items-center gap-0.5">{TABS.slice(2).map(renderTab)}</div>
       </motion.nav>
 
-      {/* 悬浮圆球：分体时让位给中缝里的圆球（layoutId 衔接飞行） */}
-      {isTest && !ballDocked && (
+      {/*
+        悬浮圆球：所有页面常驻（分体时让位给中缝里的圆球，layoutId 衔接飞行）。
+        录音进行中离开测试页也保持可见可点停——否则录音在后台无人能停。
+      */}
+      {!ballDocked && (
         <RecordBall docked={false} entrance={ballEntrance} onLongPress={onLongPress} />
       )}
     </motion.div>
@@ -429,9 +435,11 @@ const Dock = memo(function Dock({
  * 底部悬浮导航栏：状态编排（分体 = 长按选择中 或 录音中）
  */
 export function BottomBar() {
+  useI18n(); // 语言切换时重渲染底栏文案
   const currentTab = useStore((s) => s.currentTab);
   const updateSettings = useStore((s) => s.updateSettings);
   const startRecording = useStore((s) => s.startRecording);
+  const setTab = useStore((s) => s.setTab);
   const isTest = currentTab === 'test';
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -470,6 +478,8 @@ export function BottomBar() {
   }
 
   const openMenu = useCallback(() => {
+    // 非测试页长按：先跳回测试页，扇形选择器仍以底栏中缝为圆心展开
+    if (!isTest) setTab('test');
     setMenuOpen(true);
     navigator.vibrate?.(12);
     // 等圆球落座、底栏分开后再唤出扇形选项
@@ -478,7 +488,7 @@ export function BottomBar() {
       const r = slotRef.current?.getBoundingClientRect();
       if (r) setFanCenter({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     }, 320);
-  }, []);
+  }, [isTest, setTab]);
 
   const closeMenu = useCallback(() => {
     if (fanTimer.current !== null) {
@@ -503,7 +513,7 @@ export function BottomBar() {
       try {
         await startRecording();
       } catch {
-        toast.error('无法访问麦克风，请检查浏览器权限设置');
+        toast.error(t('toast.micError'));
       }
     },
     [updateSettings, startRecording],

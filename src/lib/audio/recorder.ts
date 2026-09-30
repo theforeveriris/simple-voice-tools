@@ -18,6 +18,8 @@ import type { AnalysisRecord, RecordSeries, TestMode, VoiceStats } from '@/types
 const STORAGE_DECIMATE = 2;
 /** 共振峰计算节流：每 N 帧计算一次（LPC 开销较大） */
 const FORMANT_EVERY = 2;
+/** 发声帧能量门限（dB）：响度统计只计该值以上的帧，与 voiceQuality/CPPS 门限一致 */
+const ACTIVE_DB = -50;
 
 /**
  * 由数据序列聚合统计信息
@@ -27,6 +29,7 @@ export function computeStats(series: RecordSeries, sampleHz: number): VoiceStats
   const f0s: number[] = [];
   const f1s: number[] = [];
   const f2s: number[] = [];
+  const activeDb: number[] = [];
   let voiced = 0;
 
   for (let i = 0; i < series.t.length; i++) {
@@ -39,6 +42,8 @@ export function computeStats(series: RecordSeries, sampleHz: number): VoiceStats
     if (f1 != null) f1s.push(f1);
     const f2 = series.f2[i];
     if (f2 != null) f2s.push(f2);
+    // 响度只统计发声帧：静音帧会拉低均值，且占比随录音停顿变化，录音之间不可比
+    if (series.rmsDb[i] >= ACTIVE_DB) activeDb.push(series.rmsDb[i]);
   }
 
   const sorted = (arr: number[]) => [...arr].sort((a, b) => a - b);
@@ -81,13 +86,32 @@ export function computeStats(series: RecordSeries, sampleHz: number): VoiceStats
     avgF2: f2s.length ? mean(f2s) : null,
     f1Range: f1s.length ? [Math.min(...f1s), Math.max(...f1s)] : null,
     f2Range: f2s.length ? [Math.min(...f2s), Math.max(...f2s)] : null,
-    avgDb: mean(rmsVals),
+    avgDb: activeDb.length ? mean(activeDb) : -90,
     peakDb: rmsVals.length ? Math.max(...rmsVals) : -90,
     jitterPct: null,
     shimmerPct: null,
     hnrDb: null,
     cppsDb: null,
   };
+}
+
+/**
+ * 训练靶标达成率：落在目标区间内的有声帧占全部有声帧的比例（%）
+ * 无有声帧或未启用时返回 undefined
+ */
+export function computeInTargetPct(
+  series: RecordSeries,
+  range: [number, number] | null | undefined,
+): number | null {
+  if (!range) return null;
+  let voiced = 0;
+  let inside = 0;
+  for (const f of series.f0) {
+    if (f == null || f <= 0) continue;
+    voiced++;
+    if (f >= range[0] && f <= range[1]) inside++;
+  }
+  return voiced > 0 ? Math.round((inside / voiced) * 100) : null;
 }
 
 /** 将内部缓冲（NaN 缺口）转为可序列化序列（null 缺口），并降采样 */
@@ -126,6 +150,10 @@ export interface RecorderOptions {
   mode?: TestMode;
   /** 是否抓取录音音频（设置关闭时跳过，嗓音质量指标将不可用） */
   saveAudio?: boolean;
+  /** 发声开始后持续静音达到该秒数自动结束（长音模式用，0 = 不启用） */
+  silenceStopSec?: number;
+  /** 训练靶标：目标音高区间（启用时统计达成率写入 stats） */
+  targetRange?: [number, number] | null;
 }
 
 /**
@@ -181,15 +209,38 @@ class VoiceRecorder {
   private onAutoStop: (() => void) | null = null;
   private autoStopFired = false;
   private pendingMode: TestMode | undefined;
+  /** 静音自动停止（长音模式）：发声开始后持续静音阈值（秒，0 = 不启用） */
+  private silenceStopSec = 0;
+  /** 最近一次发声帧的时间戳（performance.now，ms） */
+  private lastVoicedAt = 0;
+  /** 是否已出现过发声帧（防止录完即静音的环境被立即判停） */
+  private voicedSeen = false;
+  /** 训练靶标目标区间（启用时统计达成率） */
+  private targetRange: [number, number] | null = null;
 
   private mediaRecorder: MediaRecorder | null = null;
   private mediaChunks: Blob[] = [];
   /** MediaRecorder.stop() 后数据落盘完成的信号 */
   private mediaStopped: Promise<void> | null = null;
 
-  /** 是否正在录音 */
+  /** getUserMedia 等待期间为 true（此时可取消启动） */
+  private starting = false;
+  /** 启动等待期间请求取消：授权返回后中止而不进入录音 */
+  private cancelStartRequested = false;
+
+  /** 是否正在录音（含权限等待期间） */
   isRecording(): boolean {
-    return this.audioContext !== null;
+    return this.audioContext !== null || this.starting;
+  }
+
+  /** 是否仍在等待 getUserMedia（可无痕取消） */
+  isStarting(): boolean {
+    return this.starting;
+  }
+
+  /** 取消尚未完成的启动（权限等待期间调用，授权返回后直接释放资源） */
+  cancelStart(): void {
+    this.cancelStartRequested = true;
   }
 
   /** 读取实时序列快照（数组仍在增长，图表按需截取） */
@@ -209,63 +260,86 @@ class VoiceRecorder {
 
   /**
    * 启动录音与分析
+   * getUserMedia 等待期间 isStarting() 为 true，可通过 cancelStart() 无痕取消；
+   * 权限弹窗期间用户切页/停止时，授权返回后直接释放资源，不进入录音循环。
    */
   async start(opts: RecorderOptions = {}): Promise<void> {
-    if (this.audioContext) return;
+    if (this.audioContext || this.starting) return;
+    this.starting = true;
+    this.cancelStartRequested = false;
 
     const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const constraints: MediaStreamConstraints = {
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
-        ...(opts.deviceId ? { deviceId: { exact: opts.deviceId } } : {}),
-      },
-    };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    try {
+      const constraints: MediaStreamConstraints = {
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          ...(opts.deviceId ? { deviceId: { exact: opts.deviceId } } : {}),
+        },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-    this.stream = stream;
-    this.audioContext = ctx;
-    this.source = ctx.createMediaStreamSource(stream);
-    this.analyser = ctx.createAnalyser();
-    this.analyser.fftSize = this.timeBuf.length;
-    this.analyser.smoothingTimeConstant = 0;
-    this.source.connect(this.analyser);
-    this.freqBuf = new Float32Array(this.analyser.frequencyBinCount);
-
-    // 音频抓取（可选）：失败不影响分析主链路
-    this.mediaRecorder = null;
-    this.mediaChunks = [];
-    this.mediaStopped = null;
-    if (opts.saveAudio !== false) {
-      const mimeType = pickAudioMime();
-      try {
-        const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-        mr.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) this.mediaChunks.push(e.data);
-        };
-        mr.onerror = () => {
-          this.mediaRecorder = null;
-        };
-        mr.start(1000);
-        this.mediaRecorder = mr;
-      } catch (err) {
-        console.warn('MediaRecorder 不可用，本次不保存音频:', err);
+      // 等待权限期间被取消：释放资源直接返回
+      if (this.cancelStartRequested) {
+        stream.getTracks().forEach((tr) => tr.stop());
+        void ctx.close();
+        return;
       }
+
+      this.stream = stream;
+      this.audioContext = ctx;
+      this.source = ctx.createMediaStreamSource(stream);
+      this.analyser = ctx.createAnalyser();
+      this.analyser.fftSize = this.timeBuf.length;
+      this.analyser.smoothingTimeConstant = 0;
+      this.source.connect(this.analyser);
+      this.freqBuf = new Float32Array(this.analyser.frequencyBinCount);
+
+      // 音频抓取（可选）：失败不影响分析主链路
+      this.mediaRecorder = null;
+      this.mediaChunks = [];
+      this.mediaStopped = null;
+      if (opts.saveAudio !== false) {
+        const mimeType = pickAudioMime();
+        try {
+          const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+          mr.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) this.mediaChunks.push(e.data);
+          };
+          mr.onerror = () => {
+            this.mediaRecorder = null;
+          };
+          mr.start(1000);
+          this.mediaRecorder = mr;
+        } catch (err) {
+          console.warn('MediaRecorder 不可用，本次不保存音频:', err);
+        }
+      }
+
+      this.startTime = performance.now();
+      this.frameCount = 0;
+      this.bufT = []; this.bufF0 = []; this.bufDb = []; this.bufF1 = []; this.bufF2 = [];
+      this.bufSpec = [];
+      this.smoothF1 = null; this.smoothF2 = null;
+      this.lastPitch = null;
+      this.maxDurationSec = opts.maxDurationSec ?? 0;
+      this.onAutoStop = opts.onAutoStop ?? null;
+      this.autoStopFired = false;
+      this.pendingMode = opts.mode;
+      this.silenceStopSec = opts.silenceStopSec ?? 0;
+      this.lastVoicedAt = 0;
+      this.voicedSeen = false;
+      this.targetRange = opts.targetRange ?? null;
+
+      this.loop();
+    } catch (err) {
+      // 启动失败（权限拒绝等）：释放已创建的 AudioContext，向上抛出由调用方提示
+      void ctx.close().catch(() => undefined);
+      throw err;
+    } finally {
+      this.starting = false;
     }
-
-    this.startTime = performance.now();
-    this.frameCount = 0;
-    this.bufT = []; this.bufF0 = []; this.bufDb = []; this.bufF1 = []; this.bufF2 = [];
-    this.bufSpec = [];
-    this.smoothF1 = null; this.smoothF2 = null;
-    this.lastPitch = null;
-    this.maxDurationSec = opts.maxDurationSec ?? 0;
-    this.onAutoStop = opts.onAutoStop ?? null;
-    this.autoStopFired = false;
-    this.pendingMode = opts.mode;
-
-    this.loop();
   }
 
   /**
@@ -313,17 +387,22 @@ class VoiceRecorder {
     }
 
     const sampleHz = series.t.length > 1 ? 1 / (series.t[1] - series.t[0]) : 30;
+    const stats = computeStats(series, sampleHz);
+    // 训练靶标达成率（未启用时为 undefined）
+    const inTargetPct = computeInTargetPct(series, this.targetRange);
+    if (inTargetPct != null) stats.inTargetPct = inTargetPct;
     const record: AnalysisRecord = {
       id: (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`),
       createdAt: Date.now(),
       durationSec,
       sampleHz,
       series,
-      stats: computeStats(series, sampleHz),
+      stats,
       ...(this.pendingMode ? { mode: this.pendingMode } : {}),
       ...(specData ? { spec: { bands: SPEC_BANDS, data: specData } } : {}),
     };
     this.pendingMode = undefined;
+    this.targetRange = null;
     return record;
   }
 
@@ -381,6 +460,19 @@ class VoiceRecorder {
     this.analyser.getFloatTimeDomainData(this.timeBuf);
     const db = rmsDb(this.timeBuf);
     const now = (performance.now() - this.startTime) / 1000;
+
+    // 静音自动停止（长音模式）：首次发声后，持续静音达到阈值即结束，
+    // 不再硬性截断，保证 MPT（最长声时）测量完整
+    if (this.silenceStopSec > 0 && !this.autoStopFired) {
+      if (db > -50) {
+        this.voicedSeen = true;
+        this.lastVoicedAt = now;
+      } else if (this.voicedSeen && now - this.lastVoicedAt >= this.silenceStopSec * 1000) {
+        this.autoStopFired = true;
+        this.onAutoStop?.();
+        return;
+      }
+    }
 
     // 音高（每帧）
     const pitch = db > -55 ? detectPitchYin(this.timeBuf, this.audioContext.sampleRate) : null;

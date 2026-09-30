@@ -1,8 +1,10 @@
 /**
  * 设置页面
- * - 外观：莫奈取色主题色（预设 + 自定义色相）、图表网格辅助线
+ * - 外观：主题（深浅）、语言、莫奈取色主题色（预设 + 自定义色相）、网格辅助线
  * - 录音：麦克风设备、最长录音时长、结束后自动进入分析
- * - 数据管理：历史记录导出 / 导入 / 清空
+ * - 训练：训练靶标（目标音高区间 + 达成率）、基线记录
+ * - 数据管理：历史记录导出 / 导入 / 清空（导出为 IndexedDB 全量）
+ * - 实验性功能：GitHub 云备份（Device Flow，仍在打磨）
  * - 关于
  */
 
@@ -11,7 +13,7 @@ import type { ElementType, ReactNode } from 'react';
 import {
   Palette, Mic, DatabaseBackup, Info, Download, Upload, Trash2, Eraser, Sparkles,
   BookOpen, ChevronRight, Smartphone, FileSpreadsheet, Archive, Cloud,
-  Link2, Unlink, CloudUpload, CloudDownload,
+  Link2, Unlink, CloudUpload, CloudDownload, FlaskConical, Target,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
@@ -27,17 +29,19 @@ import {
   type DeviceCodeInfo,
 } from '@/lib/backup/github';
 import { usePwaInstall, promptInstall } from '@/lib/pwa';
-import type { AppSettings } from '@/types';
+import { t } from '@/i18n';
+import { useI18n } from '@/i18n/hook';
+import { LOCALES, localeTag } from '@/i18n';
+import type { AppSettings, Locale, ThemeMode } from '@/types';
 import { cn } from '@/lib/utils';
 
-/** 文档条目：点击直接跳转到 GitHub 仓库内对应的 Markdown 源文件 */
 const DOC_BASE_URL = 'https://github.com/theforeveriris/simple-voice-tools/blob/main/documentation';
-const DOC_ENTRIES: { title: string; desc: string; file: string }[] = [
-  { title: '算法 · 音高检测（YIN）', desc: '差分函数 · 归一化 · 抛物线插值', file: 'ALGORITHM-YIN.md' },
-  { title: '算法 · 共振峰提取（LPC）', desc: '预加重 · 抽取 · 求根全链路', file: 'ALGORITHM-FORMANT-LPC.md' },
-  { title: '算法 · 能量分析（RMS）', desc: '分贝换算 · VAD 门限体系', file: 'ALGORITHM-ENERGY.md' },
-  { title: '算法 · 倒谱峰突出度（CPPS）', desc: '实倒谱 · 回归线基线 · 时间平滑', file: 'ALGORITHM-CPPS.md' },
-  { title: '开发者文档', desc: '架构 · 数据流 · 主题与动效模型', file: 'DEVELOPMENT.md' },
+const DOC_ENTRIES: { titleKey: 'settings.docYinTitle' | 'settings.docLpcTitle' | 'settings.docEnergyTitle' | 'settings.docCppsTitle' | 'settings.docDevTitle'; descKey: 'settings.docYinDesc' | 'settings.docLpcDesc' | 'settings.docEnergyDesc' | 'settings.docCppsDesc' | 'settings.docDevDesc'; file: string }[] = [
+  { titleKey: 'settings.docYinTitle', descKey: 'settings.docYinDesc', file: 'ALGORITHM-YIN.md' },
+  { titleKey: 'settings.docLpcTitle', descKey: 'settings.docLpcDesc', file: 'ALGORITHM-FORMANT-LPC.md' },
+  { titleKey: 'settings.docEnergyTitle', descKey: 'settings.docEnergyDesc', file: 'ALGORITHM-ENERGY.md' },
+  { titleKey: 'settings.docCppsTitle', descKey: 'settings.docCppsDesc', file: 'ALGORITHM-CPPS.md' },
+  { titleKey: 'settings.docDevTitle', descKey: 'settings.docDevDesc', file: 'DEVELOPMENT.md' },
 ];
 import {
   Switch,
@@ -165,26 +169,26 @@ function StorageUsage() {
   const requestPersist = async () => {
     try {
       const granted = (await navigator.storage?.persist?.()) ?? false;
-      if (granted) toast.success('已获得持久化存储，浏览器不会自动清理本地数据');
-      else toast.info('浏览器暂未授予持久化存储，可尝试将应用安装到桌面/主屏幕后重试');
+      if (granted) toast.success(t('toast.persistGranted'));
+      else toast.info(t('toast.persistDenied'));
     } catch {
-      toast.error('申请失败');
+      toast.error(t('toast.persistFail'));
     }
     refresh();
   };
 
   return (
     <div className="py-2.5">
-      <p className="text-sm font-medium text-ink">存储用量</p>
+      <p className="text-sm font-medium text-ink">{t('settings.storageUsage')}</p>
       {!info ? (
-        <p className="mt-2 text-xs text-ink-2">统计中…</p>
+        <p className="mt-2 text-xs text-ink-2">{t('settings.storageCounting')}</p>
       ) : (
         <div className="mt-2.5 rounded-2xl bg-surface-hi/60 px-3.5 py-3">
           <div className="flex items-baseline justify-between text-xs">
-            <span className="text-ink-2">总用量</span>
+            <span className="text-ink-2">{t('settings.storageTotal')}</span>
             <span className="font-semibold tabular-nums text-ink">
               {fmtBytes(info.usage)}
-              {info.quota > 0 && <span className="font-normal text-ink-2"> / 约 {fmtBytes(info.quota)}</span>}
+              {info.quota > 0 && <span className="font-normal text-ink-2"> {t('settings.storageQuota', { quota: fmtBytes(info.quota) })}</span>}
             </span>
           </div>
           {info.quota > 0 && (
@@ -196,18 +200,19 @@ function StorageUsage() {
             </div>
           )}
           <p className="mt-2 text-[11px] text-ink-2">
-            其中录音音频：<span className="tabular-nums text-ink">{info.audioCount}</span> 段 · {fmtBytes(info.audioBytes)}
+            {t('settings.storageAudio', { count: info.audioCount, size: fmtBytes(info.audioBytes) })}
           </p>
           <div className="mt-2.5 flex items-center justify-between gap-3">
             <span className="text-[11px] leading-snug text-ink-2">
-              持久化存储：{persisted == null ? '未知' : persisted ? '已开启' : '未开启，空间紧张时浏览器可能清理数据'}
+              {t('settings.storagePersisted')}
+              {persisted == null ? t('settings.persistedUnknown') : persisted ? t('settings.persistedOn') : t('settings.persistedOff')}
             </span>
             {persisted === false && (
               <button
                 onClick={requestPersist}
                 className="shrink-0 text-xs font-medium text-accent transition-opacity hover:opacity-70"
               >
-                申请开启
+                {t('settings.requestPersist')}
               </button>
             )}
           </div>
@@ -249,7 +254,7 @@ function ConnectGithubDialog({
     setCode(null);
     setDone(false);
     if (!clientId) {
-      setError('请先在上方填写 Client ID');
+      setError(t('settings.ghClientIdMissing'));
       return;
     }
     void (async () => {
@@ -279,21 +284,21 @@ function ConnectGithubDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-3xl border-0 bg-card sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-ink">连接 GitHub</DialogTitle>
+          <DialogTitle className="text-ink">{t('settings.ghDialogTitle')}</DialogTitle>
         </DialogHeader>
         {error ? (
           <p className="rounded-xl bg-red-500/10 px-3.5 py-3 text-xs leading-relaxed text-red-500">{error}</p>
         ) : done ? (
-          <p className="py-6 text-center text-sm font-medium text-ink">已连接，授权信息仅保存在本机</p>
+          <p className="py-6 text-center text-sm font-medium text-ink">{t('settings.ghDeviceDone')}</p>
         ) : code ? (
           <div className="flex flex-col items-center gap-3.5 py-1">
-            <p className="text-xs text-ink-2">在打开的 GitHub 页面输入以下代码完成授权</p>
+            <p className="text-xs text-ink-2">{t('settings.ghDeviceStep')}</p>
             <button
               onClick={() => {
-                void navigator.clipboard?.writeText(code.userCode).then(() => toast.success('已复制'));
+                void navigator.clipboard?.writeText(code.userCode).then(() => toast.success(t('toast.copied')));
               }}
               className="rounded-2xl bg-surface-hi px-6 py-3 font-mono text-3xl font-bold tracking-[0.28em] text-ink transition-transform active:scale-95"
-              title="点击复制"
+              title={t('settings.ghDeviceCopyTitle')}
             >
               {code.userCode}
             </button>
@@ -303,15 +308,15 @@ function ConnectGithubDialog({
               rel="noreferrer"
               className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-on-accent transition-opacity hover:opacity-90"
             >
-              打开 github.com/login/device
+              {t('settings.ghDeviceOpen')}
             </a>
             <p className="flex items-center gap-1.5 text-[11px] text-ink-2">
               <span className="size-1.5 animate-pulse rounded-full bg-accent" />
-              等待授权中…
+              {t('settings.ghDeviceWaiting')}
             </p>
           </div>
         ) : (
-          <p className="py-6 text-center text-xs text-ink-2">正在请求设备码…</p>
+          <p className="py-6 text-center text-xs text-ink-2">{t('settings.ghDeviceRequesting')}</p>
         )}
       </DialogContent>
     </Dialog>
@@ -319,6 +324,7 @@ function ConnectGithubDialog({
 }
 
 export function SettingsPage() {
+  useI18n();
   const install = usePwaInstall();
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
@@ -330,6 +336,7 @@ export function SettingsPage() {
   const zipInputRef = useRef<HTMLInputElement>(null);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [zipBusy, setZipBusy] = useState(false);
+  const [labsOpen, setLabsOpen] = useState(false);
   // GitHub 云备份
   const [ghLogin, setGhLogin] = useState<string | null>(null);
   const [ghChecking, setGhChecking] = useState(true);
@@ -347,35 +354,39 @@ export function SettingsPage() {
 
   const setHue = (hue: number) => {
     updateSettings({ hue });
-    applyTheme(hue);
+    const dark = settings.theme === 'dark'
+      || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    applyTheme(hue, dark);
   };
 
   const update = (patch: Partial<AppSettings>) => updateSettings(patch);
 
-  /** 导出全部记录的统计摘要 CSV */
-  const exportSummaryCsv = () => {
-    if (records.length === 0) {
-      toast.info('暂无历史记录可导出');
+  /** 导出全部记录的统计摘要 CSV（IndexedDB 全量，不受界面截断影响） */
+  const exportSummaryCsv = async () => {
+    const all = await useHistoryStore.getState().getAllRecords();
+    if (all.length === 0) {
+      toast.info(t('toast.nothingToExport'));
       return;
     }
     downloadText(
       `voice-summary-${new Date().toISOString().slice(0, 10)}.csv`,
-      recordsToSummaryCsv(records),
+      recordsToSummaryCsv(all),
     );
-    toast.success(`已导出 ${records.length} 条记录的汇总`);
+    toast.success(t('toast.csvExported', { n: all.length }));
   };
 
-  /** 导出全部记录为 JSON */
-  const exportData = () => {
-    if (records.length === 0) {
-      toast.info('暂无历史记录可导出');
+  /** 导出全部记录为 JSON（IndexedDB 全量，不受界面截断影响） */
+  const exportData = async () => {
+    const all = await useHistoryStore.getState().getAllRecords();
+    if (all.length === 0) {
+      toast.info(t('toast.nothingToExport'));
       return;
     }
     const payload = {
       app: 'simple-voice-tools',
       version: 1,
       exportedAt: new Date().toISOString(),
-      records,
+      records: all,
     };
     const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -386,7 +397,7 @@ export function SettingsPage() {
     a.download = `voice-records-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`已导出 ${records.length} 条记录`);
+    toast.success(t('toast.jsonExported', { n: all.length }));
   };
 
   /** 从 JSON 文件导入记录 */
@@ -400,10 +411,10 @@ export function SettingsPage() {
         const incoming = Array.isArray(parsed) ? parsed : parsed.records;
         if (!Array.isArray(incoming)) throw new Error('bad format');
         const added = importRecords(incoming as never);
-        if (added > 0) toast.success(`成功导入 ${added} 条记录`);
-        else toast.info('没有新的记录（可能已存在）');
+        if (added > 0) toast.success(t('toast.imported', { n: added }));
+        else toast.info(t('toast.importedNone'));
       } catch {
-        toast.error('导入失败：文件格式不正确');
+        toast.error(t('toast.importFail'));
       }
     };
     reader.readAsText(file);
@@ -415,11 +426,11 @@ export function SettingsPage() {
     setZipBusy(true);
     try {
       const res = await exportFullBackup();
-      if (res.records === 0) toast.info('暂无历史记录可导出');
-      else toast.success(`已备份 ${res.records} 条记录、${res.audio} 段音频`);
+      if (res.records === 0) toast.info(t('toast.nothingToExport'));
+      else toast.success(t('toast.zipDone', { records: res.records, audio: res.audio }));
     } catch (err) {
       console.error(err);
-      toast.error('备份打包失败');
+      toast.error(t('toast.zipFail'));
     } finally {
       setZipBusy(false);
     }
@@ -430,12 +441,12 @@ export function SettingsPage() {
     void (async () => {
       try {
         const res = await importFullBackup(file);
-        if (res.records > 0) toast.success(`已恢复 ${res.records} 条记录，挂载 ${res.audio} 段音频`);
-        else if (res.audio > 0) toast.info(`没有新记录，已为已有记录挂载 ${res.audio} 段音频`);
-        else toast.info('备份内容与本地数据一致');
+        if (res.records > 0) toast.success(t('toast.zipRestored', { records: res.records, audio: res.audio }));
+        else if (res.audio > 0) toast.info(t('toast.zipRestoredAudioOnly', { audio: res.audio }));
+        else toast.info(t('toast.zipSame'));
       } catch (err) {
         console.error(err);
-        toast.error('恢复失败：ZIP 文件无法解析或格式不正确');
+        toast.error(t('toast.zipFailParse'));
       }
     })();
   };
@@ -459,30 +470,30 @@ export function SettingsPage() {
 
   const onGhConnected = useCallback((login: string) => {
     setGhLogin(login);
-    toast.success(`已连接 GitHub（${login}）`);
+    toast.success(t('toast.ghConnected', { login }));
   }, []);
 
   const onGhDisconnect = () => {
     void disconnectGithub().then(() => {
       setGhLogin(null);
       setGhLastPush(null);
-      toast.success('已断开 GitHub 连接');
+      toast.success(t('toast.ghDisconnected'));
     });
   };
 
   const onGhPush = () => {
     if (ghBusy || !ghLogin) return;
     setGhBusy('push');
-    setGhProgress('准备中…');
+    setGhProgress('…');
     pushBackup(clientId, repoName, (done, total, phase) => {
       setGhProgress(total > 1 ? `${phase} ${done}/${total}` : `${phase}…`);
     })
       .then((res) => {
-        toast.success(`备份完成：${res.records} 条记录（上传 ${res.pushed} 个文件，${res.skipped} 个未变化已跳过）`);
+        toast.success(t('toast.ghPushDone', { records: res.records, pushed: res.pushed, skipped: res.skipped }));
         setGhLastPush(Date.now());
       })
       .catch((err: unknown) => {
-        toast.error(err instanceof Error ? err.message : '备份失败');
+        toast.error(err instanceof Error ? err.message : t('toast.zipFail'));
       })
       .finally(() => {
         setGhBusy(null);
@@ -493,19 +504,19 @@ export function SettingsPage() {
   const onGhPull = () => {
     if (ghBusy || !ghLogin) return;
     setGhBusy('pull');
-    setGhProgress('准备中…');
+    setGhProgress('…');
     pullBackup(clientId, repoName, (done, total, phase) => {
       setGhProgress(total > 1 ? `${phase} ${done}/${total}` : `${phase}…`);
     })
       .then((res) => {
         if (res.records > 0 || res.audio > 0) {
-          toast.success(`已合并 ${res.records} 条新记录，补齐 ${res.audio} 段音频`);
+          toast.success(t('toast.ghPullDone', { records: res.records, audio: res.audio }));
         } else {
-          toast.info('本地数据与云端一致');
+          toast.info(t('toast.ghPullSame'));
         }
       })
       .catch((err: unknown) => {
-        toast.error(err instanceof Error ? err.message : '恢复失败');
+        toast.error(err instanceof Error ? err.message : t('toast.zipFail'));
       })
       .finally(() => {
         setGhBusy(null);
@@ -513,11 +524,64 @@ export function SettingsPage() {
       });
   };
 
+  /* ------------------------------ 训练靶标 ------------------------------ */
+
+  const clampTarget = (v: string, fallback: number): number => {
+    const n = Number(v);
+    if (!isFinite(n)) return fallback;
+    return Math.max(50, Math.min(500, Math.round(n)));
+  };
+
+  const setTargetMin = (v: string) => {
+    const min = clampTarget(v, settings.targetF0Min);
+    update({ targetF0Min: Math.min(min, settings.targetF0Max - 5) });
+  };
+  const setTargetMax = (v: string) => {
+    const max = clampTarget(v, settings.targetF0Max);
+    update({ targetF0Max: Math.max(max, settings.targetF0Min + 5) });
+  };
+
+  /** 基线选择器可选项（最近 50 条） */
+  const baselineOptions = records.slice(0, 50);
+
   return (
     <div className="flex flex-col gap-3.5 pb-4">
       {/* 外观 */}
-      <SettingsSection icon={Palette} title="外观">
-        <SettingRow stacked label="主题色">
+      <SettingsSection icon={Palette} title={t('settings.appearance')}>
+        <SettingRow label={t('settings.theme')}>
+          <Select
+            value={settings.theme}
+            onValueChange={(v) => update({ theme: v as ThemeMode })}
+          >
+            <SelectTrigger className="w-32 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+              <SelectItem value="system">{t('settings.themeSystem')}</SelectItem>
+              <SelectItem value="light">{t('settings.themeLight')}</SelectItem>
+              <SelectItem value="dark">{t('settings.themeDark')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow label={t('settings.language')}>
+          <Select
+            value={settings.language}
+            onValueChange={(v) => update({ language: v as Locale })}
+          >
+            <SelectTrigger className="w-52 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+              {LOCALES.map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.label}
+                  {l.machine && <span className="ml-1.5 text-[10px] text-ink-2">{t('settings.languageMachine')}</span>}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow stacked label={t('settings.hue')}>
           <div className="flex items-center gap-3">
             <Sparkles size={14} className="shrink-0 text-ink-2" />
             <input
@@ -527,18 +591,18 @@ export function SettingsPage() {
               value={settings.hue}
               onChange={(e) => setHue(Number(e.target.value))}
               className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-red-400 via-emerald-400 to-violet-500 accent-accent"
-              aria-label="自定义色相"
+              aria-label={t('settings.hue')}
             />
             <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">{settings.hue}°</span>
           </div>
         </SettingRow>
-        <SettingRow label="图表网格辅助线">
+        <SettingRow label={t('settings.showGrid')}>
           <Switch
             checked={settings.showGrid}
             onCheckedChange={(v) => update({ showGrid: v })}
           />
         </SettingRow>
-        <SettingRow label="图表时间轴联动">
+        <SettingRow label={t('settings.syncRange')}>
           <Switch
             checked={settings.syncChartRange}
             onCheckedChange={(v) => update({ syncChartRange: v })}
@@ -547,20 +611,20 @@ export function SettingsPage() {
       </SettingsSection>
 
       {/* 录音 */}
-      <SettingsSection icon={Mic} title="录音">
-        <SettingRow label="录音结束后自动进入分析">
+      <SettingsSection icon={Mic} title={t('settings.recording')}>
+        <SettingRow label={t('settings.autoEnter')}>
           <Switch
             checked={settings.autoEnterAnalysis}
             onCheckedChange={(v) => update({ autoEnterAnalysis: v })}
           />
         </SettingRow>
-        <SettingRow label="保存录音音频">
+        <SettingRow label={t('settings.audioSave')}>
           <Switch
             checked={settings.audioSave}
             onCheckedChange={(v) => update({ audioSave: v })}
           />
         </SettingRow>
-        <SettingRow label="最长录音时长">
+        <SettingRow label={t('settings.maxDuration')}>
           <Select
             value={String(settings.maxDurationSec)}
             onValueChange={(v) => update({ maxDurationSec: Number(v) })}
@@ -569,27 +633,92 @@ export function SettingsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
-              <SelectItem value="30">30 秒</SelectItem>
-              <SelectItem value="60">1 分钟</SelectItem>
-              <SelectItem value="120">2 分钟</SelectItem>
-              <SelectItem value="300">5 分钟</SelectItem>
-              <SelectItem value="0">不限制</SelectItem>
+              <SelectItem value="30">{t('settings.dur30')}</SelectItem>
+              <SelectItem value="60">{t('settings.dur60')}</SelectItem>
+              <SelectItem value="120">{t('settings.dur120')}</SelectItem>
+              <SelectItem value="300">{t('settings.dur300')}</SelectItem>
+              <SelectItem value="0">{t('settings.durUnlimited')}</SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>
-        <SettingRow label="麦克风设备">
+        <SettingRow label={t('settings.mic')}>
           <Select
             value={settings.micDeviceId || 'default'}
             onValueChange={(v) => update({ micDeviceId: v === 'default' ? '' : v })}
           >
             <SelectTrigger className="w-52 max-w-full overflow-hidden border-0 bg-transparent px-0 text-sm shadow-none [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:flex-1 [&_[data-slot=select-value]]:truncate">
-              <SelectValue placeholder="系统默认" />
+              <SelectValue placeholder={t('settings.micDefault')} />
             </SelectTrigger>
             <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
-              <SelectItem value="default">系统默认</SelectItem>
+              <SelectItem value="default">{t('settings.micDefault')}</SelectItem>
               {mics.map((mic, i) => (
                 <SelectItem key={mic.deviceId} value={mic.deviceId}>
-                  <span className="max-w-52 truncate">{mic.label || `麦克风 ${i + 1}`}</span>
+                  <span className="max-w-52 truncate">{mic.label || `${t('settings.mic')} ${i + 1}`}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+      </SettingsSection>
+
+      {/* 训练 */}
+      <SettingsSection icon={Target} title={t('settings.training')}>
+        <SettingRow label={t('settings.targetEnable')} desc={t('settings.targetDesc')}>
+          <Switch
+            checked={settings.targetEnabled}
+            onCheckedChange={(v) => update({ targetEnabled: v })}
+          />
+        </SettingRow>
+        {settings.targetEnabled && (
+          <SettingRow stacked label={t('settings.targetRange')}>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={50}
+                max={500}
+                value={settings.targetF0Min}
+                onChange={(e) => setTargetMin(e.target.value)}
+                className="w-24 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+                aria-label={t('settings.targetRange')}
+              />
+              <span className="text-ink-2">–</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={50}
+                max={500}
+                value={settings.targetF0Max}
+                onChange={(e) => setTargetMax(e.target.value)}
+                className="w-24 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+                aria-label={t('settings.targetRange')}
+              />
+              <span className="text-xs text-ink-2">Hz</span>
+            </div>
+          </SettingRow>
+        )}
+        <SettingRow
+          label={t('settings.baseline')}
+          desc={t('settings.baselineDesc')}
+          stacked
+        >
+          <Select
+            value={settings.baselineRecordId ?? 'none'}
+            onValueChange={(v) => update({ baselineRecordId: v === 'none' ? undefined : v })}
+          >
+            <SelectTrigger className="w-full border border-black/10 bg-surface-hi px-3 text-sm shadow-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+              <SelectItem value="none">{t('settings.baselineNone')}</SelectItem>
+              {baselineOptions.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  <span className="max-w-64 truncate">
+                    {new Date(r.createdAt).toLocaleString(localeTag(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {' · '}
+                    {r.stats.avgF0.toFixed(1)} Hz
+                    {r.note ? ` · ${r.note}` : ''}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -598,25 +727,25 @@ export function SettingsPage() {
       </SettingsSection>
 
       {/* 数据管理 */}
-      <SettingsSection icon={DatabaseBackup} title="数据管理">
+      <SettingsSection icon={DatabaseBackup} title={t('settings.data')}>
         <StorageUsage />
-        <SettingRow label="完整备份（ZIP）">
+        <SettingRow label={t('settings.zipBackup')}>
           <button
             onClick={exportZip}
             disabled={zipBusy}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
           >
             <Archive size={14} />
-            {zipBusy ? '打包中…' : '导出'}
+            {zipBusy ? t('settings.zipPacking') : t('common.export')}
           </button>
         </SettingRow>
-        <SettingRow label="从 ZIP 恢复">
+        <SettingRow label={t('settings.zipRestore')}>
           <button
             onClick={() => zipInputRef.current?.click()}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
           >
             <Upload size={14} />
-            恢复
+            {t('common.restore')}
           </button>
           <input
             ref={zipInputRef}
@@ -630,31 +759,31 @@ export function SettingsPage() {
             }}
           />
         </SettingRow>
-        <SettingRow label="导出历史记录">
+        <SettingRow label={t('settings.exportJson')}>
           <button
             onClick={exportData}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
           >
             <Download size={14} />
-            导出
+            {t('common.export')}
           </button>
         </SettingRow>
-        <SettingRow label="导出汇总 CSV">
+        <SettingRow label={t('settings.exportCsv')}>
           <button
             onClick={exportSummaryCsv}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
           >
             <FileSpreadsheet size={14} />
-            导出
+            {t('common.export')}
           </button>
         </SettingRow>
-        <SettingRow label="导入历史记录">
+        <SettingRow label={t('settings.importJson')}>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
           >
             <Upload size={14} />
-            导入
+            {t('common.import')}
           </button>
           <input
             ref={fileInputRef}
@@ -668,46 +797,46 @@ export function SettingsPage() {
             }}
           />
         </SettingRow>
-        <SettingRow label="载入示例数据">
+        <SettingRow label={t('settings.loadDemo')}>
           <button
             onClick={() => {
               const demo = createDemoRecord();
               useHistoryStore.getState().addRecord(demo);
               setCurrentAnalysis(demo);
-              toast.success('已载入示例数据，可在历史与分析中查看');
+              toast.success(t('toast.demoLoaded'));
             }}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-ink-2 transition-opacity hover:opacity-70"
           >
             <Eraser size={14} />
-            载入
+            {t('settings.loadDemoAction')}
           </button>
         </SettingRow>
-        <SettingRow label="清空全部历史记录">
+        <SettingRow label={t('settings.clearAll')}>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-red-500 transition-opacity hover:opacity-70">
                 <Trash2 size={14} />
-                清空
+                {t('settings.clearAllAction')}
               </button>
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl border-0 bg-card">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-ink">确认清空全部历史记录？</AlertDialogTitle>
+                <AlertDialogTitle className="text-ink">{t('settings.clearTitle')}</AlertDialogTitle>
                 <AlertDialogDescription className="text-ink-2">
-                  共 {records.length} 条记录将被永久删除，此操作不可恢复。建议先导出备份。
+                  {t('settings.clearDesc', { n: records.length })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-none border-0 bg-transparent text-sm font-medium text-ink-2 shadow-none">取消</AlertDialogCancel>
+                <AlertDialogCancel className="rounded-none border-0 bg-transparent text-sm font-medium text-ink-2 shadow-none">{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
                     clearAll();
                     setCurrentAnalysis(null);
-                    toast.success('已清空全部历史记录');
+                    toast.success(t('settings.clearDone'));
                   }}
                   className="rounded-none bg-red-500 text-sm text-white hover:bg-red-500/90"
                 >
-                  确认清空
+                  {t('settings.clearConfirm')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -715,106 +844,122 @@ export function SettingsPage() {
         </SettingRow>
       </SettingsSection>
 
-      {/* GitHub 云备份 */}
-      <SettingsSection icon={Cloud} title="GitHub 云备份">
-        <SettingRow stacked label="Client ID">
-          <input
-            value={settings.githubClientId ?? ''}
-            onChange={(e) => update({ githubClientId: e.target.value.trim() })}
-            placeholder="例如 Iv23li…（GitHub App）或一串十六进制（OAuth App）"
-            spellCheck={false}
-            autoComplete="off"
-            className="w-full rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
-          />
-        </SettingRow>
-        <SettingRow label="仓库名">
-          <input
-            value={settings.githubRepo ?? ''}
-            onChange={(e) => update({ githubRepo: e.target.value.trim() })}
-            placeholder={DEFAULT_REPO}
-            spellCheck={false}
-            autoComplete="off"
-            className="w-40 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
-          />
-        </SettingRow>
-        <SettingRow
-          label="连接状态"
-          desc={ghChecking ? '检查中…' : ghLogin ? `已连接 ${ghLogin}` : '未连接'}
+      {/* 实验性功能 */}
+      <SettingsSection icon={FlaskConical} title={t('settings.labs')}>
+        <p className="pb-1 text-[11px] text-ink-2">{t('settings.labsDesc')}</p>
+        <button
+          onClick={() => setLabsOpen(!labsOpen)}
+          className="flex w-full items-center justify-between border-t border-black/[0.04] py-2.5 text-left"
+          aria-expanded={labsOpen}
         >
-          {ghChecking ? undefined : ghLogin ? (
-            <button
-              onClick={onGhDisconnect}
-              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-ink-2 transition-opacity hover:opacity-70"
+          <span className="flex items-center gap-2 text-sm font-medium text-ink">
+            <Cloud size={14} className="text-accent" />
+            {t('settings.ghTitle')}
+          </span>
+          <ChevronRight size={15} className={cn('text-ink-2 transition-transform', labsOpen && 'rotate-90')} />
+        </button>
+        {labsOpen && (
+          <div className="flex flex-col gap-0.5 border-t border-black/[0.04]">
+            <SettingRow stacked label={t('settings.ghClientId')}>
+              <input
+                value={settings.githubClientId ?? ''}
+                onChange={(e) => update({ githubClientId: e.target.value.trim() })}
+                placeholder={t('settings.ghClientIdPlaceholder')}
+                spellCheck={false}
+                autoComplete="off"
+                className="w-full rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
+              />
+            </SettingRow>
+            <SettingRow label={t('settings.ghRepo')}>
+              <input
+                value={settings.githubRepo ?? ''}
+                onChange={(e) => update({ githubRepo: e.target.value.trim() })}
+                placeholder={DEFAULT_REPO}
+                spellCheck={false}
+                autoComplete="off"
+                className="w-40 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
+              />
+            </SettingRow>
+            <SettingRow
+              label={t('settings.ghStatus')}
+              desc={ghChecking ? t('settings.ghChecking') : ghLogin ? t('settings.ghConnected', { login: ghLogin }) : t('settings.ghNotConnected')}
             >
-              <Unlink size={14} />
-              断开
-            </button>
-          ) : (
-            <button
-              onClick={() => setConnectOpen(true)}
-              disabled={!clientId}
-              className={cn(
-                'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
-                clientId ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+              {ghChecking ? undefined : ghLogin ? (
+                <button
+                  onClick={onGhDisconnect}
+                  className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-ink-2 transition-opacity hover:opacity-70"
+                >
+                  <Unlink size={14} />
+                  {t('common.disconnect')}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setConnectOpen(true)}
+                  disabled={!clientId}
+                  className={cn(
+                    'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+                    clientId ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+                  )}
+                >
+                  <Link2 size={14} />
+                  {t('common.connect')}
+                </button>
               )}
+            </SettingRow>
+            <SettingRow
+              label={t('settings.ghPush')}
+              desc={
+                ghBusy === 'push'
+                  ? ghProgress || '…'
+                  : ghLastPush
+                    ? t('settings.ghLastPush', { time: new Date(ghLastPush).toLocaleString(localeTag(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
+                    : undefined
+              }
             >
-              <Link2 size={14} />
-              连接
-            </button>
-          )}
-        </SettingRow>
-        <SettingRow
-          label="备份到 GitHub"
-          desc={
-            ghBusy === 'push'
-              ? ghProgress || '准备中…'
-              : ghLastPush
-                ? `上次备份 ${new Date(ghLastPush).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                : undefined
-          }
-        >
-          <button
-            onClick={onGhPush}
-            disabled={!ghLogin || ghBusy != null}
-            className={cn(
-              'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
-              ghLogin && ghBusy == null ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
-            )}
-          >
-            <CloudUpload size={14} />
-            {ghBusy === 'push' ? '备份中…' : '立即备份'}
-          </button>
-        </SettingRow>
-        <SettingRow
-          label="从 GitHub 恢复"
-          desc={ghBusy === 'pull' ? ghProgress || '准备中…' : undefined}
-        >
-          <button
-            onClick={onGhPull}
-            disabled={!ghLogin || ghBusy != null}
-            className={cn(
-              'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
-              ghLogin && ghBusy == null ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
-            )}
-          >
-            <CloudDownload size={14} />
-            {ghBusy === 'pull' ? '恢复中…' : '恢复'}
-          </button>
-        </SettingRow>
+              <button
+                onClick={onGhPush}
+                disabled={!ghLogin || ghBusy != null}
+                className={cn(
+                  'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+                  ghLogin && ghBusy == null ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+                )}
+              >
+                <CloudUpload size={14} />
+                {ghBusy === 'push' ? t('settings.ghPushing') : t('settings.ghPushNow')}
+              </button>
+            </SettingRow>
+            <SettingRow
+              label={t('settings.ghPull')}
+              desc={ghBusy === 'pull' ? ghProgress || '…' : undefined}
+            >
+              <button
+                onClick={onGhPull}
+                disabled={!ghLogin || ghBusy != null}
+                className={cn(
+                  'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+                  ghLogin && ghBusy == null ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+                )}
+              >
+                <CloudDownload size={14} />
+                {ghBusy === 'pull' ? t('settings.ghRestoring') : t('common.restore')}
+              </button>
+            </SettingRow>
+          </div>
+        )}
       </SettingsSection>
 
       {/* 应用（PWA） */}
-      <SettingsSection icon={Smartphone} title="应用">
-        <SettingRow label="安装为桌面应用">
+      <SettingsSection icon={Smartphone} title={t('settings.app')}>
+        <SettingRow label={t('settings.install')}>
           <button
             type="button"
             onClick={async () => {
               if (install.canInstall) {
                 const outcome = await promptInstall();
-                if (outcome === 'dismissed') toast.info('已取消安装');
-                else if (outcome === 'unavailable') toast.info('当前环境不支持一键安装');
+                if (outcome === 'dismissed') toast.info(t('toast.installDismissed'));
+                else if (outcome === 'unavailable') toast.info(t('toast.installUnavailable'));
               } else {
-                toast.info('请在浏览器地址栏点击「安装应用」图标，或在浏览器菜单选择「添加到主屏幕」（iOS Safari）。需在 HTTPS 部署环境（生产页面）下使用，本地开发服务器不提供安装入口。');
+                toast.info(t('settings.installManualHint'));
               }
             }}
             disabled={install.standalone}
@@ -824,32 +969,25 @@ export function SettingsPage() {
             )}
           >
             <Download size={14} />
-            {install.standalone ? '已安装' : install.canInstall ? '一键安装' : '手动安装'}
+            {install.standalone ? t('settings.installDone') : install.canInstall ? t('settings.installOneClick') : t('settings.installManual')}
           </button>
         </SettingRow>
       </SettingsSection>
 
       {/* 关于 */}
-      <SettingsSection icon={Info} title="关于">
+      <SettingsSection icon={Info} title={t('settings.about')}>
         <div className="pt-1 text-xs leading-relaxed text-ink-2">
           <p className="text-sm font-semibold text-ink">Simple Voice Tool</p>
-          <p className="mt-1">
-            v0.4.0 — 基于 Web Audio API 的语音测试与分析工具：
-            YIN 音高检测、LPC 共振峰提取、能量分析、语谱图、
-            Jitter/Shimmer/HNR/CPPS 嗓音质量指标、元音空间散点、声域图（VRP）、
-            三种测试模式与录音回放、ZIP/GitHub 云备份。
-          </p>
-          <p className="mt-1">
-            数据默认仅保存在本机浏览器中；只有你主动使用完整备份或 GitHub 云备份时才会导出/上传。
-          </p>
+          <p className="mt-1">{t('settings.aboutVersion')}</p>
+          <p className="mt-1">{t('settings.aboutPrivacy')}</p>
         </div>
 
         {/* 文档：点击跳转到 GitHub 仓库内对应源文件 */}
         <div className="mt-2 flex flex-col text-left">
-          <p className="pb-1 text-[11px] font-medium uppercase tracking-wide text-ink-2">文档</p>
+          <p className="pb-1 text-[11px] font-medium uppercase tracking-wide text-ink-2">{t('settings.docs')}</p>
           {DOC_ENTRIES.map((doc) => (
             <a
-              key={doc.title}
+              key={doc.titleKey}
               href={`${DOC_BASE_URL}/${doc.file}`}
               target="_blank"
               rel="noreferrer"
@@ -858,8 +996,8 @@ export function SettingsPage() {
               <span className="flex min-w-0 items-center gap-2 text-left">
                 <BookOpen size={14} className="shrink-0 text-accent" />
                 <span className="truncate">
-                  {doc.title}
-                  <span className="ml-2 text-[11px] font-normal text-ink-2">{doc.desc}</span>
+                  {t(doc.titleKey)}
+                  <span className="ml-2 text-[11px] font-normal text-ink-2">{t(doc.descKey)}</span>
                 </span>
               </span>
               <ChevronRight size={15} className="shrink-0 text-ink-2" />

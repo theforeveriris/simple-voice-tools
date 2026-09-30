@@ -5,6 +5,7 @@
  */
 
 import { BAND_COLORS, BAND_RANGES, PITCH_AXIS, ENERGY_AXIS, FORMANT_AXIS, VOWEL_AXIS_F1, VOWEL_AXIS_F2, VOWEL_REFS, VRP_NOTE_MIN, VRP_NOTE_MAX, freqToNote } from '@/constants';
+import { t } from '@/i18n';
 import type { PitchBand } from '@/types';
 
 /**
@@ -161,15 +162,47 @@ export function drawPitchBands(
   }
   ctx.globalAlpha = 1;
 
-  // 区间分界虚线
+  // 区间分界虚线（颜色取自主题，深浅模式均可见）
   ctx.save();
   ctx.setLineDash(DASH);
   ctx.lineWidth = 1;
-  ctx.strokeStyle = 'rgba(60,58,70,0.18)';
+  ctx.strokeStyle = chartPalette().grid;
   for (const boundary of [BAND_RANGES.male[0], BAND_RANGES.transition[0], BAND_RANGES.female[0], BAND_RANGES.female[1]]) {
     const y = yFor(boundary);
     if (y > 8 && y < h - 8) dashedLine(ctx, 0, y, w, y);
   }
+  ctx.restore();
+}
+
+/**
+ * 训练靶标目标带：半透明主题色带 + 上下边界虚线
+ * 绘制在音区背景之上、曲线之下
+ */
+export function drawTargetBand(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  target: [number, number],
+  yFor: (f: number) => number,
+): void {
+  const pal = chartPalette();
+  const yTop = yFor(target[1]);
+  const yBot = yFor(target[0]);
+  if (yBot <= 0 || yTop >= h) return;
+  ctx.save();
+  ctx.globalAlpha = 0.14;
+  ctx.fillStyle = pal.accent;
+  ctx.fillRect(0, Math.max(0, yTop), w, Math.min(h, yBot) - Math.max(0, yTop));
+  ctx.globalAlpha = 0.85;
+  ctx.strokeStyle = pal.accent;
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, yTop);
+  ctx.lineTo(w, yTop);
+  ctx.moveTo(0, yBot);
+  ctx.lineTo(w, yBot);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -563,7 +596,7 @@ export function drawVrpHeatmap(p: PaintContext, series: SeriesLike): void {
       ctx.font = '11px "Inter Tight", system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('该区间内没有可绘制的有声帧', w / 2, h / 2);
+      ctx.fillText(t('vrp.empty'), w / 2, h / 2);
       ctx.restore();
     }
     return;
@@ -607,10 +640,98 @@ export function drawVrpHeatmap(p: PaintContext, series: SeriesLike): void {
 
 export type PaintKind = 'pitch' | 'energy' | 'formant' | 'vowelSpace' | 'vrp';
 
+/** crosshair 支持查值的时间序列图表 */
+export type CrosshairKind = 'pitch' | 'energy' | 'formant';
+
+/**
+ * crosshair 查值气泡：按住图表时显示最近采样帧的 t / F0 / F1 / F2 / dB
+ */
+export function drawCrosshair(
+  kind: CrosshairKind,
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  series: SeriesLike,
+  t0: number,
+  t1: number,
+  tCross: number,
+): void {
+  const pal = chartPalette();
+  // 找最近的有值帧（含 rmsDb 的帧都算有效采样）
+  let best = -1;
+  let bestDist = Infinity;
+  for (let i = 0; i < series.t.length; i++) {
+    const tt = series.t[i];
+    if (tt < t0 || tt > t1) continue;
+    const d = Math.abs(tt - tCross);
+    if (d < bestDist) {
+      bestDist = d;
+      best = i;
+    }
+  }
+  if (best < 0 || bestDist > (t1 - t0)) return;
+
+  const x = ((series.t[best] - t0) / (t1 - t0)) * w;
+  ctx.save();
+  ctx.globalAlpha = 0.7;
+  ctx.strokeStyle = pal.textMuted;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(x, 0);
+  ctx.lineTo(x, h);
+  ctx.stroke();
+  ctx.restore();
+
+  // 气泡内容
+  const f0 = series.f0[best];
+  const lines: string[] = [formatClock(series.t[best])];
+  if (kind === 'pitch' || kind === 'formant') {
+    lines.push(`F0  ${f0 != null && isFinite(f0) ? `${f0.toFixed(1)} Hz` : '—'}`);
+  }
+  if (kind === 'formant') {
+    const f1 = series.f1[best];
+    const f2 = series.f2[best];
+    lines.push(`F1  ${f1 != null && isFinite(f1) ? `${Math.round(f1)} Hz` : '—'}`);
+    lines.push(`F2  ${f2 != null && isFinite(f2) ? `${Math.round(f2)} Hz` : '—'}`);
+  }
+  if (kind === 'pitch' || kind === 'energy') {
+    lines.push(`dB  ${series.rmsDb[best].toFixed(1)}`);
+  }
+
+  ctx.save();
+  ctx.font = '10px "Inter Tight", system-ui, sans-serif';
+  const tw = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  const padX = 8;
+  const padY = 6;
+  const lineH = 14;
+  const bw = tw + padX * 2;
+  const bh = lines.length * lineH + padY * 2 - 2;
+  // 靠近右缘时气泡放到线左侧
+  const bx = x + 10 + bw > w ? x - 10 - bw : x + 10;
+  const by = Math.max(4, Math.min(h - bh - 4, h / 2 - bh / 2));
+  ctx.fillStyle = 'rgba(30,28,40,0.88)';
+  const r = 8;
+  ctx.beginPath();
+  ctx.moveTo(bx + r, by);
+  ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+  ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+  ctx.arcTo(bx, by + bh, bx, by, r);
+  ctx.arcTo(bx, by, bx + bw, by, r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  lines.forEach((l, i) => ctx.fillText(l, bx + padX, by + padY + i * lineH));
+  ctx.restore();
+}
+
 /**
  * 绘制一帧图表
  * @param kind 图表类型
  * @param playheadT 播放头位置（秒），null = 不绘制
+ * @param target 训练靶标目标区间（Hz），仅音高图使用
  */
 export function paintChart(
   kind: PaintKind,
@@ -624,6 +745,7 @@ export function paintChart(
   showLabels: boolean,
   live: boolean,
   playheadT?: number | null,
+  target?: [number, number] | null,
 ): void {
   if (t1 - t0 < 1e-6 || w < 8 || h < 8) return;
   const pal = chartPalette();
@@ -634,6 +756,7 @@ export function paintChart(
     const [fMin, fMax] = PITCH_AXIS;
     const yFor = (f: number) => h - ((f - fMin) / (fMax - fMin)) * h;
     drawPitchBands(ctx, w, h, fMin, fMax, yFor);
+    if (target) drawTargetBand(ctx, w, h, target, yFor);
     drawValueGrid(p, yFor, [100, 300, 500].map((v) => ({ v, label: `${v}Hz` })));
     drawTimeGrid(p);
     drawPitchLine(p, series, xOf, yFor);

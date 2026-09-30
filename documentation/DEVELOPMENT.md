@@ -61,6 +61,7 @@ src/
 │   │   ├── voiceQuality.ts       # Jitter/Shimmer/HNR（峰检测周期序列）
 │   │   ├── cpp.ts                # CPPS（自写 FFT → 实倒谱 → 回归线基线）
 │   │   ├── spectrogram.ts        # 语谱频带量化 + base64 编解码 + magma 伪彩色
+│   │   ├── sustained.ts          # 长音指标：MPT / 音高稳定度 CV / 响度衰减斜率
 │   │   └── demo.ts               # 示例数据生成（?demo=1 / 载入示例按钮）
 │   ├── storage/
 │   │   └── idb.ts                # IndexedDB：records / audio / kv 三仓库（DB v2）
@@ -75,6 +76,13 @@ src/
 ├── store/
 │   ├── useStore.ts               # 主状态：页面/录音/当前分析/设置（持久化）
 │   └── useHistoryStore.ts        # 历史记录（持久化，含容量保护）
+├── i18n/
+│   ├── index.ts                  # 核心 t()/setLocale()/LOCALES（缺译回退 zh-CN）
+│   ├── hook.ts                   # useI18n：订阅 settings.language，渲染期同步 locale
+│   ├── zh-CN.ts                  # 简体中文词典（基准，300 键）
+│   ├── zh-TW.ts                  # 繁体中文词典
+│   ├── en.ts                     # 英语词典（机翻）
+│   └── ja.ts                     # 日语词典（机翻）
 ├── constants/index.ts            # 音高区间/主题预设/默认设置/轴范围
 └── types/index.ts                # 全部类型定义
 documentation/                    # 开发者与算法文档（本目录）
@@ -126,7 +134,12 @@ docs/                             # ⚠️ 构建产物输出目录（vite outDi
 - `--c-x-rgb`：`"r g b"` 三元组（Tailwind 颜色定义 `rgb(var(--c-x-rgb) / <alpha-value>)`，
   使 `bg-accent/35` 这类透明度修饰符可用）。
 
-应用时机：`main.tsx` 渲染前 `applyTheme(15)`（山桃红兜底）→ App 内监听设置变化重新应用；
+`applyTheme(hue, dark)` 的 `dark` 参数在 SCALE 表的浅色/深色两组 L,C 参数间切换，
+生成对应明暗模式的全套令牌，并同时写入 shadcn 的 HSL 派生变量、`colorScheme`
+与 `<meta name="theme-color">`。
+
+应用时机：`main.tsx` 渲染前读取持久化设置解析 hue 与 dark，`applyTheme(savedHue, dark)`
+（山桃红兜底）→ App 内监听设置变化（含 system 明暗）重新应用；
 `applyTheme` 完成后派发 `app:themechange` 事件，`chartPainters` 据此失效调色板缓存。
 `index.css` 的 `:root` 保留一套 hue=15 的静态回退值（首帧防闪烁）。
 新增主题相关颜色时：先在 `buildTokens` 加令牌，再到 `tailwind.config.js` 映射。

@@ -9,12 +9,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { BAND_COLORS, BAND_RANGES } from '@/constants';
 import { chartPalette } from './chartPainters';
+import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface TrendChartProps {
   records: AnalysisRecord[];
   onOpen: (record: AnalysisRecord) => void;
+  /** 同模式过滤下按时间连线（全部模式下各记录模式混杂，不连线） */
+  connectLine?: boolean;
   className?: string;
 }
 
@@ -56,6 +59,7 @@ function drawTrend(
   canvas: HTMLCanvasElement,
   records: AnalysisRecord[],
   selectedId: string | null,
+  connectLine: boolean,
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -133,6 +137,24 @@ function drawTrend(
   }
   ctx.restore();
 
+  // 同模式连线：相邻记录的平均基频走势
+  if (connectLine && sorted.length > 1) {
+    ctx.save();
+    ctx.strokeStyle = pal.accent;
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    sorted.forEach((r, i) => {
+      const x = xOf(r.createdAt);
+      const y = yFor(r.stats.avgF0, innerH) + padT;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // P10–P90 竖条 + 平均基频圆点
   sorted.forEach((r) => {
     const x = xOf(r.createdAt);
@@ -175,7 +197,7 @@ function drawTrend(
   }
 }
 
-export function TrendChart({ records, onOpen, className }: TrendChartProps) {
+export function TrendChart({ records, onOpen, connectLine = false, className }: TrendChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -184,12 +206,12 @@ export function TrendChart({ records, onOpen, className }: TrendChartProps) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const paint = () => drawTrend(canvas, sorted, selectedId);
+    const paint = () => drawTrend(canvas, sorted, selectedId, connectLine);
     paint();
     const ro = new ResizeObserver(paint);
     ro.observe(canvas);
     return () => ro.disconnect();
-  }, [sorted, selectedId]);
+  }, [sorted, selectedId, connectLine]);
 
   // 点击 / 拖动选择最近的记录点
   const pick = (clientX: number, clientY: number): string | null => {
@@ -237,7 +259,7 @@ export function TrendChart({ records, onOpen, className }: TrendChartProps) {
       ref={canvasRef}
       className={cn('block h-[260px] w-full touch-none sm:h-[320px]', className)}
       onPointerDown={onPointerDown}
-      aria-label="历史趋势图：单击查看数值，再次单击打开记录"
+      aria-label={t('history.trendAria')}
     />
   );
 }

@@ -5,7 +5,9 @@
  * 跟随当前主题色板。优先走系统分享（Web Share API），不支持时下载。
  */
 
-import { BAND_COLORS, BAND_LABELS, bandOf } from '@/constants';
+import { BAND_COLORS, BAND_RANGES, bandOf, freqToNote } from '@/constants';
+// 该文件内 t 已被主题色板局部变量占用，i18n 翻译函数以 ti 引用
+import { t as ti } from '@/i18n';
 import type { AnalysisRecord, PitchBand } from '@/types';
 
 /** 从文档根读取当前主题色（CSS 变量） */
@@ -102,7 +104,7 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
   ctx.fillText('Hz', PAD + numW + 18, numY);
   ctx.fillStyle = t.accent;
   ctx.font = '600 44px "Inter Tight", system-ui, sans-serif';
-  ctx.fillText(freqToNoteSafe(stats.avgF0), PAD + numW + 18 + 90, numY);
+  ctx.fillText(freqToNote(stats.avgF0).name, PAD + numW + 18 + 90, numY);
 
   // 音区徽标
   const chipX = W - PAD - 240;
@@ -114,7 +116,7 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
   ctx.font = '600 30px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(BAND_LABELS[band], chipX + 120, numY - 30);
+  ctx.fillText(ti(`band.${band}`), chipX + 120, numY - 30);
 
   /* 音域标尺 */
   const rulerY = numY + 60;
@@ -155,7 +157,7 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
   }
   ctx.font = '400 24px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`音域 P10–P90：${stats.p10F0.toFixed(0)} – ${stats.p90F0.toFixed(0)} Hz`, rulerX, rulerY + rulerH + 72);
+  ctx.fillText(ti('share.rangeLine', { a: stats.p10F0.toFixed(0), b: stats.p90F0.toFixed(0) }), rulerX, rulerY + rulerH + 72);
 
   /* 迷你音高曲线 */
   const chartY = rulerY + rulerH + 110;
@@ -168,10 +170,10 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
   /* 统计网格 */
   const statY = chartY + chartH + 64;
   const items: [string, string][] = [
-    ['平均 F1', stats.avgF1 != null ? `${stats.avgF1.toFixed(0)} Hz` : '—'],
-    ['平均 F2', stats.avgF2 != null ? `${stats.avgF2.toFixed(0)} Hz` : '—'],
-    ['录音时长', `${stats.durationSec.toFixed(1)} 秒`],
-    ['平均响度', `${stats.avgDb.toFixed(1)} dB`],
+    [ti('analysis.statF1'), stats.avgF1 != null ? `${stats.avgF1.toFixed(0)} Hz` : '—'],
+    [ti('analysis.statF2'), stats.avgF2 != null ? `${stats.avgF2.toFixed(0)} Hz` : '—'],
+    [ti('analysis.statDuration'), `${stats.durationSec.toFixed(1)} ${ti('analysis.unitSec')}`],
+    [ti('analysis.statDb'), `${stats.avgDb.toFixed(1)} dB`],
   ];
   if (stats.jitterPct != null) items.push(['Jitter', `${stats.jitterPct.toFixed(2)} %`]);
   if (stats.shimmerPct != null) items.push(['Shimmer', `${stats.shimmerPct.toFixed(2)} %`]);
@@ -193,25 +195,13 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
   ctx.fillStyle = t.ink2;
   ctx.font = '400 24px "Inter Tight", system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Simple Voice Tool · 本地分析，不上传任何数据', W / 2, H - PAD + 20);
+  ctx.fillText(ti('share.footer'), W / 2, H - PAD + 20);
 
   return canvas;
 }
 
-function freqToNoteSafe(freq: number): string {
-  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  const midi = Math.round(69 + 12 * Math.log2(freq / 440));
-  return names[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
-}
-
 function bandRange(band: PitchBand): [number, number] {
-  switch (band) {
-    case 'low': return [50, 85];
-    case 'male': return [85, 165];
-    case 'transition': return [165, 180];
-    case 'female': return [180, 255];
-    case 'high': return [255, 520];
-  }
+  return BAND_RANGES[band];
 }
 
 /** 迷你音高曲线（分区间着色） */
@@ -280,7 +270,7 @@ export async function exportShareImage(record: AnalysisRecord): Promise<'shared'
   const file = new File([blob], filename, { type: 'image/png' });
 
   if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: 'Simple Voice Tool · 分析报告' });
+    await navigator.share({ files: [file], title: ti('share.shareTitle') });
     return 'shared';
   }
   const url = URL.createObjectURL(blob);

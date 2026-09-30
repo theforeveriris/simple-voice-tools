@@ -9,6 +9,18 @@
 export type ViewType = 'test' | 'analysis' | 'history' | 'settings';
 
 /**
+ * 界面语言
+ * zh-CN 为原始文案；zh-TW/en/ja 为翻译（en/ja 为机器翻译）
+ */
+export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja';
+
+/**
+ * 主题模式
+ * system 跟随系统深浅色偏好
+ */
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+/**
  * 测试模式
  * 短按录音圆球使用当前模式（默认朗读，记住上次选择），
  * 长按圆球弹出扇形选择器切换。
@@ -91,6 +103,8 @@ export interface VoiceStats {
   hnrDb?: number | null;
   /** 平滑倒谱峰突出度 CPPS（dB），对连续语音稳健的嗓音质量指标，需录音音频，旧记录为 undefined */
   cppsDb?: number | null;
+  /** 训练靶标达成率：落在目标音高区间内的有声帧占比（%），未启用靶标时为 undefined */
+  inTargetPct?: number | null;
 }
 
 /**
@@ -132,6 +146,10 @@ export interface AnalysisRecord {
 export interface AppSettings {
   /** 莫奈主题种子色相（0-360） */
   hue: number;
+  /** 主题深浅模式，system 跟随系统 */
+  theme: ThemeMode;
+  /** 界面语言 */
+  language: Locale;
   /** 是否显示图表网格辅助线 */
   showGrid: boolean;
   /** 单次录音最长时长（秒），0 = 不限制 */
@@ -150,4 +168,12 @@ export interface AppSettings {
   githubClientId?: string;
   /** GitHub 云备份：目标私有仓库名 */
   githubRepo?: string;
+  /** 训练靶标：是否启用目标音高区间（测试页叠加目标带 + 达成率统计） */
+  targetEnabled: boolean;
+  /** 训练靶标：目标区间下限（Hz） */
+  targetF0Min: number;
+  /** 训练靶标：目标区间上限（Hz） */
+  targetF0Max: number;
+  /** 基线记录 id：分析页自动对比新记录与基线的 Δ 指标 */
+  baselineRecordId?: string;
 }

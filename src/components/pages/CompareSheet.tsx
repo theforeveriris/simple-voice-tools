@@ -7,8 +7,10 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X, TrendingUp } from 'lucide-react';
-import { BAND_COLORS, BAND_RANGES, BAND_LABELS, bandOf, MODE_META } from '@/constants';
+import { BAND_COLORS, BAND_RANGES, bandOf } from '@/constants';
 import { chartPalette, collectVowelPoints, drawVowelSpaceFrame, drawVowelPoints, drawVowelCentroid, drawVowelRefs, vowelXY } from '@/components/charts/chartPainters';
+import { t } from '@/i18n';
+import { useI18n } from '@/i18n/hook';
 import { useStore } from '@/store/useStore';
 import type { AnalysisRecord } from '@/types';
 
@@ -149,6 +151,7 @@ export function CompareSheet({
   pair: [AnalysisRecord, AnalysisRecord];
   onClose: () => void;
 }) {
+  useI18n();
   const [a, b] = pair;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const showGrid = useStore((s) => s.settings.showGrid);
@@ -188,13 +191,13 @@ export function CompareSheet({
   const hasVowel = sA.avgF1 != null || sB.avgF1 != null;
 
   const rows: [string, string, string, string][] = [
-    ['平均基频', `${sA.avgF0.toFixed(1)} Hz`, `${sB.avgF0.toFixed(1)} Hz`, `${deltaText(sA.avgF0, sB.avgF0)} Hz`],
-    ['中位基频', `${sA.medianF0.toFixed(1)} Hz`, `${sB.medianF0.toFixed(1)} Hz`, `${deltaText(sA.medianF0, sB.medianF0)} Hz`],
-    ['音域 P10–P90', `${sA.p10F0.toFixed(0)}–${sA.p90F0.toFixed(0)}`, `${sB.p10F0.toFixed(0)}–${sB.p90F0.toFixed(0)}`, `${deltaText(sA.p10F0, sB.p10F0, 0)} / ${deltaText(sA.p90F0, sB.p90F0, 0)} Hz`],
-    ['基频标准差', `${sA.stdF0.toFixed(1)} Hz`, `${sB.stdF0.toFixed(1)} Hz`, `${deltaText(sA.stdF0, sB.stdF0)} Hz`],
-    ['平均 F1', sA.avgF1 != null ? `${sA.avgF1.toFixed(0)} Hz` : '—', sB.avgF1 != null ? `${sB.avgF1.toFixed(0)} Hz` : '—', `${deltaText(sA.avgF1, sB.avgF1, 0)} Hz`],
-    ['平均 F2', sA.avgF2 != null ? `${sA.avgF2.toFixed(0)} Hz` : '—', sB.avgF2 != null ? `${sB.avgF2.toFixed(0)} Hz` : '—', `${deltaText(sA.avgF2, sB.avgF2, 0)} Hz`],
-    ['平均响度', `${sA.avgDb.toFixed(1)} dB`, `${sB.avgDb.toFixed(1)} dB`, `${deltaText(sA.avgDb, sB.avgDb)} dB`],
+    [t('analysis.rowAvgF0'), `${sA.avgF0.toFixed(1)} Hz`, `${sB.avgF0.toFixed(1)} Hz`, `${deltaText(sA.avgF0, sB.avgF0)} Hz`],
+    [t('compare.medianF0'), `${sA.medianF0.toFixed(1)} Hz`, `${sB.medianF0.toFixed(1)} Hz`, `${deltaText(sA.medianF0, sB.medianF0)} Hz`],
+    [t('compare.rangeP10P90'), `${sA.p10F0.toFixed(0)}–${sA.p90F0.toFixed(0)}`, `${sB.p10F0.toFixed(0)}–${sB.p90F0.toFixed(0)}`, `${deltaText(sA.p10F0, sB.p10F0, 0)} / ${deltaText(sA.p90F0, sB.p90F0, 0)} Hz`],
+    [t('compare.stdF0'), `${sA.stdF0.toFixed(1)} Hz`, `${sB.stdF0.toFixed(1)} Hz`, `${deltaText(sA.stdF0, sB.stdF0)} Hz`],
+    [t('analysis.rowAvgF1'), sA.avgF1 != null ? `${sA.avgF1.toFixed(0)} Hz` : '—', sB.avgF1 != null ? `${sB.avgF1.toFixed(0)} Hz` : '—', `${deltaText(sA.avgF1, sB.avgF1, 0)} Hz`],
+    [t('analysis.rowAvgF2'), sA.avgF2 != null ? `${sA.avgF2.toFixed(0)} Hz` : '—', sB.avgF2 != null ? `${sB.avgF2.toFixed(0)} Hz` : '—', `${deltaText(sA.avgF2, sB.avgF2, 0)} Hz`],
+    [t('compare.avgDb'), `${sA.avgDb.toFixed(1)} dB`, `${sB.avgDb.toFixed(1)} dB`, `${deltaText(sA.avgDb, sB.avgDb)} dB`],
     ...(hasVQ
       ? ([
           ['Jitter', sA.jitterPct != null ? `${sA.jitterPct.toFixed(2)}%` : '—', sB.jitterPct != null ? `${sB.jitterPct.toFixed(2)}%` : '—', `${deltaText(sA.jitterPct, sB.jitterPct, 2)}%`],
@@ -218,12 +221,12 @@ export function CompareSheet({
         <div className="flex items-center justify-between">
           <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-ink">
             <TrendingUp size={19} className="text-accent" />
-            记录对比
+            {t('compare.title')}
           </h1>
           <button
             onClick={onClose}
             className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-ink"
-            aria-label="关闭对比"
+            aria-label={t('compare.closeAria')}
           >
             <X size={18} />
           </button>
@@ -240,7 +243,7 @@ export function CompareSheet({
                 <span className="min-w-0 text-xs text-ink-2">{fmtDate(rec.createdAt)}</span>
                 {rec.mode && (
                   <span className="shrink-0 whitespace-nowrap rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-                    {MODE_META[rec.mode].label}
+                    {t(`mode.${rec.mode}`)}
                   </span>
                 )}
               </div>
@@ -248,7 +251,7 @@ export function CompareSheet({
                 {rec.stats.avgF0.toFixed(1)}
                 <span className="ml-1 text-xs font-normal text-ink-2">Hz</span>
               </p>
-              <p className="truncate text-[11px] text-ink-2">{rec.note || `时长 ${rec.stats.durationSec.toFixed(1)} 秒`}</p>
+              <p className="truncate text-[11px] text-ink-2">{rec.note || t('compare.durationNote', { n: rec.stats.durationSec.toFixed(1) })}</p>
             </div>
           ))}
         </div>
@@ -256,29 +259,29 @@ export function CompareSheet({
         {/* 叠加曲线 */}
         <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
           <div className="mb-1.5 flex items-center justify-between px-0.5">
-            <span className="text-xs font-medium tracking-wide text-ink-2">音高曲线（按相对时长对齐）</span>
+            <span className="text-xs font-medium tracking-wide text-ink-2">{t('compare.overlayTitle')}</span>
             <div className="flex items-center gap-3 text-[11px] text-ink-2">
               <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" />A</span>
               <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />B</span>
             </div>
           </div>
-          <canvas ref={canvasRef} className="block h-[220px] w-full sm:h-[280px]" aria-label="对比音高曲线" />
-          {!showGrid && <p className="mt-1 text-center text-[10px] text-ink-2">设置中开启网格辅助线可显示音区刻度</p>}
+          <canvas ref={canvasRef} className="block h-[220px] w-full sm:h-[280px]" aria-label={t('compare.overlayAria')} />
+          {!showGrid && <p className="mt-1 text-center text-[10px] text-ink-2">{t('compare.gridHint')}</p>}
         </div>
 
         {/* 元音空间叠加（任一记录有共振峰数据时显示） */}
         {hasVowel && (
           <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
             <div className="mb-1.5 flex items-center justify-between px-0.5">
-              <span className="text-xs font-medium tracking-wide text-ink-2">元音空间（F1 × F2）</span>
+              <span className="text-xs font-medium tracking-wide text-ink-2">{t('compare.vowelTitle')}</span>
               <div className="flex items-center gap-3 text-[11px] text-ink-2">
                 <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" />A</span>
                 <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />B</span>
               </div>
             </div>
-            <canvas ref={vowelCanvasRef} className="block h-[240px] w-full sm:h-[300px]" aria-label="对比元音空间散点" />
+            <canvas ref={vowelCanvasRef} className="block h-[240px] w-full sm:h-[300px]" aria-label={t('compare.vowelAria')} />
             <p className="mt-1 text-center text-[10px] text-ink-2">
-              越靠左舌位越前，越靠上开口越小；× 为各自散点质心，虚线圈为参考元音 i / a / u
+              {t('compare.vowelHint')}
             </p>
           </div>
         )}
@@ -288,10 +291,10 @@ export function CompareSheet({
           <table className="w-full">
             <thead>
               <tr className="text-[11px] text-ink-2">
-                <th className="pb-2 text-left font-medium">指标</th>
+                <th className="pb-2 text-left font-medium">{t('compare.colMetric')}</th>
                 <th className="pb-2 text-right font-medium text-accent">A</th>
                 <th className="pb-2 text-right font-medium text-accent2">B</th>
-                <th className="pb-2 text-right font-medium">Δ（B−A）</th>
+                <th className="pb-2 text-right font-medium">{t('compare.colDelta')}</th>
               </tr>
             </thead>
             <tbody>
@@ -306,7 +309,7 @@ export function CompareSheet({
             </tbody>
           </table>
           <p className="mt-2 text-[10px] text-ink-2">
-            音区归属：A {BAND_LABELS[bandOf(sA.avgF0)]} · B {BAND_LABELS[bandOf(sB.avgF0)]}
+            {t('compare.bandNote', { a: t(`band.${bandOf(sA.avgF0)}`), b: t(`band.${bandOf(sB.avgF0)}`) })}
           </p>
         </div>
       </div>
