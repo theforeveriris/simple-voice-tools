@@ -3,7 +3,7 @@
  * 音高区间、莫奈主题预设、音符换算、默认设置
  */
 
-import type { AppSettings, PitchBand } from '@/types';
+import type { AppSettings, PitchBand, TestMode } from '@/types';
 
 /**
  * 音符名称列表
@@ -60,8 +60,10 @@ export function bandOf(freq: number): PitchBand {
 
 /**
  * 频率 → 钢琴音符（十二平均律，A4 = 440Hz）
+ * 无效频率（无声录音 avgF0=0 等）返回占位符，避免出现 NaN
  */
 export function freqToNote(freq: number): { name: string; midi: number; cents: number } {
+  if (!isFinite(freq) || freq <= 0) return { name: '—', midi: 0, cents: 0 };
   const midi = Math.round(69 + 12 * Math.log2(freq / 440));
   const name = NOTE_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
   const exact = 440 * Math.pow(2, (midi - 69) / 12);
@@ -93,6 +95,18 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxDurationSec: 120,
   autoEnterAnalysis: true,
   micDeviceId: '',
+  audioSave: true,
+  testMode: 'reading',
+};
+
+/**
+ * 测试模式元信息
+ * autoStopSec：模式自带的最长录音秒数（0 = 沿用设置里的最长录音时长）
+ */
+export const MODE_META: Record<TestMode, { label: string; desc: string; autoStopSec: number }> = {
+  reading: { label: '朗读引导', desc: '跟读屏幕上的文本', autoStopSec: 0 },
+  sustained: { label: '长音测试', desc: '持续发「a」测稳定度', autoStopSec: 15 },
+  glide: { label: '音域滑音', desc: '低→高滑唱画音域', autoStopSec: 20 },
 };
 
 /** 音高曲线纵轴范围（Hz） */
@@ -107,5 +121,18 @@ export const ENERGY_AXIS: [number, number] = [-90, 0];
 /** 实时曲线滚动窗口长度（秒） */
 export const LIVE_WINDOW_SEC = 12;
 
-/** 历史记录最多保留条数（防止 localStorage 超限） */
-export const MAX_HISTORY = 40;
+/** 历史记录最多保留条数（记录与音频均存于 IndexedDB，容量充裕） */
+export const MAX_HISTORY = 200;
+
+/* ------------------------------ 语谱图参数 ------------------------------ */
+
+/** 语谱图频带数（每行的采样点数） */
+export const SPEC_BANDS = 64;
+/** 语谱图频率范围（Hz），对数分带 */
+export const SPEC_FMIN = 80;
+export const SPEC_FMAX = 5000;
+/** 语谱图动态范围（dB），映射到 0-255 */
+export const SPEC_DB_MIN = -90;
+export const SPEC_DB_MAX = -15;
+/** 语谱图最多保留行数（约 2 分钟 @30Hz），超长录音截断尾部以约束体积 */
+export const SPEC_MAX_ROWS = 3600;

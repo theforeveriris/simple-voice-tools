@@ -9,6 +9,13 @@
 export type ViewType = 'test' | 'analysis' | 'history' | 'settings';
 
 /**
+ * 测试模式
+ * 短按录音圆球使用当前模式（默认朗读，记住上次选择），
+ * 长按圆球弹出扇形选择器切换。
+ */
+export type TestMode = 'reading' | 'sustained' | 'glide';
+
+/**
  * 音高区间类型
  * 用于曲线分段着色与统计
  */
@@ -76,6 +83,24 @@ export interface VoiceStats {
   avgDb: number;
   /** 峰值响度 dB */
   peakDb: number;
+  /** 基频微扰 Jitter(local)，相邻周期长度波动率的帧间平均（%），需录音音频，无音频时为 null */
+  jitterPct?: number | null;
+  /** 振幅微扰 Shimmer(local)，相邻周期幅度波动率的帧间平均（%），需录音音频，无音频时为 null */
+  shimmerPct?: number | null;
+  /** 谐噪比 HNR 估计（dB），由 YIN 周期性置信度换算，需录音音频，无音频时为 null */
+  hnrDb?: number | null;
+}
+
+/**
+ * 语谱图量化数据
+ * 录音时由 FFT 逐帧映射到对数频带并量化为 Uint8，行优先存储（每行 bands 个字节），
+ * base64 序列化后随记录保存。
+ */
+export interface RecordSpec {
+  /** 频带数（每行字节数） */
+  bands: number;
+  /** 行 × 频带的量化振幅（0-255），base64 */
+  data: string;
 }
 
 /**
@@ -91,6 +116,12 @@ export interface AnalysisRecord {
   sampleHz: number;
   series: RecordSeries;
   stats: VoiceStats;
+  /** 录音时使用的测试模式（旧记录无此字段） */
+  mode?: TestMode;
+  /** 用户备注（如「晨起嗓音」） */
+  note?: string;
+  /** 语谱图量化数据（可选，旧记录/无音频记录可能缺失） */
+  spec?: RecordSpec;
 }
 
 /**
@@ -107,4 +138,8 @@ export interface AppSettings {
   autoEnterAnalysis: boolean;
   /** 麦克风设备 ID，空串 = 系统默认 */
   micDeviceId: string;
+  /** 是否保存录音音频（用于回放与嗓音质量分析），存于 IndexedDB */
+  audioSave: boolean;
+  /** 当前测试模式（短按圆球所用，长按可切换） */
+  testMode: TestMode;
 }

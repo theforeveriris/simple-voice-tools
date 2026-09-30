@@ -84,7 +84,7 @@ function polyRoots(c: Float64Array | Float32Array): { re: number; im: number }[]
   // 初始化根：w^i，w = 0.4 + 0.9i
   const re = new Float64Array(N);
   const im = new Float64Array(N);
-  let wRe = 0.4, wIm = 0.9;
+  const wRe = 0.4, wIm = 0.9;
   re[0] = 1; im[0] = 0;
   for (let i = 1; i < N; i++) {
     re[i] = re[i - 1] * wRe - im[i - 1] * wIm;

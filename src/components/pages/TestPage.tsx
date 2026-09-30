@@ -1,19 +1,21 @@
 /**
  * 测试页面
- * 由上到下三个圆角矩形图表区：
+ * 由上到下：模式引导横幅（朗读文本 / 长音 / 滑音）→
  *   F1/F2 共振峰曲线（较矮） → 音频能量图（较矮） → 音高曲线图（较高）
  * 三张图随录音时间推进实时滚动更新；
- * 点击右下角悬浮圆球开始 / 停止录音，结束后自动进入分析页。
+ * 短按圆球以当前模式开始录音，长按弹出模式选择，结束后自动进入分析页。
  */
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, AudioWaveform } from 'lucide-react';
+import { Mic, AudioWaveform, BookOpenText, AudioLines, TrendingUp, ChevronDown } from 'lucide-react';
 import { SeriesChart } from '@/components/charts/SeriesChart';
 import { recorder } from '@/lib/audio/recorder';
-import { freqToNote } from '@/constants';
+import { freqToNote, MODE_META } from '@/constants';
+import { pickPassage, type ReadingPassage } from '@/lib/texts';
 import { useStore } from '@/store/useStore';
+import type { TestMode } from '@/types';
 import { cn } from '@/lib/utils';
 
 /** 图表卡片容器：白底、微圆角、无边框、微阴影 */
@@ -47,13 +49,21 @@ function ChartCard({
 /** 音高图右上角的实时读数（Hz + 钢琴音高），约 8Hz 刷新避免频繁重渲染 */
 function LivePitchReadout() {
   const isRecording = useStore((s) => s.isRecording);
+  // 非录音态直接静态渲染，避免 effect 内同步重置状态
+  if (!isRecording) {
+    return (
+      <div className="flex items-baseline gap-2 tabular-nums">
+        <span className="text-sm text-ink-2">— Hz</span>
+      </div>
+    );
+  }
+  return <LiveReadout />;
+}
+
+function LiveReadout() {
   const [readout, setReadout] = useState<{ freq: number; note: string } | null>(null);
 
   useEffect(() => {
-    if (!isRecording) {
-      setReadout(null);
-      return;
-    }
     let raf = 0;
     let lastUpdate = 0;
     const loop = (now: number) => {
@@ -66,7 +76,7 @@ function LivePitchReadout() {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [isRecording]);
+  }, []);
 
   return (
     <div className="flex items-baseline gap-2 tabular-nums">
@@ -111,8 +121,101 @@ function IdleHint() {
   );
 }
 
+/** 录音已用时长（约 10Hz 刷新，用于引导进度条；非录音态派生为 0） */
+function useRecordingElapsed(active: boolean): number {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let raf = 0;
+    let last = 0;
+    const loop = (now: number) => {
+      if (now - last > 100) {
+        last = now;
+        setElapsed(recorder.getLive().elapsedSec);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [active]);
+  return active ? elapsed : 0;
+}
+
+/** 朗读引导横幅：《飞鸟集》随机段落，可折叠给图表让空间 */
+function ReadingBanner({ isRecording }: { isRecording: boolean }) {
+  const [passage, setPassage] = useState<ReadingPassage>(() => pickPassage());
+  const [collapsed, setCollapsed] = useState(false);
+  // 渲染期派生：录音开始的瞬间换一段，保证多次测试语料有变化
+  const [wasRecording, setWasRecording] = useState(false);
+  if (isRecording !== wasRecording) {
+    setWasRecording(isRecording);
+    if (isRecording) setPassage((prev) => pickPassage(prev.id));
+  }
+
+  return (
+    <div className="shrink-0 rounded-[18px] bg-card p-3 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+      <button
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex w-full items-center gap-2 text-left"
+        aria-label={collapsed ? '展开朗读文本' : '收起朗读文本'}
+      >
+        <BookOpenText size={14} className="shrink-0 text-accent" />
+        <span className="text-xs font-semibold text-ink">朗读引导 · 飞鸟集</span>
+        <span className="min-w-0 flex-1 truncate text-[11px] text-ink-2">
+          距离麦克风 20–30 厘米，用正常音量朗读
+        </span>
+        <ChevronDown
+          size={14}
+          className={cn('shrink-0 text-ink-2 transition-transform duration-200', collapsed ? '' : 'rotate-180')}
+        />
+      </button>
+      {!collapsed && (
+        <div className="mt-1.5 space-y-0.5 pl-6">
+          {passage.lines.map((line, i) => (
+            <p key={i} className="text-[13px] leading-snug text-ink">
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 长音 / 滑音引导横幅：模式说明 + 录音进度 */
+function ModeGuideBanner({ mode, isRecording }: { mode: Exclude<TestMode, 'reading'>; isRecording: boolean }) {
+  const meta = MODE_META[mode];
+  const elapsed = useRecordingElapsed(isRecording);
+  const Icon = mode === 'sustained' ? AudioLines : TrendingUp;
+  const progress = meta.autoStopSec > 0 ? Math.min(1, elapsed / meta.autoStopSec) : 0;
+
+  return (
+    <div className="shrink-0 rounded-[18px] bg-card p-3 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+      <div className="flex items-center gap-2">
+        <Icon size={14} className="shrink-0 text-accent" />
+        <span className="text-xs font-semibold text-ink">{meta.label}</span>
+        <span className="min-w-0 flex-1 truncate text-[11px] text-ink-2">{meta.desc}</span>
+        {isRecording && (
+          <span className="shrink-0 text-[11px] tabular-nums text-ink-2">
+            {Math.floor(elapsed)}s / {meta.autoStopSec}s
+          </span>
+        )}
+      </div>
+      {isRecording && (
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-hi">
+          <div
+            className="h-full rounded-full bg-accent transition-[width] duration-100"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TestPage() {
   const isRecording = useStore((s) => s.isRecording);
+  const mode = useStore((s) => s.settings.testMode);
   const setTab = useStore((s) => s.setTab);
   // 非录音状态下显示占位提示
   const showHint = !isRecording;
@@ -130,9 +233,7 @@ export function TestPage() {
       <div className="flex shrink-0 items-end justify-between pt-1">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-ink">语音测试</h1>
-          <p className="mt-0.5 text-xs text-ink-2">
-            距离麦克风 20–30 厘米，用正常音量持续说话或朗读
-          </p>
+          <p className="mt-0.5 text-xs text-ink-2">长按圆球可切换模式，录音结束自动生成分析</p>
         </div>
         <motion.button
           whileTap={{ scale: 0.97 }}
@@ -144,18 +245,21 @@ export function TestPage() {
         </motion.button>
       </div>
 
+      {/* 模式引导横幅 */}
+      {mode === 'reading' ? <ReadingBanner isRecording={isRecording} /> : <ModeGuideBanner mode={mode} isRecording={isRecording} />}
+
       {/* F1 / F2 共振峰 */}
       <ChartCard
         title="F1 / F2 共振峰曲线"
         right={<FormantLegend />}
-        className="h-[124px] shrink-0 sm:h-[168px]"
+        className="h-[100px] shrink-0 sm:h-[150px]"
       >
         {chartsReady && <SeriesChart kind="formant" live />}
         {showHint && <IdleHint />}
       </ChartCard>
 
       {/* 音频能量 */}
-      <ChartCard title="音频能量" className="h-[104px] shrink-0 sm:h-[148px]">
+      <ChartCard title="音频能量" className="h-[84px] shrink-0 sm:h-[128px]">
         {chartsReady && <SeriesChart kind="energy" live />}
         {showHint && <IdleHint />}
       </ChartCard>
@@ -164,7 +268,7 @@ export function TestPage() {
       <ChartCard
         title="音高曲线"
         right={<LivePitchReadout />}
-        className="min-h-[190px] flex-1 sm:min-h-[240px]"
+        className="min-h-[170px] flex-1 sm:min-h-[220px]"
       >
         {chartsReady && <SeriesChart kind="pitch" live />}
         {showHint && <IdleHint />}

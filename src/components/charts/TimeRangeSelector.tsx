@@ -1,7 +1,8 @@
 /**
  * 时间轴区间选择器
  * 分析页每个图表下方的双滑块控件：
- * 背景以能量密度条预览整段录音，拖动滑块选择图表显示的时间区间。
+ * 背景以能量密度条预览整段录音，拖动滑块选择图表显示的时间区间，
+ * 在选中窗口中间按住拖动可整体平移，双击重置为全段。
  * 造型极简：细轨、细滑块、无内嵌文字。
  */
 
@@ -21,12 +22,13 @@ interface TimeRangeSelectorProps {
 }
 
 const MIN_SPAN = 0.4; // 最小选择跨度（秒）
+const HANDLE_EDGE = 0.8; // 滑块命中范围（秒），靠近端点视为拖端点
 const BUCKETS = 90;
 
 export function TimeRangeSelector({ series, total, value, onChange, className }: TimeRangeSelectorProps) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ handle: 0 | 1 } | null>(null);
-  const [dragging, setDragging] = useState<0 | 1 | null>(null);
+  const dragRef = useRef<{ mode: 0 | 1 | 'pan'; grabT: number; grabValue: [number, number] } | null>(null);
+  const [dragging, setDragging] = useState<0 | 1 | 'pan' | null>(null);
 
   // 能量密度预览条：把 rmsDb 分桶取峰值，映射到条高
   const bars = useMemo(() => {
@@ -58,19 +60,46 @@ export function TimeRangeSelector({ series, total, value, onChange, className }:
     }
   };
 
+  /** 整体平移选中窗口（保持跨度不变） */
+  const applyPan = (grabT: number, grabValue: [number, number], t: number) => {
+    const span = grabValue[1] - grabValue[0];
+    let t0 = grabValue[0] + (t - grabT);
+    t0 = Math.max(0, Math.min(total - span, t0));
+    onChange([t0, t0 + span]);
+  };
+
   const onPointerDown = (e: ReactPointerEvent) => {
     const t = posToT(e.clientX);
-    // 点击处靠近哪个滑块就拖动哪个
-    const handle: 0 | 1 = Math.abs(t - value[0]) <= Math.abs(t - value[1]) ? 0 : 1;
-    dragRef.current = { handle };
-    setDragging(handle);
+    const nearStart = Math.abs(t - value[0]) <= HANDLE_EDGE && Math.abs(t - value[0]) <= Math.abs(t - value[1]);
+    const nearEnd = !nearStart && Math.abs(t - value[1]) <= HANDLE_EDGE;
+    if (nearStart) {
+      dragRef.current = { mode: 0, grabT: t, grabValue: value };
+      setDragging(0);
+      applyDrag(0, t);
+    } else if (nearEnd) {
+      dragRef.current = { mode: 1, grabT: t, grabValue: value };
+      setDragging(1);
+      applyDrag(1, t);
+    } else if (t > value[0] && t < value[1]) {
+      // 窗口内部按住 → 整体平移
+      dragRef.current = { mode: 'pan', grabT: t, grabValue: value };
+      setDragging('pan');
+    } else {
+      // 点击窗口外空白 → 就近端点跳转
+      const handle: 0 | 1 = Math.abs(t - value[0]) <= Math.abs(t - value[1]) ? 0 : 1;
+      dragRef.current = { mode: handle, grabT: t, grabValue: value };
+      setDragging(handle);
+      applyDrag(handle, t);
+    }
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    applyDrag(handle, t);
   };
 
   const onPointerMove = (e: ReactPointerEvent) => {
-    if (!dragRef.current) return;
-    applyDrag(dragRef.current.handle, posToT(e.clientX));
+    const drag = dragRef.current;
+    if (!drag) return;
+    const t = posToT(e.clientX);
+    if (drag.mode === 'pan') applyPan(drag.grabT, drag.grabValue, t);
+    else applyDrag(drag.mode, t);
   };
 
   const endDrag = () => {
@@ -78,15 +107,23 @@ export function TimeRangeSelector({ series, total, value, onChange, className }:
     setDragging(null);
   };
 
+  const onDoubleClick = () => onChange([0, total]);
+
+  const isPartial = value[0] > 0.001 || value[1] < total - 0.001;
+
   return (
     <div className={cn('select-none', className)}>
       <div
         ref={trackRef}
-        className="relative h-6 cursor-ew-resize touch-none overflow-hidden bg-surface-hi"
+        className={cn(
+          'relative h-6 touch-none overflow-hidden bg-surface-hi',
+          dragging === 'pan' ? 'cursor-grabbing' : 'cursor-ew-resize',
+        )}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onDoubleClick={onDoubleClick}
       >
         {/* 能量密度预览 */}
         <div className="absolute inset-0 flex items-end gap-px px-px pb-px">
@@ -101,7 +138,10 @@ export function TimeRangeSelector({ series, total, value, onChange, className }:
 
         {/* 选中窗口 */}
         <div
-          className="pointer-events-none absolute inset-y-0 border-x border-accent/70 bg-accent/10"
+          className={cn(
+            'pointer-events-none absolute inset-y-0 border-x border-accent/70 bg-accent/10',
+            dragging === 'pan' && 'cursor-grabbing',
+          )}
           style={{ left: pct(value[0]), width: `${(Math.min(100, ((value[1] - value[0]) / Math.max(total, 0.01)) * 100))}%` }}
         />
 
@@ -117,9 +157,22 @@ export function TimeRangeSelector({ series, total, value, onChange, className }:
           />
         ))}
       </div>
-      <p className="mt-1 text-center text-[10px] tabular-nums text-ink-2">
-        已选 {formatClock(value[0])} – {formatClock(value[1])}
-      </p>
+      <div className="mt-1 flex items-center justify-center gap-2 text-[10px] tabular-nums text-ink-2">
+        <span>
+          {isPartial ? '已选 ' : '全段 '}
+          {formatClock(value[0])} – {formatClock(value[1])}
+        </span>
+        {isPartial && (
+          <>
+            <span aria-hidden>·</span>
+            <button onClick={() => onChange([0, total])} className="font-medium text-accent transition-opacity hover:opacity-70">
+              重置
+            </button>
+          </>
+        )}
+        <span aria-hidden>·</span>
+        <span>拖动窗口可平移</span>
+      </div>
     </div>
   );
 }

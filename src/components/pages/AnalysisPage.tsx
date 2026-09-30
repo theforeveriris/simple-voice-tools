@@ -1,26 +1,54 @@
 /**
  * 分析页面
  * 结构（自上而下）：
- *   1. 声纹概览卡：平均基频 + 音域标尺（在男女声区间上的位置可视化）
- *   2. 统计表格：音高 / 共振峰 / 能量三组数据
- *   3. 三个图表（共振峰、能量、音高），每个图表下方有
- *      双滑块时间轴区间选择器，可缩放查看任意时间窗。
+ *   1. 页头：日期 / 模式徽标 + 分享图 / CSV / 备注操作
+ *   2. 声纹概览卡：平均基频 + 音域标尺（跟随当前查看区间）
+ *   3. 录音回放条（保存过音频时显示）
+ *   4. 统计表格：音高 / 共振峰 / 能量 / 嗓音质量四组（跟随区间）
+ *   5. 四个图表（音高、共振峰、能量、语谱图），共享同一个
+ *      时间轴区间选择（任一图表下方拖动，全部同步 + 统计联动）。
  *
  * 未经过录音直接进入时显示空态提示。
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { ChartNoAxesColumn, ChevronRight, Sparkles } from 'lucide-react';
+import {
+  ChartNoAxesColumn, ChevronRight, Sparkles, Play, Pause, Share2,
+  FileSpreadsheet, Pencil, Music2,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { createDemoRecord } from '@/lib/audio/demo';
+import { computeStats } from '@/lib/audio/recorder';
+import { recordToFrameCsv, downloadText } from '@/lib/export/csv';
+import { exportShareImage } from '@/lib/export/shareCard';
 import { SeriesChart } from '@/components/charts/SeriesChart';
+import { SpecChart } from '@/components/charts/SpecChart';
 import { TimeRangeSelector } from '@/components/charts/TimeRangeSelector';
-import { freqToNote, bandOf, BAND_COLORS, BAND_LABELS } from '@/constants';
-import type { AnalysisRecord } from '@/types';
+import { freqToNote, bandOf, BAND_COLORS, BAND_LABELS, MODE_META } from '@/constants';
+import type { AnalysisRecord, RecordSeries } from '@/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Textarea } from '@/components/ui';
 import { cn } from '@/lib/utils';
+
+/* -------------------------------- 数据切片 -------------------------------- */
+
+/** 截取时间区间内的序列（统计随区间重算） */
+function sliceSeries(series: RecordSeries, t0: number, t1: number): RecordSeries {
+  const out: RecordSeries = { t: [], f0: [], rmsDb: [], f1: [], f2: [] };
+  for (let i = 0; i < series.t.length; i++) {
+    const t = series.t[i];
+    if (t < t0 - 1e-6 || t > t1 + 1e-6) continue;
+    out.t.push(t);
+    out.f0.push(series.f0[i]);
+    out.rmsDb.push(series.rmsDb[i]);
+    out.f1.push(series.f1[i]);
+    out.f2.push(series.f2[i]);
+  }
+  return out;
+}
 
 /* ------------------------------- 音域标尺 ------------------------------- */
 
@@ -30,7 +58,7 @@ const RULER_MAX = 520;
 const posPct = (f: number) => ((Math.log(f / RULER_MIN) / Math.log(RULER_MAX / RULER_MIN)) * 100).toFixed(2);
 
 /**
- * 音域标尺：在男/女声区色带上标出本次录音的
+ * 音域标尺：在男/女声区色带上标出当前区间的
  * P10–P90 音域范围（圆角括条）与平均基频位置（游标）
  */
 function RangeRuler({ record }: { record: AnalysisRecord }) {
@@ -91,9 +119,14 @@ function StatChip({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function HeroSummary({ record }: { record: AnalysisRecord }) {
+function HeroSummary({ record, range }: { record: AnalysisRecord; range: [number, number] }) {
   const { avgF0 } = record.stats;
   const note = freqToNote(avgF0);
+  const isPartial = range[0] > 0.001 || range[1] < record.durationSec - 0.001;
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60);
+    return `${m}:${String(Math.round(s - m * 60)).padStart(2, '0')}`;
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -106,6 +139,9 @@ function HeroSummary({ record }: { record: AnalysisRecord }) {
           <p className="flex items-center gap-1 text-xs text-ink-2">
             <Sparkles size={12} className="text-accent" />
             平均基频
+            <span className="ml-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+              {isPartial ? `区间 ${fmt(range[0])}–${fmt(range[1])}` : '全段'}
+            </span>
           </p>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-4xl font-semibold tracking-tight tabular-nums text-ink">
@@ -115,7 +151,7 @@ function HeroSummary({ record }: { record: AnalysisRecord }) {
             <span className="text-sm font-semibold text-accent">{note.name}</span>
           </div>
           <p className="mt-1 text-[11px] text-ink-2">
-            音高偏差 {note.cents >= 0 ? '+' : ''}{note.cents} cents · 基于全部有声帧
+            音高偏差 {note.cents >= 0 ? '+' : ''}{note.cents} cents · 基于当前区间有声帧
           </p>
         </div>
         <div className="min-w-[280px] flex-1 lg:max-w-md">
@@ -128,6 +164,97 @@ function HeroSummary({ record }: { record: AnalysisRecord }) {
         <StatChip label="平均 F2" value={record.stats.avgF2 != null ? `${record.stats.avgF2.toFixed(0)} Hz` : '—'} />
         <StatChip label="平均响度" value={`${record.stats.avgDb.toFixed(1)} dB`} />
       </div>
+    </motion.div>
+  );
+}
+
+/* -------------------------------- 录音回放 -------------------------------- */
+
+/** 录音回放条：无音频（未保存/已失效）时整块隐藏 */
+function PlaybackCard({ record }: { record: AnalysisRecord }) {
+  const getAudio = useHistoryStore((s) => s.getAudio);
+  const [url, setUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(record.durationSec);
+
+  useEffect(() => {
+    let alive = true;
+    let created: string | null = null;
+    getAudio(record.id).then((blob) => {
+      if (!alive || !blob) return;
+      created = URL.createObjectURL(blob);
+      setUrl(created);
+    });
+    return () => {
+      alive = false;
+      if (created) URL.revokeObjectURL(created);
+    };
+  }, [record.id, getAudio]);
+
+  if (!url) return null;
+
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) void audio.play();
+    else audio.pause();
+  };
+
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60);
+    return `${m}:${String(Math.floor(s - m * 60)).padStart(2, '0')}`;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-3.5 rounded-[18px] bg-card px-4 py-3 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]"
+    >
+      <button
+        onClick={toggle}
+        className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-on-accent transition-transform active:scale-90"
+        aria-label={playing ? '暂停回放' : '播放录音'}
+      >
+        {playing ? <Pause size={15} fill="currentColor" strokeWidth={0} /> : <Play size={15} fill="currentColor" strokeWidth={0} className="translate-x-[1px]" />}
+      </button>
+      <div className="min-w-0 flex-1">
+        <input
+          type="range"
+          min={0}
+          max={1000}
+          value={Math.round(progress * 1000)}
+          onChange={(e) => {
+            const audio = audioRef.current;
+            if (!audio || !isFinite(audio.duration)) return;
+            audio.currentTime = (Number(e.target.value) / 1000) * audio.duration;
+          }}
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
+          aria-label="回放进度"
+        />
+      </div>
+      <span className="shrink-0 text-[11px] tabular-nums text-ink-2">
+        {fmt(progress * duration)} / {fmt(duration)}
+      </span>
+      {url && (
+        <audio
+          ref={audioRef}
+          src={url}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => { setPlaying(false); setProgress(0); }}
+          onTimeUpdate={(e) => {
+            const audio = e.currentTarget;
+            if (isFinite(audio.duration) && audio.duration > 0) {
+              setDuration(audio.duration);
+              setProgress(audio.currentTime / audio.duration);
+            }
+          }}
+          className="hidden"
+        />
+      )}
     </motion.div>
   );
 }
@@ -160,7 +287,7 @@ function StatsTable({ record }: { record: AnalysisRecord }) {
   const s = record.stats;
   const voicedPct = s.totalSamples ? Math.round((s.voicedSamples / s.totalSamples) * 100) : 0;
   return (
-    <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatGroup
         title="音高统计"
         rows={[
@@ -194,6 +321,15 @@ function StatsTable({ record }: { record: AnalysisRecord }) {
           ['采样帧数', `${s.totalSamples}（${s.sampleHz.toFixed(0)} Hz）`],
         ]}
       />
+      <StatGroup
+        title="嗓音质量"
+        rows={[
+          ['Jitter（基频微扰）', s.jitterPct != null ? `${s.jitterPct.toFixed(2)} %` : '—'],
+          ['Shimmer（振幅微扰）', s.shimmerPct != null ? `${s.shimmerPct.toFixed(2)} %` : '—'],
+          ['HNR（谐噪比）', s.hnrDb != null ? `${s.hnrDb.toFixed(1)} dB` : '—'],
+          ['说明', <span key="hint" className="text-[10px] font-normal text-ink-2">需保存录音音频</span>],
+        ]}
+      />
     </div>
   );
 }
@@ -206,17 +342,17 @@ function AnalysisChart({
   right,
   record,
   heightClass,
+  range,
+  onRangeChange,
 }: {
   kind: 'pitch' | 'energy' | 'formant';
   title: string;
   right?: ReactNode;
   record: AnalysisRecord;
   heightClass: string;
+  range: [number, number];
+  onRangeChange: (r: [number, number]) => void;
 }) {
-  const total = record.durationSec;
-  const [range, setRange] = useState<[number, number]>([0, total]);
-  useEffect(() => setRange([0, total]), [record.id, total]);
-
   return (
     <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
@@ -228,12 +364,73 @@ function AnalysisChart({
       </div>
       <TimeRangeSelector
         series={record.series}
-        total={total}
+        total={record.durationSec}
         value={range}
-        onChange={setRange}
+        onChange={onRangeChange}
         className="mt-2.5"
       />
     </div>
+  );
+}
+
+/* --------------------------------- 备注编辑 --------------------------------- */
+
+function NoteDialog({
+  record,
+  open,
+  onOpenChange,
+}: {
+  record: AnalysisRecord;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const updateRecord = useHistoryStore((s) => s.updateRecord);
+  const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
+  const [text, setText] = useState(record.note ?? '');
+  // 渲染期派生：每次打开对话框时同步为当前记录的备注
+  const [wasOpen, setWasOpen] = useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setText(record.note ?? '');
+  }
+
+  const save = () => {
+    const updated: AnalysisRecord = { ...record, note: text.trim() || undefined };
+    updateRecord(updated);
+    setCurrentAnalysis(updated);
+    onOpenChange(false);
+    toast.success(text.trim() ? '已保存备注' : '已清除备注');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-3xl border-0 bg-card sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-ink">编辑备注</DialogTitle>
+        </DialogHeader>
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="给这条记录起个名字，如「晨起嗓音」「训练第 3 周」"
+          className="min-h-24 rounded-2xl border-black/10 bg-surface-hi text-sm text-ink"
+          maxLength={60}
+        />
+        <DialogFooter className="gap-2">
+          <button
+            onClick={() => onOpenChange(false)}
+            className="px-1 py-2 text-sm font-medium text-ink-2 transition-opacity hover:opacity-70"
+          >
+            取消
+          </button>
+          <button
+            onClick={save}
+            className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-on-accent transition-opacity hover:opacity-90"
+          >
+            保存
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -281,26 +478,114 @@ function EmptyState() {
 
 export function AnalysisPage() {
   const record = useStore((s) => s.currentAnalysis);
-  if (!record) return <EmptyState />;
+  const [range, setRange] = useState<[number, number]>([0, record?.durationSec ?? 0]);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+
+  // 切换记录时重置为全段（渲染期派生重置，避免 effect 级联渲染）
+  const [loadedRecordId, setLoadedRecordId] = useState<string | null>(record?.id ?? null);
+  if (record && record.id !== loadedRecordId) {
+    setLoadedRecordId(record.id);
+    setRange([0, record.durationSec]);
+  }
+
+  // 区间联动统计：全段时直接用原序列，缩放后对切片重算
+  const rangeStats = useMemo(() => {
+    if (!record) return null;
+    const isFull = range[0] <= 0.001 && range[1] >= record.durationSec - 0.001;
+    if (isFull) return record.stats;
+    return computeStats(sliceSeries(record.series, range[0], range[1]), record.sampleHz);
+  }, [record, range]);
+
+  if (!record || !rangeStats) return <EmptyState />;
+
+  const recordWithStats: AnalysisRecord = { ...record, stats: rangeStats };
+
+  const onShare = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
+    try {
+      const outcome = await exportShareImage(record);
+      if (outcome === 'downloaded') toast.success('报告图已生成并下载');
+    } catch (err) {
+      if ((err as Error)?.name !== 'AbortError') toast.error('分享图生成失败');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const onExportCsv = () => {
+    downloadText(`voice-frames-${record.id.slice(0, 8)}.csv`, recordToFrameCsv(record));
+    toast.success('已导出帧级 CSV 数据');
+  };
 
   return (
     <div className="flex flex-col gap-3.5">
       <div className="pt-1">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">分析报告</h1>
-        <p className="mt-0.5 text-xs text-ink-2">
-          {new Date(record.createdAt).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          的录音 · 拖动图表下方的时间轴可缩放查看区间
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-ink">分析报告</h1>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-ink-2">
+              {new Date(record.createdAt).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              的录音
+              {record.mode && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+                  <Music2 size={9} />
+                  {MODE_META[record.mode].label}
+                </span>
+              )}
+              · 统计与图表随下方时间轴联动
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              onClick={onShare}
+              disabled={shareBusy}
+              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
+              aria-label="导出分享图片"
+              title="导出分享图片（PNG）"
+            >
+              <Share2 size={16} />
+            </button>
+            <button
+              onClick={onExportCsv}
+              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
+              aria-label="导出帧级 CSV"
+              title="导出帧级 CSV 数据"
+            >
+              <FileSpreadsheet size={16} />
+            </button>
+            <button
+              onClick={() => setNoteOpen(true)}
+              className={cn(
+                'grid size-9 place-items-center rounded-full transition-colors hover:bg-surface-hi hover:text-accent',
+                record.note ? 'text-accent' : 'text-ink-2',
+              )}
+              aria-label="编辑备注"
+              title="编辑备注"
+            >
+              <Pencil size={15} />
+            </button>
+          </div>
+        </div>
+        {record.note && (
+          <p className="mt-1.5 rounded-lg bg-accent-soft/60 px-2.5 py-1 text-xs text-on-accent-soft">
+            📎 {record.note}
+          </p>
+        )}
       </div>
 
-      <HeroSummary record={record} />
-      <StatsTable record={record} />
+      <HeroSummary record={recordWithStats} range={range} />
+      <PlaybackCard key={record.id} record={record} />
+      <StatsTable record={recordWithStats} />
 
       <AnalysisChart
         kind="pitch"
         title="音高曲线"
-        record={record}
+        record={recordWithStats}
         heightClass="h-[210px] sm:h-[280px]"
+        range={range}
+        onRangeChange={setRange}
       />
       <AnalysisChart
         kind="formant"
@@ -313,13 +598,40 @@ export function AnalysisPage() {
         }
         record={record}
         heightClass="h-[150px] sm:h-[200px]"
+        range={range}
+        onRangeChange={setRange}
       />
       <AnalysisChart
         kind="energy"
         title="音频能量"
         record={record}
         heightClass="h-[130px] sm:h-[180px]"
+        range={range}
+        onRangeChange={setRange}
       />
+      {record.spec && (
+        <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+          <div className="mb-1.5 flex items-center justify-between px-0.5">
+            <span className="text-xs font-medium tracking-wide text-ink-2">语谱图</span>
+            <div className="flex items-center gap-3 text-[11px] text-ink-2">
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent" />F1 轨迹</span>
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-accent2" />F2 轨迹</span>
+            </div>
+          </div>
+          <div className="relative h-[190px] sm:h-[260px]">
+            <SpecChart record={record} range={range} />
+          </div>
+          <TimeRangeSelector
+            series={record.series}
+            total={record.durationSec}
+            value={range}
+            onChange={setRange}
+            className="mt-2.5"
+          />
+        </div>
+      )}
+
+      <NoteDialog record={record} open={noteOpen} onOpenChange={setNoteOpen} />
     </div>
   );
 }

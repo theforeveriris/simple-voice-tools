@@ -5,10 +5,14 @@
  *   选中项有 layoutId 胶囊滑移动效与图标弹性微动效。
  * - 在测试页时：右侧浮出与底栏等高的录音圆球，二者作为整体保持居中
  *   （底栏仅微微左移让出圆球位置）；录音中圆球带呼吸光晕，点击停止。
+ * - 短按圆球以当前模式开始录音（记住上次选择，默认朗读引导）；
+ *   长按约 0.5s 在圆球上方扇形展开三个模式选项，背景模糊暗化，
+ *   点选任意模式立即以该模式开始录音。
  */
 
-import { useEffect, useState } from 'react';
-import type { ElementType } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ElementType, PointerEvent as ReactPointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   SquareTerminal,
@@ -17,9 +21,13 @@ import {
   Settings2,
   Play,
   Square,
+  BookOpenText,
+  AudioLines,
+  TrendingUp,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import type { ViewType } from '@/types';
+import type { ViewType, TestMode } from '@/types';
+import { MODE_META } from '@/constants';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +39,18 @@ const TABS: { id: ViewType; label: string; icon: ElementType }[] = [
   { id: 'history', label: '历史', icon: History },
   { id: 'settings', label: '设置', icon: Settings2 },
 ];
+
+/** 模式选项（扇形排列，自左向右） */
+const MODE_OPTIONS: { id: TestMode; label: string; icon: ElementType; angleDeg: number }[] = [
+  { id: 'reading', label: '朗读引导', icon: BookOpenText, angleDeg: -52 },
+  { id: 'sustained', label: '长音测试', icon: AudioLines, angleDeg: 0 },
+  { id: 'glide', label: '音域滑音', icon: TrendingUp, angleDeg: 52 },
+];
+
+/** 长按触发时长（ms） */
+const LONG_PRESS_MS = 480;
+/** 扇形半径（px，自圆球圆心起算） */
+const FAN_RADIUS = 118;
 
 /** 录音计时（圆球上方的悬浮时间提示） */
 function RecordTimer() {
@@ -59,15 +79,140 @@ function RecordTimer() {
   );
 }
 
-/** 录音圆球：点击开始 / 停止录音 */
+/**
+ * 模式选择覆盖层
+ * 渲染到 body（祖先链上的 transform 动画会使 fixed 相对定位失效），
+ * 以圆球圆心为原点、扇形半径排布三个选项。
+ */
+function ModeFanSelector({
+  center,
+  onClose,
+  onChoose,
+}: {
+  center: { x: number; y: number };
+  onClose: () => void;
+  onChoose: (mode: TestMode) => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[70]">
+      {/* 背景模糊暗化，点击取消 */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-ink/25 backdrop-blur-md"
+      />
+      {MODE_OPTIONS.map((opt, i) => {
+        const rad = (opt.angleDeg * Math.PI) / 180;
+        const dx = Math.sin(rad) * FAN_RADIUS;
+        const dy = -Math.cos(rad) * FAN_RADIUS;
+        const Icon = opt.icon;
+        return (
+          <motion.div
+            key={opt.id}
+            className="absolute"
+            style={{ left: center.x, top: center.y }}
+            initial={{ x: 0, y: 0, scale: 0.2, opacity: 0 }}
+            animate={{ x: dx, y: dy, scale: 1, opacity: 1 }}
+            exit={{ x: 0, y: 0, scale: 0.2, opacity: 0, transition: { duration: 0.14 } }}
+            transition={{ type: 'spring', stiffness: 430, damping: 24, delay: i * 0.05 }}
+          >
+            <button
+              onClick={() => onChoose(opt.id)}
+              className="flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
+              aria-label={`${opt.label}：${MODE_META[opt.id].desc}`}
+            >
+              <motion.span
+                whileTap={{ scale: 0.88 }}
+                className="grid size-14 place-items-center rounded-full bg-card shadow-[0_10px_30px_-6px_rgba(28,25,45,0.3),0_3px_10px_rgba(28,25,45,0.12)]"
+              >
+                <Icon size={22} strokeWidth={2} className="text-accent" />
+              </motion.span>
+              <span className="whitespace-nowrap rounded-full bg-ink px-2.5 py-1 text-[10px] font-medium text-card shadow">
+                {opt.label}
+              </span>
+            </button>
+          </motion.div>
+        );
+      })}
+      {/* 取消提示 */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ delay: 0.25 }}
+        className="absolute inset-x-0 top-7 text-center text-xs text-white/90"
+      >
+        点击空白处取消
+      </motion.p>
+    </div>,
+    document.body,
+  );
+}
+
+/** 录音圆球：短按开始（当前模式）/ 停止录音，长按展开模式选择 */
 function RecordBall() {
   const isRecording = useStore((s) => s.isRecording);
   const startRecording = useStore((s) => s.startRecording);
   const stopRecording = useStore((s) => s.stopRecording);
+  const updateSettings = useStore((s) => s.updateSettings);
 
-  const toggle = async () => {
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [center, setCenter] = useState({ x: 0, y: 0 });
+  const ballRef = useRef<HTMLDivElement>(null);
+  const pressTimer = useRef<number | null>(null);
+  const longPressFired = useRef(false);
+  const pressOrigin = useRef({ x: 0, y: 0 });
+
+  const openSelector = () => {
+    const rect = ballRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setCenter({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    setSelectorOpen(true);
+    navigator.vibrate?.(12);
+  };
+
+  const onPointerDown = (e: ReactPointerEvent) => {
+    if (isRecording) return;
+    longPressFired.current = false;
+    pressOrigin.current = { x: e.clientX, y: e.clientY };
+    pressTimer.current = window.setTimeout(openSelector, LONG_PRESS_MS);
+  };
+
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (pressTimer.current === null) return;
+    const moved = Math.hypot(e.clientX - pressOrigin.current.x, e.clientY - pressOrigin.current.y);
+    if (moved > 12) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
+  const clearPress = () => {
+    if (pressTimer.current !== null) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
+  const onClick = async () => {
+    // 长按展开选择器后，抬手的 click 不应触发短按开始
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
     if (isRecording) {
-      stopRecording();
+      void stopRecording();
     } else {
       try {
         await startRecording();
@@ -77,8 +222,21 @@ function RecordBall() {
     }
   };
 
+  const chooseMode = async (mode: TestMode) => {
+    setSelectorOpen(false);
+    updateSettings({ testMode: mode });
+    try {
+      await startRecording();
+    } catch {
+      toast.error('无法访问麦克风，请检查浏览器权限设置');
+    }
+  };
+
+  useEffect(() => clearPress, []);
+
   return (
     <motion.div
+      ref={ballRef}
       initial={{ scale: 0, opacity: 0, y: '-50%' }}
       animate={{ scale: 1, opacity: 1, y: '-50%' }}
       exit={{ scale: 0, opacity: 0, y: '-50%' }}
@@ -116,13 +274,19 @@ function RecordBall() {
       </AnimatePresence>
 
       <motion.button
-        onClick={toggle}
+        onClick={onClick}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={clearPress}
+        onPointerCancel={clearPress}
+        onPointerLeave={clearPress}
+        onContextMenu={(e) => e.preventDefault()}
         whileHover={{ scale: 1.07 }}
         whileTap={{ scale: 0.9 }}
         animate={isRecording ? { scale: [1, 1.04, 1] } : { scale: 1 }}
         transition={isRecording ? { duration: 1.7, ease: 'easeInOut', repeat: Infinity } : SPRING}
-        className="relative grid size-full place-items-center rounded-full bg-accent text-on-accent shadow-[0_8px_22px_-6px_rgb(var(--c-accent-rgb)/0.55),0_3px_10px_rgb(var(--c-accent-rgb)/0.25)]"
-        aria-label={isRecording ? '停止录音' : '开始录音'}
+        className="relative grid size-full select-none place-items-center rounded-full bg-accent text-on-accent shadow-[0_8px_22px_-6px_rgb(var(--c-accent-rgb)/0.55),0_3px_10px_rgb(var(--c-accent-rgb)/0.25)]"
+        aria-label={isRecording ? '停止录音' : '开始录音（长按选择模式）'}
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
@@ -141,6 +305,13 @@ function RecordBall() {
           </motion.span>
         </AnimatePresence>
       </motion.button>
+
+      {/* 模式扇形选择器 */}
+      <AnimatePresence>
+        {selectorOpen && (
+          <ModeFanSelector center={center} onClose={() => setSelectorOpen(false)} onChoose={chooseMode} />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

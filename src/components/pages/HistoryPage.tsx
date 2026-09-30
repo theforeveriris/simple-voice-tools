@@ -1,18 +1,30 @@
 /**
  * 历史页面
- * localStorage 中全部测试分析记录，按时间倒序排列；
+ * 顶部「列表 / 趋势」切换：
+ *   列表 — 记录卡片（可搜索、长按进入多选，多选下支持批量删除与两两对比）
+ *   趋势 — 跨记录趋势图（平均基频 + P10–P90 音域随日期变化）
  * 点击任意记录进入对应分析页。
  */
 
-import { motion } from 'framer-motion';
-import { History, Trash2, ChevronRight, SquareTerminal, FileQuestion } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  History, Trash2, ChevronRight, SquareTerminal, FileQuestion,
+  Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote,
+} from 'lucide-react';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { MiniSpark } from '@/components/charts/MiniSpark';
-import { freqToNote, bandOf, BAND_COLORS, BAND_LABELS } from '@/constants';
+import { TrendChart } from '@/components/charts/TrendChart';
+import { CompareSheet } from './CompareSheet';
+import { freqToNote, bandOf, BAND_COLORS, BAND_LABELS, MODE_META } from '@/constants';
 import { toast } from 'sonner';
 import type { AnalysisRecord } from '@/types';
+import { cn } from '@/lib/utils';
+
+const LONG_PRESS_MS = 480;
 
 function formatDate(ts: number): { date: string; time: string } {
   const d = new Date(ts);
@@ -23,14 +35,76 @@ function formatDate(ts: number): { date: string; time: string } {
   };
 }
 
-function RecordCard({ record, onOpen, onDelete }: {
+/** 长按进入多选的手势处理（移动距离超阈值视为滚动，取消长按） */
+function useLongPress(onLongPress: () => void) {
+  const timer = useRef<number | null>(null);
+  const fired = useRef(false);
+  const origin = useRef({ x: 0, y: 0 });
+
+  const onPointerDown = (e: ReactPointerEvent) => {
+    fired.current = false;
+    origin.current = { x: e.clientX, y: e.clientY };
+    timer.current = window.setTimeout(() => {
+      fired.current = true;
+      onLongPress();
+      navigator.vibrate?.(12);
+    }, LONG_PRESS_MS);
+  };
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (timer.current === null) return;
+    if (Math.hypot(e.clientX - origin.current.x, e.clientY - origin.current.y) > 12) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+  const clear = () => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+  return {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: clear,
+    onPointerCancel: clear,
+    onPointerLeave: clear,
+    /** 长按后抬起时的 click 不应触发点击行为 */
+    consumeClick: () => {
+      const was = fired.current;
+      fired.current = false;
+      return was;
+    },
+  };
+}
+
+function RecordCard({
+  record,
+  selected,
+  selectionMode,
+  onOpen,
+  onToggleSelect,
+  onEnterSelection,
+  onDelete,
+}: {
   record: AnalysisRecord;
+  selected: boolean;
+  selectionMode: boolean;
   onOpen: () => void;
+  onToggleSelect: () => void;
+  onEnterSelection: () => void;
   onDelete: () => void;
 }) {
   const { date, time } = formatDate(record.createdAt);
   const band = bandOf(record.stats.avgF0);
   const note = freqToNote(record.stats.avgF0);
+  const press = useLongPress(onEnterSelection);
+
+  const handleClick = () => {
+    if (press.consumeClick()) return;
+    if (selectionMode) onToggleSelect();
+    else onOpen();
+  };
 
   return (
     <motion.div
@@ -39,8 +113,13 @@ function RecordCard({ record, onOpen, onDelete }: {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      onClick={onOpen}
-      className="group flex cursor-pointer items-center gap-4 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)]"
+      onClick={handleClick}
+      onContextMenu={(e) => e.preventDefault()}
+      className={cn(
+        'group flex cursor-pointer select-none items-center gap-4 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)]',
+        selectionMode && selected && 'ring-2 ring-accent',
+      )}
+      {...(selectionMode ? {} : press)}
     >
       {/* 日期 */}
       <div className="w-16 shrink-0 text-center">
@@ -65,26 +144,51 @@ function RecordCard({ record, onOpen, onDelete }: {
               <span className="size-1.5 rounded-full" style={{ background: BAND_COLORS[band] }} />
               {BAND_LABELS[band]}
             </span>
+            {record.mode && (
+              <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+                {MODE_META[record.mode].label}
+              </span>
+            )}
           </div>
           <p className="mt-0.5 truncate text-[11px] text-ink-2">
             男声区 {record.stats.malePct}% · 女声区 {record.stats.femalePct}% · 响度 {record.stats.avgDb.toFixed(0)} dB
           </p>
+          {record.note && (
+            <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-accent">
+              <StickyNote size={11} className="shrink-0" />
+              {record.note}
+            </p>
+          )}
         </div>
       </div>
 
       {/* 操作 */}
       <div className="flex shrink-0 items-center gap-1">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="grid size-8 place-items-center text-ink-2 opacity-0 transition hover:text-red-500 group-hover:opacity-100"
-          aria-label="删除该记录"
-        >
-          <Trash2 size={15} />
-        </button>
-        <ChevronRight size={17} className="text-ink-2" />
+        {selectionMode ? (
+          <span
+            className={cn(
+              'grid size-6 place-items-center rounded-full border-2 transition-colors',
+              selected ? 'border-accent bg-accent text-white' : 'border-black/20',
+            )}
+            aria-hidden
+          >
+            {selected && <span className="text-[11px] font-bold leading-none">✓</span>}
+          </span>
+        ) : (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="grid size-8 place-items-center text-ink-2 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"
+              aria-label="删除该记录"
+            >
+              <Trash2 size={15} />
+            </button>
+            <ChevronRight size={17} className="text-ink-2" />
+          </>
+        )}
       </div>
     </motion.div>
   );
@@ -132,14 +236,69 @@ export function HistoryPage() {
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
 
+  const [view, setView] = useState<'list' | 'trend'>('list');
+  const [query, setQuery] = useState('');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [comparePair, setComparePair] = useState<[AnalysisRecord, AnalysisRecord] | null>(null);
+
   const open = (record: AnalysisRecord) => {
     setCurrentAnalysis(record);
     setTab('analysis');
   };
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return records;
+    return records.filter((r) => {
+      const hay = [
+        r.note ?? '',
+        r.mode ? MODE_META[r.mode].label : '',
+        new Date(r.createdAt).toLocaleString('zh-CN'),
+        r.stats.avgF0.toFixed(0),
+      ]
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [records, query]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const enterSelection = (id?: string) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set(id ? [id] : []));
+  };
+
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
   const remove = (record: AnalysisRecord) => {
     removeRecord(record.id);
     toast.success('已删除该记录');
+  };
+
+  const batchRemove = () => {
+    const n = selectedIds.size;
+    for (const id of selectedIds) removeRecord(id);
+    exitSelection();
+    toast.success(`已删除 ${n} 条记录`);
+  };
+
+  const tryCompare = () => {
+    const picked = records.filter((r) => selectedIds.has(r.id));
+    if (picked.length !== 2) return;
+    const [a, b] = [...picked].sort((x, y) => x.createdAt - y.createdAt);
+    setComparePair([a, b]);
   };
 
   return (
@@ -151,25 +310,146 @@ export function HistoryPage() {
             历史记录
           </h1>
           <p className="mt-0.5 text-xs text-ink-2">
-            共 {records.length} 条记录 · 按时间倒序 · 点击进入分析
+            {view === 'list'
+              ? `共 ${records.length} 条记录 · 长按卡片可多选`
+              : `近 ${records.length} 次测试的平均基频与音域走势`}
           </p>
         </div>
       </div>
 
-      {records.length === 0 ? (
+      {/* 列表 / 趋势 切换 */}
+      <div className="flex w-fit items-center gap-0.5 rounded-full bg-card p-1 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+        {(
+          [
+            { id: 'list', label: '列表', icon: ListFilter },
+            { id: 'trend', label: '趋势', icon: TrendingUp },
+          ] as const
+        ).map((t) => {
+          const active = view === t.id;
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.id}
+              onClick={() => {
+                setView(t.id);
+                exitSelection();
+              }}
+              className="relative flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium"
+              aria-label={`${t.label}视图`}
+            >
+              {active && (
+                <motion.span layoutId="history-view-pill" className="absolute inset-0 rounded-full bg-accent-soft" />
+              )}
+              <Icon size={13} className={cn('relative z-10', active ? 'text-accent' : 'text-ink-2')} />
+              <span className={cn('relative z-10', active ? 'text-accent' : 'text-ink-2')}>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {view === 'trend' ? (
+        records.length === 0 ? (
+          <EmptyHistory />
+        ) : (
+          <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+            <TrendChart records={records} onOpen={open} />
+            <p className="mt-1 text-center text-[10px] text-ink-2">
+              竖条为 P10–P90 音域 · 圆点为平均基频 · 单击查看数值，再次单击打开记录
+            </p>
+          </div>
+        )
+      ) : records.length === 0 ? (
         <EmptyHistory />
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {records.map((record) => (
-            <RecordCard
-              key={record.id}
-              record={record}
-              onOpen={() => open(record)}
-              onDelete={() => remove(record)}
+        <>
+          {/* 搜索框 */}
+          <div className="flex items-center gap-2 rounded-full bg-card px-4 py-2.5 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+            <Search size={14} className="shrink-0 text-ink-2" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="搜索备注、日期或模式"
+              className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-2/70"
             />
-          ))}
-        </div>
+            {query && (
+              <button onClick={() => setQuery('')} className="text-ink-2 hover:text-ink" aria-label="清除搜索">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {filtered.length === 0 ? (
+            <p className="py-12 text-center text-sm text-ink-2">没有匹配「{query}」的记录</p>
+          ) : (
+            <div className="flex flex-col gap-2.5 pb-2">
+              <AnimatePresence initial={false}>
+                {filtered.map((record) => (
+                  <RecordCard
+                    key={record.id}
+                    record={record}
+                    selected={selectedIds.has(record.id)}
+                    selectionMode={selectionMode}
+                    onOpen={() => open(record)}
+                    onToggleSelect={() => toggleSelect(record.id)}
+                    onEnterSelection={() => enterSelection(record.id)}
+                    onDelete={() => remove(record)}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
       )}
+
+      {/* 多选操作条 */}
+      <AnimatePresence>
+        {selectionMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            className="fixed inset-x-0 bottom-24 z-40 flex justify-center px-5"
+          >
+            <div className="flex items-center gap-1.5 rounded-full bg-ink py-1.5 pl-5 pr-1.5 text-card shadow-xl">
+              <span className="text-xs font-medium tabular-nums">已选 {selectedIds.size} 条</span>
+              <button
+                onClick={tryCompare}
+                disabled={selectedIds.size !== 2}
+                className={cn(
+                  'ml-1 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-opacity',
+                  selectedIds.size === 2 ? 'bg-accent text-on-accent' : 'cursor-default opacity-40',
+                )}
+              >
+                <GitCompareArrows size={13} />
+                对比
+              </button>
+              <button
+                onClick={batchRemove}
+                disabled={selectedIds.size === 0}
+                className={cn(
+                  'flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-opacity',
+                  selectedIds.size > 0 ? 'bg-red-500 text-white' : 'cursor-default opacity-40',
+                )}
+              >
+                <Trash2 size={13} />
+                删除
+              </button>
+              <button
+                onClick={exitSelection}
+                className="grid size-8 place-items-center rounded-full text-card/80 hover:text-card"
+                aria-label="退出多选"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 对比浮层 */}
+      <AnimatePresence>
+        {comparePair && <CompareSheet pair={comparePair} onClose={() => setComparePair(null)} />}
+      </AnimatePresence>
     </div>
   );
 }

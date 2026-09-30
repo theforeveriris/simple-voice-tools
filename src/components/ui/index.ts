@@ -4,6 +4,16 @@
  */
 
 export { Switch } from './switch';
+export { Textarea } from './textarea';
+export {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './dialog';
 export {
   Select,
   SelectContent,

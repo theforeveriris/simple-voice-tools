@@ -10,13 +10,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { ElementType, ReactNode } from 'react';
 import {
   Palette, Mic, DatabaseBackup, Info, Download, Upload, Trash2, Eraser, Sparkles,
-  BookOpen, ChevronRight, Smartphone,
+  BookOpen, ChevronRight, Smartphone, FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
+import { downloadText, recordsToSummaryCsv } from '@/lib/export/csv';
 import { usePwaInstall, promptInstall } from '@/lib/pwa';
 import { THEME_PRESETS } from '@/constants';
 import { DocViewer } from '@/components/layout/DocViewer';
@@ -145,6 +146,19 @@ export function SettingsPage() {
 
   const update = (patch: Partial<AppSettings>) => updateSettings(patch);
 
+  /** 导出全部记录的统计摘要 CSV */
+  const exportSummaryCsv = () => {
+    if (records.length === 0) {
+      toast.info('暂无历史记录可导出');
+      return;
+    }
+    downloadText(
+      `voice-summary-${new Date().toISOString().slice(0, 10)}.csv`,
+      recordsToSummaryCsv(records),
+    );
+    toast.success(`已导出 ${records.length} 条记录的汇总`);
+  };
+
   /** 导出全部记录为 JSON */
   const exportData = () => {
     if (records.length === 0) {
@@ -238,6 +252,15 @@ export function SettingsPage() {
             onCheckedChange={(v) => update({ autoEnterAnalysis: v })}
           />
         </SettingRow>
+        <SettingRow
+          label="保存录音音频"
+          desc="存于浏览器 IndexedDB，用于回放与 Jitter/Shimmer/HNR 嗓音质量分析；关闭后仅保留曲线统计"
+        >
+          <Switch
+            checked={settings.audioSave}
+            onCheckedChange={(v) => update({ audioSave: v })}
+          />
+        </SettingRow>
         <SettingRow label="最长录音时长" desc="达到上限将自动停止录音">
           <Select
             value={String(settings.maxDurationSec)}
@@ -277,12 +300,21 @@ export function SettingsPage() {
 
       {/* 数据管理 */}
       <SettingsSection icon={DatabaseBackup} title="数据管理">
-        <SettingRow label="导出历史记录" desc="将全部测试记录保存为 JSON 文件">
+        <SettingRow label="导出历史记录" desc="将全部测试记录保存为 JSON 文件（不含音频）">
           <button
             onClick={exportData}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
           >
             <Download size={14} />
+            导出
+          </button>
+        </SettingRow>
+        <SettingRow label="导出汇总 CSV" desc="每条记录一行统计摘要，便于 Excel / Python 分析">
+          <button
+            onClick={exportSummaryCsv}
+            className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+          >
+            <FileSpreadsheet size={14} />
             导出
           </button>
         </SettingRow>
@@ -390,8 +422,9 @@ export function SettingsPage() {
         <div className="pt-1 text-xs leading-relaxed text-ink-2">
           <p className="text-sm font-semibold text-ink">Simple Voice Tools · 语音工坊</p>
           <p className="mt-1">
-            v0.2.0 — 基于 Web Audio API 的语音测试与分析工具：
-            YIN 音高检测、LPC 共振峰提取、能量分析。
+            v0.3.0 — 基于 Web Audio API 的语音测试与分析工具：
+            YIN 音高检测、LPC 共振峰提取、能量分析、语谱图、
+            Jitter/Shimmer/HNR 嗓音质量指标、三种测试模式与录音回放。
           </p>
           <p className="mt-1">
             数据仅保存在本机浏览器中，不会上传到任何服务器。
