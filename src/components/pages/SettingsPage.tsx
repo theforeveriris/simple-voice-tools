@@ -100,15 +100,15 @@ function SettingRow({
 }) {
   if (stacked) {
     return (
-      <div className="py-2.5">
+      <div className="py-2">
         <p className="text-sm font-medium text-ink">{label}</p>
         {desc && <p className="mt-0.5 text-[11px] text-ink-2">{desc}</p>}
-        <div className="mt-2.5">{children}</div>
+        <div className="mt-2">{children}</div>
       </div>
     );
   }
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-black/[0.04] py-3 first:border-t-0">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-black/[0.04] py-2.5 first:border-t-0">
       <div>
         <p className="text-sm font-medium text-ink">{label}</p>
         {desc && <p className="mt-0.5 text-[11px] text-ink-2">{desc}</p>}
@@ -118,12 +118,12 @@ function SettingRow({
   );
 }
 
-/** 主题色圆点 */
+/** 主题色圆点（shrink-0 防止在滚动行内被压成椭圆） */
 function Swatch({ hue, active, onClick }: { hue: number; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="size-9 rounded-full transition-transform hover:scale-110 active:scale-95"
+      className="size-9 shrink-0 rounded-full transition-transform hover:scale-110 active:scale-95"
       style={{
         background: `oklch(0.58 0.15 ${hue})`,
         boxShadow: active

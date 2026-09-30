@@ -131,7 +131,7 @@ function ReadingBanner({ isRecording }: { isRecording: boolean }) {
   return (
     <div className="mx-auto w-[60%] py-0.5 text-center">
       {passage.lines.map((line, i) => (
-        <p key={i} className="text-[13px] leading-snug text-ink">
+        <p key={i} className="text-center text-[13px] leading-snug text-ink">
           {line}
         </p>
       ))}

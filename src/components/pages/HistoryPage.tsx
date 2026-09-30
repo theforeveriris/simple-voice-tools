@@ -116,25 +116,25 @@ function RecordCard({
       onClick={handleClick}
       onContextMenu={(e) => e.preventDefault()}
       className={cn(
-        'group flex cursor-pointer select-none items-center gap-4 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)]',
+        'group flex cursor-pointer select-none flex-col gap-1.5 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)] sm:flex-row sm:items-center sm:gap-4',
         selectionMode && selected && 'ring-2 ring-accent',
       )}
       {...(selectionMode ? {} : press)}
     >
-      {/* 日期 */}
-      <div className="w-16 shrink-0 text-center">
+      {/* 日期栏（桌面端左侧；移动端并入下方信息行） */}
+      <div className="hidden w-16 shrink-0 text-center sm:block">
         <p className="text-xs font-semibold tabular-nums text-ink">{date}</p>
         <p className="text-lg font-semibold tabular-nums leading-tight text-ink">{time}</p>
         <p className="text-[10px] tabular-nums text-ink-2">{record.stats.durationSec.toFixed(0)} 秒</p>
       </div>
 
-      <div className="h-10 w-px shrink-0 bg-black/[0.05]" />
+      <div className="hidden h-10 w-px shrink-0 bg-black/[0.05] sm:block" />
 
-      {/* 波形与概要 */}
-      <div className="flex min-w-0 flex-1 items-center gap-4">
+      {/* 波形与概要 + 操作（移动端同一行，操作靠右） */}
+      <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
         <MiniSpark series={record.series} className="hidden shrink-0 sm:block" />
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-baseline gap-x-2 gap-y-0.5 flex-wrap">
             <span className="text-base font-semibold tabular-nums text-ink">
               {record.stats.avgF0.toFixed(1)}
             </span>
@@ -151,7 +151,13 @@ function RecordCard({
             )}
           </div>
           <p className="mt-0.5 truncate text-[11px] text-ink-2">
-            男声区 {record.stats.malePct}% · 女声区 {record.stats.femalePct}% · 响度 {record.stats.avgDb.toFixed(0)} dB
+            {/* 移动端显示日期与时长（日期栏已隐藏），桌面端显示区间统计 */}
+            <span className="sm:hidden">
+              {date} {time} · {record.stats.durationSec.toFixed(0)} 秒 · 响度 {record.stats.avgDb.toFixed(0)} dB
+            </span>
+            <span className="hidden sm:inline">
+              男声区 {record.stats.malePct}% · 女声区 {record.stats.femalePct}% · 响度 {record.stats.avgDb.toFixed(0)} dB
+            </span>
           </p>
           {record.note && (
             <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-accent">
@@ -160,35 +166,35 @@ function RecordCard({
             </p>
           )}
         </div>
-      </div>
 
-      {/* 操作 */}
-      <div className="flex shrink-0 items-center gap-1">
-        {selectionMode ? (
-          <span
-            className={cn(
-              'grid size-6 place-items-center rounded-full border-2 transition-colors',
-              selected ? 'border-accent bg-accent text-white' : 'border-black/20',
-            )}
-            aria-hidden
-          >
-            {selected && <span className="text-[11px] font-bold leading-none">✓</span>}
-          </span>
-        ) : (
-          <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="grid size-8 place-items-center text-ink-2 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"
-              aria-label="删除该记录"
+        {/* 操作 */}
+        <div className="flex shrink-0 items-center gap-1">
+          {selectionMode ? (
+            <span
+              className={cn(
+                'grid size-6 place-items-center rounded-full border-2 transition-colors',
+                selected ? 'border-accent bg-accent text-white' : 'border-black/20',
+              )}
+              aria-hidden
             >
-              <Trash2 size={15} />
-            </button>
-            <ChevronRight size={17} className="text-ink-2" />
-          </>
-        )}
+              {selected && <span className="text-[11px] font-bold leading-none">✓</span>}
+            </span>
+          ) : (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="grid size-8 place-items-center text-ink-2 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"
+                aria-label="删除该记录"
+              >
+                <Trash2 size={15} />
+              </button>
+              <ChevronRight size={17} className="text-ink-2" />
+            </>
+          )}
+        </div>
       </div>
     </motion.div>
   );
