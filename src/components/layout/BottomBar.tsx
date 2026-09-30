@@ -51,6 +51,8 @@ const MODE_OPTIONS: { id: TestMode; label: string; icon: ElementType; angleDeg: 
 const LONG_PRESS_MS = 480;
 /** 扇形半径（px，自圆球圆心起算） */
 const FAN_RADIUS = 118;
+/** 扇形最大张角（度，选项角度关于竖直对称） */
+const MAX_ANGLE_DEG = 52;
 
 /** 录音计时（圆球上方的悬浮时间提示） */
 function RecordTimer() {
@@ -114,12 +116,18 @@ function ModeFanSelector({
       />
       {MODE_OPTIONS.map((opt, i) => {
         const rad = (opt.angleDeg * Math.PI) / 180;
-        // 窄屏（手机竖屏）时圆球贴近右缘，扇形按视口宽度钳制横向位移，
-        // 保证选项圆钮与标签完整落在屏幕内（56 ≈ 圆钮半径 + 标签半宽）
+        // 窄屏（手机竖屏）时圆球贴近右缘，扇形整体平移以落入屏幕：
+        // 平移量对所有选项相同，保持等距弧形不变形（逐个钳制会破坏均匀分布）
         const vw = window.innerWidth;
-        const clampMargin = 56;
-        const rawDx = Math.sin(rad) * FAN_RADIUS;
-        const dx = Math.min(Math.max(center.x + rawDx, clampMargin), vw - clampMargin) - center.x;
+        const fanMargin = 56; // 圆钮半径 + 标签半宽
+        const maxDx = Math.sin((MAX_ANGLE_DEG * Math.PI) / 180) * FAN_RADIUS;
+        let fanShift = 0;
+        if (center.x + maxDx > vw - fanMargin) {
+          fanShift = vw - fanMargin - (center.x + maxDx);
+        } else if (center.x - maxDx < fanMargin) {
+          fanShift = fanMargin - (center.x - maxDx);
+        }
+        const dx = Math.sin(rad) * FAN_RADIUS + fanShift;
         const dy = -Math.cos(rad) * FAN_RADIUS;
         const Icon = opt.icon;
         return (
