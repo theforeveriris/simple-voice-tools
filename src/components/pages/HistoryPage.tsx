@@ -10,7 +10,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  History, Trash2, ChevronRight, SquareTerminal, FileQuestion,
+  Trash2, ChevronRight, SquareTerminal, FileQuestion,
   Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote,
 } from 'lucide-react';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -303,20 +303,6 @@ export function HistoryPage() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex items-end justify-between pt-1">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-ink">
-            <History size={19} className="text-accent" />
-            历史记录
-          </h1>
-          <p className="mt-0.5 text-xs text-ink-2">
-            {view === 'list'
-              ? `共 ${records.length} 条记录 · 长按卡片可多选`
-              : `近 ${records.length} 次测试的平均基频与音域走势`}
-          </p>
-        </div>
-      </div>
-
       {/* 列表 / 趋势 切换 */}
       <div className="flex w-fit items-center gap-0.5 rounded-full bg-card p-1 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
         {(

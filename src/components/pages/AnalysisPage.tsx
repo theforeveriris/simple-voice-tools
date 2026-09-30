@@ -119,7 +119,15 @@ function StatChip({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function HeroSummary({ record, range }: { record: AnalysisRecord; range: [number, number] }) {
+function HeroSummary({
+  record,
+  range,
+  actions,
+}: {
+  record: AnalysisRecord;
+  range: [number, number];
+  actions?: ReactNode;
+}) {
   const { avgF0 } = record.stats;
   const note = freqToNote(avgF0);
   const isPartial = range[0] > 0.001 || range[1] < record.durationSec - 0.001;
@@ -134,16 +142,26 @@ function HeroSummary({ record, range }: { record: AnalysisRecord; range: [number
       transition={{ duration: 0.35, ease: 'easeOut' }}
       className="rounded-[22px] bg-card p-5 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]"
     >
-      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-        <div className="min-w-40">
-          <p className="flex items-center gap-1 text-xs text-ink-2">
-            <Sparkles size={12} className="text-accent" />
-            平均基频
-            <span className="ml-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-              {isPartial ? `区间 ${fmt(range[0])}–${fmt(range[1])}` : '全段'}
+      {/* 标签行：平均基频 + 区间/模式徽标，右侧为分享 / CSV / 备注操作 */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-ink-2">
+          <Sparkles size={12} className="shrink-0 text-accent" />
+          平均基频
+          <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+            {isPartial ? `区间 ${fmt(range[0])}–${fmt(range[1])}` : '全段'}
+          </span>
+          {record.mode && (
+            <span className="flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
+              <Music2 size={9} />
+              {MODE_META[record.mode].label}
             </span>
-          </p>
-          <div className="mt-1 flex items-baseline gap-2">
+          )}
+        </p>
+        {actions && <div className="flex shrink-0 items-center gap-0.5">{actions}</div>}
+      </div>
+      <div className="mt-2 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+        <div className="min-w-40">
+          <div className="flex items-baseline gap-2">
             <span className="text-4xl font-semibold tracking-tight tabular-nums text-ink">
               {avgF0.toFixed(1)}
             </span>
@@ -152,6 +170,9 @@ function HeroSummary({ record, range }: { record: AnalysisRecord; range: [number
           </div>
           <p className="mt-1 text-[11px] text-ink-2">
             音高偏差 {note.cents >= 0 ? '+' : ''}{note.cents} cents · 基于当前区间有声帧
+          </p>
+          <p className="mt-0.5 text-[11px] tabular-nums text-ink-2">
+            {new Date(record.createdAt).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
         <div className="min-w-[280px] flex-1 lg:max-w-md">
@@ -614,23 +635,11 @@ export function AnalysisPage() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="pt-1">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-ink">分析报告</h1>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-ink-2">
-              {new Date(record.createdAt).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              的录音
-              {record.mode && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-                  <Music2 size={9} />
-                  {MODE_META[record.mode].label}
-                </span>
-              )}
-              · {syncChartRange ? '统计与图表随下方时间轴联动' : '各图表时间轴可独立缩放'}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-0.5">
+      <HeroSummary
+        record={recordWithStats}
+        range={pitchRange}
+        actions={
+          <>
             <button
               onClick={onShare}
               disabled={shareBusy}
@@ -659,16 +668,9 @@ export function AnalysisPage() {
             >
               <Pencil size={15} />
             </button>
-          </div>
-        </div>
-        {record.note && (
-          <p className="mt-1.5 rounded-lg bg-accent-soft/60 px-2.5 py-1 text-xs text-on-accent-soft">
-            📎 {record.note}
-          </p>
-        )}
-      </div>
-
-      <HeroSummary record={recordWithStats} range={pitchRange} />
+          </>
+        }
+      />
       <PlaybackCard
         url={audioUrl}
         playing={playing}

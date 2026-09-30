@@ -199,7 +199,6 @@ function StorageUsage() {
   return (
     <div className="py-2.5">
       <p className="text-sm font-medium text-ink">存储用量</p>
-      <p className="mt-0.5 text-[11px] text-ink-2">记录与音频保存在浏览器本地，此处为实际占用（含页面缓存）</p>
       {!info ? (
         <p className="mt-2 text-xs text-ink-2">统计中…</p>
       ) : (
@@ -539,19 +538,10 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-3.5 pb-4">
-      <div className="pt-1">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">设置</h1>
-        <p className="mt-0.5 text-xs text-ink-2">个性化外观、录音与数据管理</p>
-      </div>
-
       {/* 外观 */}
-      <SettingsSection icon={Palette} title="外观 · 莫奈取色">
-        <SettingRow
-          stacked
-          label="主题色"
-          desc="基于 Material 3 莫奈取色的柔和色板，全应用实时生效"
-        >
-          <div className="flex flex-wrap items-center gap-2.5">
+      <SettingsSection icon={Palette} title="外观">
+        <SettingRow stacked label="主题色">
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
             {THEME_PRESETS.map((p) => (
               <Swatch key={p.id} hue={p.hue} active={Math.abs(settings.hue - p.hue) < 4} onClick={() => setHue(p.hue)} />
             ))}
@@ -570,16 +560,13 @@ export function SettingsPage() {
             <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">{settings.hue}°</span>
           </div>
         </SettingRow>
-        <SettingRow label="图表网格辅助线" desc="在曲线图中显示淡灰色虚线刻度">
+        <SettingRow label="图表网格辅助线">
           <Switch
             checked={settings.showGrid}
             onCheckedChange={(v) => update({ showGrid: v })}
           />
         </SettingRow>
-        <SettingRow
-          label="图表时间轴联动"
-          desc="开启后分析页四个图表共用同一时间区间，统计随区间联动；关闭后每张图可独立缩放（统计与回放跟随音高曲线）"
-        >
+        <SettingRow label="图表时间轴联动">
           <Switch
             checked={settings.syncChartRange}
             onCheckedChange={(v) => update({ syncChartRange: v })}
@@ -589,22 +576,19 @@ export function SettingsPage() {
 
       {/* 录音 */}
       <SettingsSection icon={Mic} title="录音">
-        <SettingRow label="录音结束后自动进入分析" desc="关闭后停留在测试页，可手动前往分析">
+        <SettingRow label="录音结束后自动进入分析">
           <Switch
             checked={settings.autoEnterAnalysis}
             onCheckedChange={(v) => update({ autoEnterAnalysis: v })}
           />
         </SettingRow>
-        <SettingRow
-          label="保存录音音频"
-          desc="存于浏览器 IndexedDB，用于回放与 Jitter/Shimmer/HNR 嗓音质量分析；关闭后仅保留曲线统计"
-        >
+        <SettingRow label="保存录音音频">
           <Switch
             checked={settings.audioSave}
             onCheckedChange={(v) => update({ audioSave: v })}
           />
         </SettingRow>
-        <SettingRow label="最长录音时长" desc="达到上限将自动停止录音">
+        <SettingRow label="最长录音时长">
           <Select
             value={String(settings.maxDurationSec)}
             onValueChange={(v) => update({ maxDurationSec: Number(v) })}
@@ -621,7 +605,7 @@ export function SettingsPage() {
             </SelectContent>
           </Select>
         </SettingRow>
-        <SettingRow label="麦克风设备" desc="保持默认即可使用系统输入设备">
+        <SettingRow label="麦克风设备">
           <Select
             value={settings.micDeviceId || 'default'}
             onValueChange={(v) => update({ micDeviceId: v === 'default' ? '' : v })}
@@ -644,7 +628,7 @@ export function SettingsPage() {
       {/* 数据管理 */}
       <SettingsSection icon={DatabaseBackup} title="数据管理">
         <StorageUsage />
-        <SettingRow label="完整备份（ZIP）" desc="全部记录 + 录音音频打包为单个 ZIP 文件">
+        <SettingRow label="完整备份（ZIP）">
           <button
             onClick={exportZip}
             disabled={zipBusy}
@@ -654,7 +638,7 @@ export function SettingsPage() {
             {zipBusy ? '打包中…' : '导出'}
           </button>
         </SettingRow>
-        <SettingRow label="从 ZIP 恢复" desc="解包记录与音频合并回本地（按 id 自动去重）">
+        <SettingRow label="从 ZIP 恢复">
           <button
             onClick={() => zipInputRef.current?.click()}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
@@ -674,7 +658,7 @@ export function SettingsPage() {
             }}
           />
         </SettingRow>
-        <SettingRow label="导出历史记录" desc="将全部测试记录保存为 JSON 文件（不含音频）">
+        <SettingRow label="导出历史记录">
           <button
             onClick={exportData}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
@@ -683,7 +667,7 @@ export function SettingsPage() {
             导出
           </button>
         </SettingRow>
-        <SettingRow label="导出汇总 CSV" desc="每条记录一行统计摘要，便于 Excel / Python 分析">
+        <SettingRow label="导出汇总 CSV">
           <button
             onClick={exportSummaryCsv}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
@@ -692,7 +676,7 @@ export function SettingsPage() {
             导出
           </button>
         </SettingRow>
-        <SettingRow label="导入历史记录" desc="从之前导出的 JSON 文件合并恢复（自动去重）">
+        <SettingRow label="导入历史记录">
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
@@ -712,7 +696,7 @@ export function SettingsPage() {
             }}
           />
         </SettingRow>
-        <SettingRow label="载入示例数据" desc="生成一段示例录音，体验分析功能">
+        <SettingRow label="载入示例数据">
           <button
             onClick={() => {
               const demo = createDemoRecord();
@@ -726,7 +710,7 @@ export function SettingsPage() {
             载入
           </button>
         </SettingRow>
-        <SettingRow label="清空全部历史记录" desc="删除本地保存的所有测试数据，不可恢复">
+        <SettingRow label="清空全部历史记录">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-red-500 transition-opacity hover:opacity-70">
@@ -761,11 +745,7 @@ export function SettingsPage() {
 
       {/* GitHub 云备份 */}
       <SettingsSection icon={Cloud} title="GitHub 云备份">
-        <SettingRow
-          stacked
-          label="Client ID"
-          desc="填写你自己 GitHub App / OAuth App 的 Client ID（GitHub → Settings → Developer settings）。GitHub App 需勾选 Enable Device Flow、Contents 权限设为 Read and write，并安装到备份仓库。仅保存在本机。"
-        >
+        <SettingRow stacked label="Client ID">
           <input
             value={settings.githubClientId ?? ''}
             onChange={(e) => update({ githubClientId: e.target.value.trim() })}
@@ -775,7 +755,7 @@ export function SettingsPage() {
             className="w-full rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
           />
         </SettingRow>
-        <SettingRow label="仓库名" desc="备份目标私有库（账号下不存在时会尝试自动创建）">
+        <SettingRow label="仓库名">
           <input
             value={settings.githubRepo ?? ''}
             onChange={(e) => update({ githubRepo: e.target.value.trim() })}
@@ -787,7 +767,7 @@ export function SettingsPage() {
         </SettingRow>
         <SettingRow
           label="连接状态"
-          desc={ghChecking ? '检查中…' : ghLogin ? `已连接 ${ghLogin} · 令牌仅存于本机 IndexedDB` : '未连接（授权过程全程在本页完成）'}
+          desc={ghChecking ? '检查中…' : ghLogin ? `已连接 ${ghLogin}` : '未连接'}
         >
           {ghChecking ? undefined : ghLogin ? (
             <button
@@ -817,8 +797,8 @@ export function SettingsPage() {
             ghBusy === 'push'
               ? ghProgress || '准备中…'
               : ghLastPush
-                ? `上次备份 ${new Date(ghLastPush).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · 记录 + 音频，未变化文件自动跳过`
-                : '推送全部记录与录音音频到私有仓库'
+                ? `上次备份 ${new Date(ghLastPush).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                : undefined
           }
         >
           <button
@@ -835,11 +815,7 @@ export function SettingsPage() {
         </SettingRow>
         <SettingRow
           label="从 GitHub 恢复"
-          desc={
-            ghBusy === 'pull'
-              ? ghProgress || '准备中…'
-              : '拉取云端记录与本地缺失的音频，按 id 合并（不覆盖已有数据）'
-          }
+          desc={ghBusy === 'pull' ? ghProgress || '准备中…' : undefined}
         >
           <button
             onClick={onGhPull}
@@ -853,23 +829,11 @@ export function SettingsPage() {
             {ghBusy === 'pull' ? '恢复中…' : '恢复'}
           </button>
         </SettingRow>
-        <p className="pt-1 text-[10px] leading-relaxed text-ink-2">
-          备份写入你账号下的私有仓库，仅在点击「立即备份 / 恢复」时访问网络；断开连接即删除本地令牌。
-        </p>
       </SettingsSection>
 
       {/* 应用（PWA） */}
       <SettingsSection icon={Smartphone} title="应用">
-        <SettingRow
-          label="安装为桌面应用"
-          desc={
-            install.standalone
-              ? '当前已在应用窗口中运行'
-              : install.canInstall
-                ? '安装到桌面或主屏幕，支持离线使用'
-                : '当前浏览器未提供一键安装，可尝试浏览器菜单中的「安装」或「添加到主屏幕」'
-          }
-        >
+        <SettingRow label="安装为桌面应用">
           <button
             onClick={async () => {
               const outcome = await promptInstall();
