@@ -141,10 +141,17 @@ function useRecordingElapsed(active: boolean): number {
   return active ? elapsed : 0;
 }
 
-/** 朗读引导横幅：《飞鸟集》随机段落，可折叠给图表让空间 */
-function ReadingBanner({ isRecording }: { isRecording: boolean }) {
+/** 朗读引导横幅：《飞鸟集》随机段落，可折叠给图表让空间（折叠状态由页面持有） */
+function ReadingBanner({
+  isRecording,
+  collapsed,
+  onToggle,
+}: {
+  isRecording: boolean;
+  collapsed: boolean;
+  onToggle: (v: boolean) => void;
+}) {
   const [passage, setPassage] = useState<ReadingPassage>(() => pickPassage());
-  const [collapsed, setCollapsed] = useState(false);
   // 渲染期派生：录音开始的瞬间换一段，保证多次测试语料有变化
   const [wasRecording, setWasRecording] = useState(false);
   if (isRecording !== wasRecording) {
@@ -155,7 +162,7 @@ function ReadingBanner({ isRecording }: { isRecording: boolean }) {
   return (
     <div className="shrink-0 rounded-[18px] bg-card p-3 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
       <button
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={() => onToggle(!collapsed)}
         className="flex w-full items-center gap-2 text-left"
         aria-label={collapsed ? '展开朗读文本' : '收起朗读文本'}
       >
@@ -219,6 +226,9 @@ export function TestPage() {
   const setTab = useStore((s) => s.setTab);
   // 非录音状态下显示占位提示
   const showHint = !isRecording;
+  // 朗读横幅折叠状态提升到页面：折叠后让出的空间优先分给前两个图表
+  const [bannerCollapsed, setBannerCollapsed] = useState(false);
+  const bannerShort = mode === 'reading' && bannerCollapsed;
   // 图表延迟挂载：三张 Canvas 的 rAF 绘制循环会占用主线程，
   // 推迟到页面入场与底栏弹簧动画结束（约 300ms）后再启动，保证动效满帧
   const [chartsReady, setChartsReady] = useState(false);
@@ -228,9 +238,10 @@ export function TestPage() {
   }, []);
 
   return (
-    // 高度精确贴合视口（页头 pt-7 + 底部让位 pb-36 = 10.75rem），
-    // 三张图按比例分配剩余空间，移动端与桌面端都不会溢出或留大空隙
-    <div className="flex h-[calc(100dvh-10.75rem)] min-h-[360px] flex-col gap-3 sm:gap-3.5">
+    // 高度下探到距底栏约 12px（页头 pt-7 + 底栏顶 4.75rem + 间距 0.75rem = 7.25rem），
+    // -mb-14 抵消 main 的 pb-36 中多余部分，页面不产生滚动；
+    // 三张图按比例分配剩余空间，横幅收起时用更高的 min-h 优先加高前两图
+    <div className="-mb-14 flex h-[calc(100dvh-7.25rem)] min-h-[360px] flex-col gap-3 sm:gap-3.5">
       {/* 页头 */}
       <div className="flex shrink-0 items-end justify-between pt-1">
         <div>
@@ -248,21 +259,35 @@ export function TestPage() {
       </div>
 
       {/* 模式引导横幅 */}
-      {mode === 'reading' ? <ReadingBanner isRecording={isRecording} /> : <ModeGuideBanner mode={mode} isRecording={isRecording} />}
+      {mode === 'reading' ? (
+        <ReadingBanner isRecording={isRecording} collapsed={bannerCollapsed} onToggle={setBannerCollapsed} />
+      ) : (
+        <ModeGuideBanner mode={mode} isRecording={isRecording} />
+      )}
 
-      {/* 三张图按 6 : 5 : 12 分配剩余高度（basis-0 使比例不受内容影响，min-h 防塌缩） */}
+      {/* 三张图按 6 : 5 : 12 分配剩余高度（basis-0 使比例不受内容影响）；
+          朗读横幅收起时以更高的 min-h 锁定前两图增量，音高图只取剩余不缩水 */}
       {/* F1 / F2 共振峰 */}
       <ChartCard
         title="F1 / F2 共振峰曲线"
         right={<FormantLegend />}
-        className="min-h-[72px] shrink basis-0 grow-[6]"
+        className={cn(
+          'shrink basis-0 grow-[6] transition-all duration-300',
+          bannerShort ? 'min-h-[180px] sm:min-h-[160px]' : 'min-h-[72px]',
+        )}
       >
         {chartsReady && <SeriesChart kind="formant" live />}
         {showHint && <IdleHint />}
       </ChartCard>
 
       {/* 音频能量 */}
-      <ChartCard title="音频能量" className="min-h-[60px] shrink basis-0 grow-[5]">
+      <ChartCard
+        title="音频能量"
+        className={cn(
+          'shrink basis-0 grow-[5] transition-all duration-300',
+          bannerShort ? 'min-h-[150px] sm:min-h-[135px]' : 'min-h-[60px]',
+        )}
+      >
         {chartsReady && <SeriesChart kind="energy" live />}
         {showHint && <IdleHint />}
       </ChartCard>
@@ -271,7 +296,7 @@ export function TestPage() {
       <ChartCard
         title="音高曲线"
         right={<LivePitchReadout />}
-        className="min-h-[130px] shrink basis-0 grow-[12]"
+        className="min-h-[130px] shrink basis-0 grow-[12] transition-all duration-300"
       >
         {chartsReady && <SeriesChart kind="pitch" live />}
         {showHint && <IdleHint />}

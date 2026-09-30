@@ -151,7 +151,8 @@ function ModeFanSelector({
           >
             <button
               onClick={() => onChoose(opt.id)}
-              className="flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
+              style={{ transform: `translate(-50%, -50%) rotate(${(((i - 1) * spread - rotateDeg)).toFixed(2)}deg)` }}
+              className="flex flex-col items-center gap-2"
               aria-label={`${opt.label}：${MODE_META[opt.id].desc}`}
             >
               <motion.span
