@@ -156,6 +156,9 @@ export const zhCN = {
   'analysis.adviceLlmError': '生成失败',
   'analysis.adviceLlmRetry': '重试',
   'analysis.adviceLlmNoConfig': '请先在 实验性功能 → 大模型配置 中填写接口参数',
+  'analysis.adviceStatusGood': '良好',
+  'analysis.adviceStatusFair': '平稳',
+  'analysis.adviceStatusAttention': '需注意',
 
   /* ---------- 历史页 ---------- */
   'history.viewList': '列表',

@@ -155,6 +155,9 @@ export const zhTW = {
   'analysis.adviceLlmError': '生成失敗',
   'analysis.adviceLlmRetry': '重試',
   'analysis.adviceLlmNoConfig': '請先在 實驗性功能 → 大模型配置 中填寫介面參數',
+  'analysis.adviceStatusGood': '良好',
+  'analysis.adviceStatusFair': '平穩',
+  'analysis.adviceStatusAttention': '需注意',
 
   /* ---------- 歷史頁 ---------- */
   'history.viewList': '列表',

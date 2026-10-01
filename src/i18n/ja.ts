@@ -156,6 +156,9 @@ export const ja = {
   'analysis.adviceLlmError': '生成に失敗しました',
   'analysis.adviceLlmRetry': '再試行',
   'analysis.adviceLlmNoConfig': '先に 実験的機能 → LLM 設定 でエンドポイントを入力してください',
+  'analysis.adviceStatusGood': '良好',
+  'analysis.adviceStatusFair': 'まずまず',
+  'analysis.adviceStatusAttention': '要注意',
 
   /* ---------- 历史页 ---------- */
   'history.viewList': 'リスト',

@@ -156,6 +156,9 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'analysis.adviceLlmError': '推演未成',
   'analysis.adviceLlmRetry': '復試',
   'analysis.adviceLlmNoConfig': '請先於實驗之能 → 大模型之設，具其介面之參',
+  'analysis.adviceStatusGood': '良',
+  'analysis.adviceStatusFair': '平',
+  'analysis.adviceStatusAttention': '宜慎',
 
   /* ---------- 历史页 ---------- */
   'history.viewList': '列冊',

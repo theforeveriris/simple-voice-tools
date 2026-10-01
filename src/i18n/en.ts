@@ -155,6 +155,9 @@ export const en = {
   'analysis.adviceLlmError': 'Generation failed',
   'analysis.adviceLlmRetry': 'Retry',
   'analysis.adviceLlmNoConfig': 'Fill in the endpoint under Experimental → LLM configuration first',
+  'analysis.adviceStatusGood': 'Good',
+  'analysis.adviceStatusFair': 'Fair',
+  'analysis.adviceStatusAttention': 'Needs attention',
 
   /* ---------- History page ---------- */
   'history.viewList': 'List',

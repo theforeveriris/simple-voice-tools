@@ -9,10 +9,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Lightbulb, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { useHistoryStore } from '@/store/useHistoryStore';
 import { buildAdvice, type AdviceTarget } from '@/lib/advice';
-import { cachedLlmAdvice, fetchLlmAdvice, llmAdviceKey, resolveLlmConfig } from '@/lib/llm';
+import {
+  cachedLlmAdvice, fetchLlmAdvice, llmAdviceKey, resolveLlmConfig,
+  type AdviceAssessment, type LlmAdviceResult,
+} from '@/lib/llm';
 import { t } from '@/i18n';
+import type { DictKey } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
+import { cn } from '@/lib/utils';
 
 /** 建议卡通用骨架：标题行 + 内容 + 底部提示 */
 export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
@@ -23,9 +29,18 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   const baseUrl = useStore((s) => s.settings.llmBaseUrl);
   const apiKey = useStore((s) => s.settings.llmApiKey);
   const modelId = useStore((s) => s.settings.llmModelId);
+  const baselineId = useStore((s) => s.settings.baselineRecordId);
+  const baselineRecord = useHistoryStore((s) =>
+    baselineId ? s.records.find((r) => r.id === baselineId) ?? null : null,
+  );
   if (adviceMode === 'none') return null;
   const target: AdviceTarget = { enabled: targetEnabled, min: targetMin, max: targetMax };
   const cfg = resolveLlmConfig({ llmBaseUrl: baseUrl, llmApiKey: apiKey, llmModelId: modelId });
+  // 基线 Δ 只在单记录（分析页）且非自身时附带
+  const baseline =
+    records.length === 1 && baselineRecord && baselineRecord.id !== records[0].id
+      ? baselineRecord
+      : null;
   return (
     <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
@@ -36,7 +51,7 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
         <span className="text-[10px] text-ink-2">{t('settings.labs')}</span>
       </div>
       {adviceMode === 'llm'
-        ? <LlmAdvice records={records} target={target} cfg={cfg} />
+        ? <LlmAdvice records={records} target={target} cfg={cfg} baseline={baseline} />
         : <RuleAdvice records={records} target={target} />}
       <p className="mt-2 px-0.5 text-[10px] leading-relaxed text-ink-2">
         {t(adviceMode === 'llm' ? 'analysis.adviceHintLlm' : 'analysis.adviceHint')}
@@ -76,10 +91,17 @@ function RuleAdvice({ records, target }: { records: AnalysisRecord[]; target: Ad
   );
 }
 
+/** 评估状态 → 圆点颜色 + 文案词条 */
+const STATUS_META: Record<AdviceAssessment['status'], { dot: string; key: DictKey }> = {
+  good: { dot: 'bg-accent', key: 'analysis.adviceStatusGood' },
+  fair: { dot: 'bg-black/30', key: 'analysis.adviceStatusFair' },
+  attention: { dot: 'bg-red-500', key: 'analysis.adviceStatusAttention' },
+};
+
 interface LlmState {
   /** 已收到结果的请求键（key#nonce），与当前请求键不一致即处于加载中 */
   doneKey: string | null;
-  lines: string[];
+  result: LlmAdviceResult | null;
   error: string | null;
 }
 
@@ -88,37 +110,35 @@ function LlmAdvice({
   records,
   target,
   cfg,
+  baseline,
 }: {
   records: AnalysisRecord[];
   target: AdviceTarget;
   cfg: ReturnType<typeof resolveLlmConfig>;
+  baseline: AnalysisRecord | null;
 }) {
   const [nonce, setNonce] = useState(0);
-  const [state, setState] = useState<LlmState>({ doneKey: null, lines: [], error: null });
+  const [state, setState] = useState<LlmState>({ doneKey: null, result: null, error: null });
   // effect 按缓存键（值稳定）触发，输入经 ref 传递：键值不变则不重复请求
-  const latest = useRef({ records, target, cfg });
+  const latest = useRef({ records, target, cfg, baseline });
   useEffect(() => {
-    latest.current = { records, target, cfg };
+    latest.current = { records, target, cfg, baseline };
   });
-  const key = cfg ? llmAdviceKey(cfg, records, target) : null;
+  const key = cfg ? llmAdviceKey(cfg, records, target, baseline) : null;
   const requestKey = key ? `${key}#${nonce}` : null;
 
   useEffect(() => {
     if (!key || !requestKey) return;
-    const { cfg: curCfg, records: curRecords, target: curTarget } = latest.current;
+    const { cfg: curCfg, records: curRecords, target: curTarget, baseline: curBaseline } = latest.current;
     if (!curCfg) return;
     let alive = true;
-    cachedLlmAdvice(key, () => fetchLlmAdvice(curRecords, curTarget, curCfg))
-      .then((lines) => {
-        if (alive) setState({ doneKey: requestKey, lines, error: null });
+    cachedLlmAdvice(key, () => fetchLlmAdvice(curRecords, curTarget, curCfg, curBaseline))
+      .then((result) => {
+        if (alive) setState({ doneKey: requestKey, result, error: null });
       })
       .catch((err: unknown) => {
         if (alive) {
-          setState({
-            doneKey: requestKey,
-            lines: [],
-            error: err instanceof Error ? err.message : String(err),
-          });
+          setState({ doneKey: requestKey, result: null, error: err instanceof Error ? err.message : String(err) });
         }
       });
     return () => {
@@ -155,15 +175,42 @@ function LlmAdvice({
       </div>
     );
   }
+  const result = state.result;
+  if (!result) return null;
   return (
-    <ul className="flex flex-col gap-1.5">
-      {state.lines.map((line, i) => (
-        <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-ink">
-          <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
-          <span>{line}</span>
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-2">
+      {result.summary && (
+        <p className="px-0.5 text-xs leading-relaxed text-ink">{result.summary}</p>
+      )}
+      {result.assessments.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {result.assessments.map((a, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-ink">
+              <span
+                className={cn('mt-1.5 size-1.5 shrink-0 rounded-full', STATUS_META[a.status].dot)}
+                aria-label={t(STATUS_META[a.status].key)}
+                title={t(STATUS_META[a.status].key)}
+              />
+              <span>
+                <span className="font-medium">{a.aspect}</span>
+                <span className="text-ink-2"> · {t(STATUS_META[a.status].key)}</span>
+                <span> — {a.comment}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {result.advice.length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {result.advice.map((line, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-ink">
+              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
