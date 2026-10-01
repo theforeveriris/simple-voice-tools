@@ -129,7 +129,13 @@ export const useStore = create<AppState>()(
       partialize: (state) => ({ settings: state.settings }),
       merge: (persisted, current) => {
         const p = (persisted as { settings?: Partial<AppSettings> } | undefined)?.settings ?? {};
-        return { ...current, settings: { ...DEFAULT_SETTINGS, ...p } };
+        const settings = { ...DEFAULT_SETTINGS, ...p } as AppSettings;
+        // 旧版「训练建议」布尔开关迁移为三态模式（开启 → 规则判断，关闭 → 无）
+        const legacy = (p as { adviceEnabled?: unknown }).adviceEnabled;
+        if (typeof legacy === 'boolean' && p.adviceMode === undefined) {
+          settings.adviceMode = legacy ? 'rules' : 'none';
+        }
+        return { ...current, settings };
       },
     },
   ),

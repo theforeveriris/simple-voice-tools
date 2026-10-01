@@ -195,7 +195,7 @@ export function AnalysisPage() {
       />
       {record.mode === 'sustained' && <SustainedCard record={record} />}
       <StatsTable record={recordWithStats} />
-      <AdviceCard record={record} />
+      <AdviceCard records={[record]} />
 
       {/* 图表卡显隐跟随设置（analysisCards）；语谱图另需实验性开关，声域图仅滑音记录 */}
       {settings.analysisCards.pitch && (

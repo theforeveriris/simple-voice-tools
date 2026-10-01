@@ -150,7 +150,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // 实验性功能
   showSpectrogram: true,
   liveSpectrum: false,
-  adviceEnabled: true,
+  adviceMode: 'rules',
+  adviceOnCompare: false,
   // 配置子页面扩展
   playbackRate: 1,
   silenceStopSec: 1,

@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { BAND_COLORS, getBandRanges, bandOf } from '@/constants';
 import { exportShareCompareImage } from '@/lib/export/shareCard';
 import { chartPalette, collectVowelPoints, drawVowelSpaceFrame, drawVowelPoints, drawVowelCentroid, drawVowelRefs, vowelXY } from '@/components/charts/chartPainters';
+import { AdviceCard } from '@/components/analysis/AdviceCard';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { useStore } from '@/store/useStore';
@@ -158,6 +159,8 @@ export function CompareSheet({
   const [a, b] = pair;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const showGrid = useStore((s) => s.settings.showGrid);
+  const adviceMode = useStore((s) => s.settings.adviceMode);
+  const adviceOnCompare = useStore((s) => s.settings.adviceOnCompare);
   const [shareBusy, setShareBusy] = useState(false);
 
   const onShare = async () => {
@@ -340,6 +343,13 @@ export function CompareSheet({
             {t('compare.bandNote', { a: t(`band.${bandOf(sA.avgF0)}`), b: t(`band.${bandOf(sB.avgF0)}`) })}
           </p>
         </div>
+
+        {/* 训练建议（实验性，设置 → 实验性功能 → 在对比页面使用建议） */}
+        {adviceOnCompare && adviceMode !== 'none' && (
+          <div className="mt-3.5">
+            <AdviceCard records={pair} />
+          </div>
+        )}
       </div>
     </motion.div>
   );

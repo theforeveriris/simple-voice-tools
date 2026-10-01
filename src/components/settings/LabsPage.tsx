@@ -1,6 +1,7 @@
 /**
  * 实验性功能（设置的子页面）
- * - 功能开关（语谱图 / 实时频谱 / 训练建议）
+ * - 功能开关（语谱图 / 实时频谱 / 训练建议三态 + 对比页建议）
+ * - 大模型配置（训练建议「基于大模型判断」的接口参数）
  * - 自定义音区边界（实验性）
  * - 实时元音落点
  * - 导入音频离线分析
@@ -21,12 +22,13 @@ import { analyzeAudioFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import type { AppSettings } from '@/types';
+import type { AdviceMode, AppSettings } from '@/types';
 import { VowelLiveSheet } from '@/components/pages/VowelLiveSheet';
 import { cn } from '@/lib/utils';
-import { Switch } from '@/components/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
 import { SettingsSection, SettingRow } from './rows';
 import { GithubBackupSection } from './GithubBackupSection';
+import { LlmConfigSection } from './LlmConfigSection';
 import { InfoTip } from './InfoTip';
 
 export function LabsPage({
@@ -133,13 +135,31 @@ export function LabsPage({
               onCheckedChange={(v) => update({ liveSpectrum: v })}
             />
           </SettingRow>
-          <SettingRow label={t('settings.adviceEnable')}>
+          <SettingRow label={t('settings.adviceMode')}>
+            <Select
+              value={settings.adviceMode}
+              onValueChange={(v) => update({ adviceMode: v as AdviceMode })}
+            >
+              <SelectTrigger className="w-40 border-0 bg-transparent px-0 text-sm shadow-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                <SelectItem value="none">{t('settings.adviceModeNone')}</SelectItem>
+                <SelectItem value="rules">{t('settings.adviceModeRules')}</SelectItem>
+                <SelectItem value="llm">{t('settings.adviceModeLlm')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingRow>
+          <SettingRow label={t('settings.adviceOnCompare')} desc={t('settings.adviceOnCompareDesc')}>
             <Switch
-              checked={settings.adviceEnabled}
-              onCheckedChange={(v) => update({ adviceEnabled: v })}
+              checked={settings.adviceOnCompare}
+              onCheckedChange={(v) => update({ adviceOnCompare: v })}
             />
           </SettingRow>
         </SettingsSection>
+
+        {/* 大模型配置（训练建议选「基于大模型判断」时使用） */}
+        <LlmConfigSection settings={settings} update={update} />
 
         {/* 自定义音区边界 */}
         <SettingsSection icon={Ruler} title={t('settings.bandCustom')}>

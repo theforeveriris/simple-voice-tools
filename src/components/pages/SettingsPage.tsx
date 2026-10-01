@@ -59,7 +59,9 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   // 实验性功能
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.showSpec' },
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.liveSpectrum' },
-  { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceEnable' },
+  { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceMode' },
+  { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceOnCompare' },
+  { page: 'labs', sectionKey: 'settings.llmSection', labelKey: 'settings.llmBaseUrl' },
   { page: 'labs', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandBounds' },
   { page: 'labs', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandReset' },
   { page: 'labs', sectionKey: 'vowelLive.title', labelKey: 'vowelLive.title' },

@@ -32,6 +32,12 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export type SpecColormap = 'magma' | 'gray' | 'accent';
 
 /**
+ * 训练建议生成方式
+ * none 关闭；rules 本地规则引擎；llm 调用大模型接口（见 lib/llm.ts）
+ */
+export type AdviceMode = 'none' | 'rules' | 'llm';
+
+/**
  * 分析页图表卡显隐
  */
 export interface AnalysisCards {
@@ -236,6 +242,14 @@ export interface AppSettings {
   showSpectrogram: boolean;
   /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */
   liveSpectrum: boolean;
-  /** 分析页是否显示本地规则生成的训练建议 */
-  adviceEnabled: boolean;
+  /** 训练建议生成方式：无 / 规则判断 / 基于大模型判断 */
+  adviceMode: AdviceMode;
+  /** 对比页（两条记录对比）是否也显示训练建议 */
+  adviceOnCompare: boolean;
+  /** 大模型配置：OpenAI 兼容接口 Base URL（如 https://api.example.com/v1） */
+  llmBaseUrl?: string;
+  /** 大模型配置：API Key（仅存本地 localStorage，不随数据导出） */
+  llmApiKey?: string;
+  /** 大模型配置：模型 ID（如 gpt-4o-mini / deepseek-chat） */
+  llmModelId?: string;
 }
