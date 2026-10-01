@@ -252,4 +252,8 @@ export interface AppSettings {
   llmApiKey?: string;
   /** 大模型配置：模型 ID（如 gpt-4o-mini / deepseek-chat） */
   llmModelId?: string;
+  /** 大模型配置：补充规则（逐条追加到内置分析标准之后，冲突时以规则为准） */
+  llmExtraRules?: string[];
+  /** 大模型配置：整体覆写内置提示词（设置后不再使用内置分析标准） */
+  llmPromptOverride?: string;
 }

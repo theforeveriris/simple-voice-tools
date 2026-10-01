@@ -29,6 +29,8 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   const baseUrl = useStore((s) => s.settings.llmBaseUrl);
   const apiKey = useStore((s) => s.settings.llmApiKey);
   const modelId = useStore((s) => s.settings.llmModelId);
+  const extraRules = useStore((s) => s.settings.llmExtraRules);
+  const promptOverride = useStore((s) => s.settings.llmPromptOverride);
   const baselineId = useStore((s) => s.settings.baselineRecordId);
   const baselineRecord = useHistoryStore((s) =>
     baselineId ? s.records.find((r) => r.id === baselineId) ?? null : null,
@@ -51,7 +53,15 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
         <span className="text-[10px] text-ink-2">{t('settings.labs')}</span>
       </div>
       {adviceMode === 'llm'
-        ? <LlmAdvice records={records} target={target} cfg={cfg} baseline={baseline} />
+        ? (
+          <LlmAdvice
+            records={records}
+            target={target}
+            cfg={cfg}
+            baseline={baseline}
+            prompt={{ extraRules, promptOverride }}
+          />
+        )
         : <RuleAdvice records={records} target={target} />}
       <p className="mt-2 px-0.5 text-[10px] leading-relaxed text-ink-2">
         {t(adviceMode === 'llm' ? 'analysis.adviceHintLlm' : 'analysis.adviceHint')}
@@ -111,28 +121,30 @@ function LlmAdvice({
   target,
   cfg,
   baseline,
+  prompt,
 }: {
   records: AnalysisRecord[];
   target: AdviceTarget;
   cfg: ReturnType<typeof resolveLlmConfig>;
   baseline: AnalysisRecord | null;
+  prompt: { extraRules?: string[]; promptOverride?: string };
 }) {
   const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<LlmState>({ doneKey: null, result: null, error: null });
   // effect 按缓存键（值稳定）触发，输入经 ref 传递：键值不变则不重复请求
-  const latest = useRef({ records, target, cfg, baseline });
+  const latest = useRef({ records, target, cfg, baseline, prompt });
   useEffect(() => {
-    latest.current = { records, target, cfg, baseline };
+    latest.current = { records, target, cfg, baseline, prompt };
   });
-  const key = cfg ? llmAdviceKey(cfg, records, target, baseline) : null;
+  const key = cfg ? llmAdviceKey(cfg, records, target, { baseline, prompt }) : null;
   const requestKey = key ? `${key}#${nonce}` : null;
 
   useEffect(() => {
     if (!key || !requestKey) return;
-    const { cfg: curCfg, records: curRecords, target: curTarget, baseline: curBaseline } = latest.current;
+    const { cfg: curCfg, records: curRecords, target: curTarget, baseline: curBaseline, prompt: curPrompt } = latest.current;
     if (!curCfg) return;
     let alive = true;
-    cachedLlmAdvice(key, () => fetchLlmAdvice(curRecords, curTarget, curCfg, curBaseline))
+    cachedLlmAdvice(key, () => fetchLlmAdvice(curRecords, curTarget, curCfg, { baseline: curBaseline, prompt: curPrompt }))
       .then((result) => {
         if (alive) setState({ doneKey: requestKey, result, error: null });
       })

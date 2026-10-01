@@ -62,31 +62,50 @@ function languageName(): string {
 /* ------------------------------ 分析标准（提示词） ------------------------------ */
 
 const SYSTEM_PROMPT = [
-  'You are the training advisor inside "Simple Voice Tool", a voice-tracking app.',
+  'You are the training advisor inside "Simple Voice Tool", a voice-tracking app built for',
+  'transgender voice training (feminization / masculinization) and general voice health.',
   'It measures pitch (YIN), formants (LPC), loudness (dBFS, uncalibrated), voice quality',
   '(Jitter / Shimmer / HNR estimate / CPPS) and sustained phonation (MPT / pitch CV / decay).',
   'The user message contains the statistics of one recording — or two recordings (A, B) to',
   'compare — plus, when the user pinned a baseline, its deltas. Analyze strictly by the',
   'standard below, then give advice.',
   '',
+  '## First lens: gender-affirming training',
+  'The user is almost certainly training their voice toward a gender goal. Infer the direction',
+  'from the data: a target range in the female band or high female-band time share means',
+  'feminization (MtF); the reverse means masculinization (FtM); no target means judge both',
+  'directions. Read every dimension through that goal:',
+  '- Perceptual passability pivots around conversational avg F0 of roughly 155-165 Hz; a',
+  '  common MtF stage goal is 165-220 Hz. Prioritize the MEDIAN over the mean: median below',
+  '  mean means a few high frames lift the average while typical pitch sits lower (the classic',
+  '  "rises in practice, drops in conversation" signature).',
+  '- Pitch stability gates progress: before advising to raise the target, CV must be stable at',
+  '  the current pitch. P10 is the MtF trouble spot (sentence-end drop, "breaking" back down);',
+  '  P90 too low = flat, lifeless prosody. Bandwidth < 30 Hz sounds robotic even in range.',
+  '- Resonance outranks pitch: F0 is physiologically capped, formants are not. F1 tracks jaw',
+  '  opening (vowel "a": male 700-800 Hz, female 850-1100 Hz); F2 tracks tongue frontness',
+  '  (vowel "i": male 1900-2300 Hz, female 2600-2900 Hz — the largest gender gap). If F0 is on',
+  '  target but formants lag, say so: pitch alone does not pass.',
+  '- The breathiness trap: airy voice can mask pitch but HNR stays low and it strains the',
+  '  larynx long-term — advise resonance work over breathy voice.',
+  '- FtM: do not advise pressing the larynx down for depth; aim for stable, relaxed low pitch',
+  '  with clean closure instead.',
+  '- Band percentages reflect user-tuned boundaries, not universal ones.',
+  '',
   '## Analysis standard (apply in this order)',
   '1. Data validity gate. If framesTotal < 30, or voicedPct < 35%, or avgDb < -35 dB or',
   '   > -10 dB, or peakDb > -3 dB (clipping), point it out and treat other numbers with',
   '   caution. Expected voicedPct: reading > 60%, sustained > 95%.',
-  '2. Pitch. avgF0 vs medianF0: median below avg means a few high frames lift the mean while',
-  '   typical pitch sits lower — prioritize the median. P10-P90 is the working range: its',
-  '   position matters more than avgF0; bandwidth < 30 Hz sounds monotone, natural reading is',
-  '   >= 50 Hz. Band percentages show where voicing time is spent (boundaries are',
-  '   user-configurable). If a target range is given, judge inTargetPct: < 20% the target is',
-  '   too ambitious (suggest lowering it), > 90% suggest raising it.',
+  '2. Pitch vs the affirmed goal (see first lens). If a target range is given, judge',
+  '   inTargetPct: < 20% the target is too ambitious (suggest lowering it), > 90% suggest',
+  '   raising it.',
   '3. Intonation vs stability. Reading: stdF0 around 15-35 Hz is natural intonation; < 10 Hz',
   '   is pressed flat, > 45 Hz is uncontrolled. Sustained: cvPct should be near 0% and',
   '   decayDbPerSec near 0; interpret MPT together with decay (long MPT + large decay =',
   '   endurance problem, not capacity).',
-  '4. Resonance (formants). F1 tracks jaw opening (vowel "a": male 700-800 Hz, female',
-  '   850-1100 Hz); F2 tracks tongue frontness (vowel "i": male 1900-2300 Hz, female',
-  '   2600-2900 Hz). f1Range span 200-500 Hz and f2Range span 500-1500 Hz are normal for',
-  '   reading; clearly narrower = monotonous articulation.',
+  '4. Resonance (formants) — for trans training this is the highest-leverage dimension.',
+  '   f1Range span 200-500 Hz and f2Range span 500-1500 Hz are normal for reading; clearly',
+  '   narrower = monotonous articulation.',
   '5. Voice quality is a health monitor, not a training goal; single-session spikes are',
   '   meaningless — judge by baseline trend. Jitter < 1% (capped 5%); Shimmer < 4-5%',
   '   (capped 15%); HNR > 20 dB (estimate); CPPS roughly 10-20 dB with no absolute threshold.',
@@ -94,7 +113,8 @@ const SYSTEM_PROMPT = [
   '   down = leaky/breathy closure (breath support); all four worse = overuse (rest, and if',
   '   Jitter stays > 2-3% after rest suggest an ENT check).',
   '6. Sustained phonation. MPT 15-25 s is healthy; < 12 s short; < 10 s practice breath',
-  '   support before anything else.',
+  '   support before anything else — high pitch + high resonance posture cost more air, so a',
+  '   short MPT distorts every other metric.',
   '7. Baseline deltas (when given) are current minus baseline: comment on the direction of',
   '   change, never compare across different test modes.',
   '8. Comparing A/B: describe what changed and what it likely means, then advise what to',
@@ -103,7 +123,8 @@ const SYSTEM_PROMPT = [
   '## Principles',
   '- Use only the numbers given; never invent measurements. null means not measured — skip',
   '  it silently. Loudness is uncalibrated dBFS, so only self-comparison is meaningful.',
-  '- Advice: 2-4 items, concrete and actionable, each one sentence, tied to the numbers.',
+  '- Advice: 2-4 items, concrete and actionable, each one sentence, tied to the numbers, and',
+  '  put the gender-affirming priority first (resonance/stability before absolute pitch).',
   '  If everything is within range, say so and encourage.',
   '- These are self-tracking reference ranges, not medical advice; do not diagnose.',
   '',
@@ -116,6 +137,22 @@ const SYSTEM_PROMPT = [
   'Give 4-6 assessments covering the dimensions that matter for this recording; skip',
   'dimensions whose data is missing.',
 ].join('\n');
+
+/**
+ * 组装 system prompt：默认用内置分析标准并把补充规则追加在末尾（冲突时以规则为准）；
+ * 用户整体覆写时完全使用覆写内容
+ */
+export function buildSystemPrompt(
+  extraRules: string[] | undefined,
+  override: string | undefined,
+): string {
+  if (override != null && override.trim()) return override.trim();
+  const rules = (extraRules ?? []).map((r) => r.trim()).filter(Boolean);
+  if (rules.length === 0) return SYSTEM_PROMPT;
+  return `${SYSTEM_PROMPT}\n\n## User rules (follow these too; on conflict they win)\n${rules
+    .map((r, i) => `${i + 1}. ${r}`)
+    .join('\n')}`;
+}
 
 /* ------------------------------ 数据载荷 ------------------------------ */
 
@@ -226,12 +263,22 @@ function buildUserPrompt(
 /**
  * 调用接口生成结构化建议；失败抛出含可读原因的 Error，由调用方展示
  */
+/** 提示词定制：补充规则 / 整体覆写（来自 设置 → 实验性功能 → 提示词） */
+export interface LlmPromptOptions {
+  extraRules?: string[];
+  promptOverride?: string;
+}
+
 export async function fetchLlmAdvice(
   records: AnalysisRecord[],
   target: AdviceTarget,
   cfg: LlmConfig,
-  baseline: AnalysisRecord | null = null,
+  opts: {
+    baseline?: AnalysisRecord | null;
+    prompt?: LlmPromptOptions;
+  } = {},
 ): Promise<LlmAdviceResult> {
+  const { baseline = null, prompt } = opts;
   const res = await fetch(chatEndpoint(cfg.baseUrl), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
@@ -239,7 +286,7 @@ export async function fetchLlmAdvice(
       model: cfg.modelId,
       temperature: 0.4,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: buildSystemPrompt(prompt?.extraRules, prompt?.promptOverride) },
         { role: 'user', content: buildUserPrompt(records, target, baseline) },
       ],
     }),
@@ -368,13 +415,17 @@ export function cachedLlmAdvice(key: string, run: () => Promise<LlmAdviceResult>
   return p;
 }
 
-/** 缓存键：接口配置 / 模型 / 语言 / 靶标 / 基线 / 记录（id+备注）任一变化即失效 */
+/** 缓存键：接口配置 / 模型 / 语言 / 靶标 / 基线 / 提示词定制 / 记录（id+备注）任一变化即失效 */
 export function llmAdviceKey(
   cfg: LlmConfig,
   records: AnalysisRecord[],
   target: AdviceTarget,
-  baseline: AnalysisRecord | null = null,
+  opts: {
+    baseline?: AnalysisRecord | null;
+    prompt?: LlmPromptOptions;
+  } = {},
 ): string {
+  const { baseline = null, prompt } = opts;
   return JSON.stringify([
     cfg.baseUrl,
     cfg.apiKey,
@@ -384,6 +435,8 @@ export function llmAdviceKey(
     target.min,
     target.max,
     baseline?.id ?? null,
+    (prompt?.extraRules ?? []).map((r) => r.trim()).filter(Boolean),
+    prompt?.promptOverride?.trim() ?? null,
     records.map((r) => `${r.id}:${r.note ?? ''}`),
   ]);
 }

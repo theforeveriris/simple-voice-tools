@@ -1,5 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import { parseLlmAdviceResult } from './llm';
+import { parseLlmAdviceResult, buildSystemPrompt } from './llm';
+
+describe('buildSystemPrompt', () => {
+  it('无定制时返回内置标准', () => {
+    const p = buildSystemPrompt(undefined, undefined);
+    expect(p).toContain('## Analysis standard');
+    expect(p).not.toContain('## User rules');
+  });
+
+  it('补充规则追加在标准之后，空行被过滤', () => {
+    const p = buildSystemPrompt(['  优先评估共鸣  ', '', '   '], undefined);
+    expect(p).toContain('## Analysis standard');
+    expect(p).toContain('## User rules (follow these too; on conflict they win)');
+    expect(p).toContain('1. 优先评估共鸣');
+  });
+
+  it('覆写时完全使用覆写内容（规则不再拼接）', () => {
+    const p = buildSystemPrompt(['规则A'], '完全自定义的提示词');
+    expect(p).toBe('完全自定义的提示词');
+  });
+});
+
 
 describe('parseLlmAdviceResult', () => {
   it('解析结构化 JSON（summary + assessments + advice）', () => {

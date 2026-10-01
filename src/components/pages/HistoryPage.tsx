@@ -475,7 +475,7 @@ export function HistoryPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('history.searchPlaceholder')}
-              className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-2/70"
+              className="min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-ink-2/70 sm:text-sm"
             />
             {query && (
               <button onClick={() => setQuery('')} className="text-ink-2 hover:text-ink" aria-label={t('common.reset')}>

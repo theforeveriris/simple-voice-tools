@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { SeriesChart } from '@/components/charts/SeriesChart';
 import { LiveSpectrum } from '@/components/charts/LiveSpectrum';
 import { recorder } from '@/lib/audio/recorder';
@@ -171,9 +172,49 @@ function ModeHint({ mode }: { mode: TestMode }) {
   );
 }
 
+/** 录音中的灵动岛指示条：深色胶囊 + 呼吸灯 + 计时，替换顶部模式提示文字 */
+function RecordingIsland() {
+  const [elapsed, setElapsed] = useState(0);
+  // 约 5Hz 刷新计时（rAF 节流，避免每帧重渲染）
+  useEffect(() => {
+    let raf = 0;
+    let last = 0;
+    const loop = (now: number) => {
+      if (now - last > 200) {
+        last = now;
+        setElapsed(recorder.getLive().elapsedSec);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const mm = Math.floor(elapsed / 60);
+  const ss = Math.floor(elapsed % 60);
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.85, y: -4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+      className="mx-auto flex w-fit items-center gap-2 rounded-full bg-black/85 py-1.5 pl-3 pr-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
+      role="status"
+      aria-label={t('vowelLive.recordingBadge')}
+    >
+      <span className="relative flex size-2">
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-60" />
+        <span className="relative inline-flex size-2 rounded-full bg-accent" />
+      </span>
+      <span className="text-[11px] font-semibold tabular-nums text-white/90">
+        {mm}:{String(ss).padStart(2, '0')}
+      </span>
+    </motion.div>
+  );
+}
+
 export function TestPage() {
   useI18n();
   const mode = useStore((s) => s.settings.testMode);
+  const isRecording = useStore((s) => s.isRecording);
   const targetEnabled = useStore((s) => s.settings.targetEnabled);
   const targetMin = useStore((s) => s.settings.targetF0Min);
   const targetMax = useStore((s) => s.settings.targetF0Max);
@@ -193,8 +234,8 @@ export function TestPage() {
     // 三张图按 6 : 5 : 12 分配剩余高度（basis-0 使比例不受内容影响，min-h 防塌缩）；
     // 开启实时频谱（实验性）时追加第四张，压缩其余图的比例
     <div className="-mb-14 flex h-[calc(100dvh-7.25rem)] min-h-[360px] flex-col gap-3 sm:gap-3.5">
-      {/* 模式提示（极简文字） */}
-      <ModeHint mode={mode} />
+      {/* 顶部：录音时为灵动岛指示条，否则显示模式提示文字 */}
+      {isRecording ? <RecordingIsland /> : <ModeHint mode={mode} />}
 
       {/* F1 / F2 共振峰 */}
       <ChartCard

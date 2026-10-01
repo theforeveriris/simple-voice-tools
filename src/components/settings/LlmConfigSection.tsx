@@ -1,21 +1,25 @@
 /* ------------------------------ 大模型配置（实验性） ------------------------------ */
 
 import { useState } from 'react';
-import { Bot, Eye, EyeOff, PlugZap } from 'lucide-react';
+import { Bot, ChevronRight, Eye, EyeOff, PlugZap } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolveLlmConfig, testLlmConnection } from '@/lib/llm';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AppSettings } from '@/types';
 import { SettingsSection, SettingRow } from './rows';
+import { InfoTip } from './InfoTip';
 
-/** OpenAI 兼容接口参数 + 测试连接（Key 仅存本地 localStorage） */
+/** OpenAI 兼容接口参数 + 测试连接 + 提示词入口（Key 仅存本地 localStorage） */
 export function LlmConfigSection({
   settings,
   update,
+  onOpenPrompt,
 }: {
   settings: AppSettings;
   update: (patch: Partial<AppSettings>) => void;
+  /** 打开 自定义提示词 子页面 */
+  onOpenPrompt: () => void;
 }) {
   useI18n();
   const [showKey, setShowKey] = useState(false);
@@ -91,6 +95,15 @@ export function LlmConfigSection({
         >
           <PlugZap size={14} />
           {testing ? t('settings.llmTesting') : t('settings.llmTest')}
+        </button>
+      </SettingRow>
+      <SettingRow label={<InfoTip label={t('settings.promptEntry')} text={t('settings.promptEntryDesc')} />}>
+        <button
+          onClick={onOpenPrompt}
+          className="flex items-center gap-0.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+        >
+          {t('settings.promptOpen')}
+          <ChevronRight size={14} />
         </button>
       </SettingRow>
     </SettingsSection>

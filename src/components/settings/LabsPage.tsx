@@ -1,7 +1,7 @@
 /**
  * 实验性功能（设置的子页面）
  * - 功能开关（语谱图 / 实时频谱 / 训练建议三态 + 对比页建议）
- * - 大模型配置（训练建议「基于大模型判断」的接口参数）
+ * - 大模型配置（训练建议「基于大模型判断」的接口参数 + 提示词子页面）
  * - 自定义音区边界（实验性）
  * - 实时元音落点
  * - 导入音频离线分析
@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch }
 import { SettingsSection, SettingRow } from './rows';
 import { GithubBackupSection } from './GithubBackupSection';
 import { LlmConfigSection } from './LlmConfigSection';
+import { PromptPage } from './PromptPage';
 import { InfoTip } from './InfoTip';
 
 export function LabsPage({
@@ -47,11 +48,20 @@ export function LabsPage({
 
   // 实时元音落点（Labs 子页面入口）
   const [vowelLiveOpen, setVowelLiveOpen] = useState(false);
+  // 自定义提示词（大模型配置的二级子页面）
+  const [promptOpen, setPromptOpen] = useState(false);
   // 导入音频离线分析
   const [importBusy, setImportBusy] = useState(false);
   const [importPct, setImportPct] = useState(0);
   const [importDragOver, setImportDragOver] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
+
+  // 二级子页面（提示词）独占整个视图；hooks 已全部调用，可安全提前返回
+  if (promptOpen) {
+    return (
+      <PromptPage settings={settings} update={update} onBack={() => setPromptOpen(false)} />
+    );
+  }
 
   /* ------------------------------ 自定义音区边界（实验性） ------------------------------ */
 
@@ -159,7 +169,7 @@ export function LabsPage({
         </SettingsSection>
 
         {/* 大模型配置（训练建议选「基于大模型判断」时使用） */}
-        <LlmConfigSection settings={settings} update={update} />
+        <LlmConfigSection settings={settings} update={update} onOpenPrompt={() => setPromptOpen(true)} />
 
         {/* 自定义音区边界 */}
         <SettingsSection icon={Ruler} title={t('settings.bandCustom')}>

@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DatabaseBackup, FlaskConical, Info, Palette, Settings2, ChevronRight, Search } from 'lucide-react';
+import { DatabaseBackup, FlaskConical, Info, Palette, Settings2, ChevronRight, Search, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -162,15 +162,21 @@ export function SettingsPage() {
         <AboutTab />
       ) : (
         <>
-          {/* 搜索（仿历史页搜索框；非空时展示设置项索引结果） */}
+          {/* 搜索（仿历史页搜索框；非空时展示设置项索引结果）。
+              移动端 16px：iOS 对 <16px 输入框聚焦时会自动放大页面，导致无法正常使用 */}
           <div className="flex items-center gap-2 rounded-full bg-card px-4 py-2.5 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
             <Search size={14} className="shrink-0 text-ink-2" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('settings.searchPlaceholder')}
-              className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-2/70"
+              className="min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-ink-2/70 sm:text-sm"
             />
+            {query && (
+              <button onClick={() => setQuery('')} className="text-ink-2 hover:text-ink" aria-label={t('common.reset')}>
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           {searching ? (
