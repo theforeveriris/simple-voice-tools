@@ -143,13 +143,14 @@ const SYSTEM_PROMPT = [
  * 用户整体覆写时完全使用覆写内容
  */
 export function buildSystemPrompt(
+  base: string,
   extraRules: string[] | undefined,
   override: string | undefined,
 ): string {
   if (override != null && override.trim()) return override.trim();
   const rules = (extraRules ?? []).map((r) => r.trim()).filter(Boolean);
-  if (rules.length === 0) return SYSTEM_PROMPT;
-  return `${SYSTEM_PROMPT}\n\n## User rules (follow these too; on conflict they win)\n${rules
+  if (rules.length === 0) return base;
+  return `${base}\n\n## User rules (follow these too; on conflict they win)\n${rules
     .map((r, i) => `${i + 1}. ${r}`)
     .join('\n')}`;
 }
@@ -286,7 +287,7 @@ export async function fetchLlmAdvice(
       model: cfg.modelId,
       temperature: 0.4,
       messages: [
-        { role: 'system', content: buildSystemPrompt(prompt?.extraRules, prompt?.promptOverride) },
+        { role: 'system', content: buildSystemPrompt(SYSTEM_PROMPT, prompt?.extraRules, prompt?.promptOverride) },
         { role: 'user', content: buildUserPrompt(records, target, baseline) },
       ],
     }),
@@ -396,6 +397,130 @@ function strArr(v: unknown): string[] {
     : [];
 }
 
+/* ------------------------------ AI 周报 ------------------------------ */
+
+const WEEKLY_PROMPT = [
+  'You are the weekly review writer inside "Simple Voice Tool", a voice-tracking app for',
+  'transgender voice training (feminization / masculinization) and general voice health.',
+  'The user message aggregates the LAST 7 DAYS of recordings, grouped per test mode — modes',
+  'are never cross-compared. Write the weekly review strictly by this standard:',
+  '1. Consistency first: practice days / 7, recording count, total minutes. Frequency is the',
+  '   biggest variable — acknowledge it honestly, without scolding.',
+  '2. Pitch trend vs the affirmed goal (median over mean; P10 position is the classic trouble',
+  '   spot; inTargetPct < 20% = target too ambitious, > 90% = time to raise it).',
+  '3. Resonance before pitch: F1/F2 week means and spans; formant progress outranks pitch.',
+  '4. Health monitor: Jitter / Shimmer / HNR / CPPS week means; single-day spikes are noise —',
+  '   only the trend matters. All four worse together = overuse (rest first). Jitter staying',
+  '   > 2-3% after rest → suggest an ENT check.',
+  '5. Sustained (when present): MPT / cvPct / decay week means.',
+  '6. Comparisons are only valid within the same mode and same device/environment; "first →',
+  '   last" deltas inside the week are trend hints, not verdicts.',
+  '- Use only the numbers given; skip missing (null) values silently.',
+  '- Tone: encouraging but honest; call out overtraining when the quality combo says so.',
+  `Respond ONLY with JSON, written in ${languageName()}:`,
+  '{"summary": "3-5 sentences covering consistency, pitch vs goal, resonance, health",',
+  ' "assessments": [{"aspect": "dimension name", "status": "good|fair|attention",',
+  '                 "comment": "one sentence citing the numbers"}],',
+  ' "advice": ["2-4 concrete items for next week"]}',
+  'Give 3-5 assessments.',
+].join('\n');
+
+const DAY_MS = 86_400_000;
+
+/** 最近 7 天的记录（含今天，按时间升序） */
+export function weekRecords(records: AnalysisRecord[], now = Date.now()): AnalysisRecord[] {
+  const start = now - 7 * DAY_MS;
+  return records
+    .filter((r) => r.createdAt >= start && r.createdAt <= now)
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+/** 数值均值（跳过 null/undefined），无有效值返回 null */
+function mean(xs: (number | null | undefined)[]): number | null {
+  const v = xs.filter((x): x is number => x != null && isFinite(x));
+  return v.length > 0 ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+
+/** 单一模式一周聚合（均值 + 首末对比给趋势信号）；该模式无记录返回 null */
+function modePayload(records: AnalysisRecord[], mode: AnalysisRecord['mode']): string | null {
+  const rs = records.filter((r) => r.mode === mode);
+  if (rs.length === 0) return null;
+  const st = rs.map((r) => r.stats);
+  const first = rs[0].stats;
+  const last = rs[rs.length - 1].stats;
+  const durMin = rs.reduce((a, r) => a + r.stats.durationSec, 0) / 60;
+  const lines: string[] = [
+    `mode: ${mode ?? 'unknown'} | recordings: ${rs.length} | totalMin: ${durMin.toFixed(1)}`,
+  ];
+  const push = (label: string, m: number | null, unit: string, firstV?: number, lastV?: number, dg = 1) => {
+    if (m == null) return;
+    const trend = firstV != null && lastV != null ? ` (first ${firstV.toFixed(dg)} -> last ${lastV.toFixed(dg)})` : '';
+    lines.push(`${label}: mean ${m.toFixed(dg)}${unit}${trend}`);
+  };
+  push('avgF0', mean(st.map((x) => x.avgF0)), ' Hz', first.avgF0, last.avgF0);
+  push('medianF0', mean(st.map((x) => x.medianF0)), ' Hz', first.medianF0, last.medianF0);
+  push('p10F0', mean(st.map((x) => x.p10F0)), ' Hz', first.p10F0, last.p10F0, 0);
+  push('p90F0', mean(st.map((x) => x.p90F0)), ' Hz', first.p90F0, last.p90F0, 0);
+  push('stdF0', mean(st.map((x) => x.stdF0)), ' Hz', first.stdF0, last.stdF0);
+  push('avgF1', mean(st.map((x) => x.avgF1)), ' Hz', first.avgF1 ?? undefined, last.avgF1 ?? undefined, 0);
+  push('avgF2', mean(st.map((x) => x.avgF2)), ' Hz', first.avgF2 ?? undefined, last.avgF2 ?? undefined, 0);
+  push('avgDb', mean(st.map((x) => x.avgDb)), ' dB', first.avgDb, last.avgDb);
+  push('jitterPct', mean(st.map((x) => x.jitterPct)), '%', first.jitterPct ?? undefined, last.jitterPct ?? undefined, 2);
+  push('shimmerPct', mean(st.map((x) => x.shimmerPct)), '%', first.shimmerPct ?? undefined, last.shimmerPct ?? undefined, 2);
+  push('hnrDb', mean(st.map((x) => x.hnrDb)), ' dB', first.hnrDb ?? undefined, last.hnrDb ?? undefined);
+  push('cppsDb', mean(st.map((x) => x.cppsDb)), ' dB', first.cppsDb ?? undefined, last.cppsDb ?? undefined);
+  push('inTargetPct', mean(st.map((x) => x.inTargetPct)), '%', first.inTargetPct ?? undefined, last.inTargetPct ?? undefined, 0);
+  return lines.join('\n');
+}
+
+/** 组装周报用户消息；7 天内无记录返回 null（调用方提示先去录音） */
+export function buildWeeklyPayload(records: AnalysisRecord[], now = Date.now()): string | null {
+  const week = weekRecords(records, now);
+  if (week.length === 0) return null;
+  const start = new Date(week[0].createdAt).toISOString().slice(0, 10);
+  const end = new Date(now).toISOString().slice(0, 10);
+  const days = new Set(week.map((r) => new Date(r.createdAt).toDateString())).size;
+  const totalMin = (week.reduce((a, r) => a + r.stats.durationSec, 0) / 60).toFixed(1);
+  const parts = [
+    `Week range: ${start} ~ ${end}`,
+    `practiceDays: ${days} / 7 | recordings: ${week.length} | totalMin: ${totalMin}`,
+  ];
+  for (const mode of ['reading', 'sustained', 'glide'] as const) {
+    const m = modePayload(week, mode);
+    if (m) parts.push(`--- ${m}`);
+  }
+  parts.push(`Answer language: ${languageName()}`);
+  return parts.join('\n');
+}
+
+/** 调用接口生成周报；失败抛出含可读原因的 Error，由调用方展示 */
+export async function fetchWeeklyReport(
+  records: AnalysisRecord[],
+  cfg: LlmConfig,
+  opts: { prompt?: LlmPromptOptions } = {},
+): Promise<LlmAdviceResult> {
+  const payload = buildWeeklyPayload(records);
+  if (payload == null) throw new Error('No records in the last 7 days');
+  const res = await fetch(chatEndpoint(cfg.baseUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
+    body: JSON.stringify({
+      model: cfg.modelId,
+      temperature: 0.4,
+      messages: [
+        { role: 'system', content: buildSystemPrompt(WEEKLY_PROMPT, opts.prompt?.extraRules, opts.prompt?.promptOverride) },
+        { role: 'user', content: payload },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(await describeHttpError(res));
+  const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
+  const content = data.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
+  return parseLlmAdviceResult(content);
+}
+
 /* ------------------------------ 会话内缓存 ------------------------------ */
 
 const adviceCache = new Map<string, Promise<LlmAdviceResult>>();
@@ -412,6 +537,36 @@ export function cachedLlmAdvice(key: string, run: () => Promise<LlmAdviceResult>
     throw err;
   });
   adviceCache.set(key, p);
+  return p;
+}
+
+const weeklyCache = new Map<string, Promise<LlmAdviceResult>>();
+
+/** 周报缓存键：窗口随日期自然滚动，配置 / 语言 / 提示词定制 / 记录集合变化即失效 */
+export function weeklyReportKey(cfg: LlmConfig, records: AnalysisRecord[], prompt?: LlmPromptOptions): string {
+  const week = weekRecords(records);
+  return JSON.stringify([
+    'weekly',
+    cfg.baseUrl,
+    cfg.apiKey,
+    cfg.modelId,
+    getLocale(),
+    new Date().toDateString(),
+    (prompt?.extraRules ?? []).map((r) => r.trim()).filter(Boolean),
+    prompt?.promptOverride?.trim() ?? null,
+    week.map((r) => r.id),
+  ]);
+}
+
+/** 周报缓存（失败不缓存，可重试） */
+export function cachedWeeklyReport(key: string, run: () => Promise<LlmAdviceResult>): Promise<LlmAdviceResult> {
+  const hit = weeklyCache.get(key);
+  if (hit) return hit;
+  const p = run().catch((err: unknown) => {
+    weeklyCache.delete(key);
+    throw err;
+  });
+  weeklyCache.set(key, p);
   return p;
 }
 

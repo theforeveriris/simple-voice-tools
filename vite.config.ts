@@ -65,7 +65,7 @@ export default defineConfig({
         },
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,md}'],
         navigateFallback: 'index.html',
         // Share Target 拦截（注册顺序先于 workbox 路由，POST 分享优先命中）
         importScripts: ['sw-custom.js'],

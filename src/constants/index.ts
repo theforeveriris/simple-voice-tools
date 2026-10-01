@@ -152,6 +152,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   liveSpectrum: false,
   adviceMode: 'rules',
   adviceOnCompare: false,
+  practiceReminderEnabled: false,
+  practiceReminderTime: '20:00',
   // 配置子页面扩展
   playbackRate: 1,
   silenceStopSec: 1,

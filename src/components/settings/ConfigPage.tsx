@@ -2,6 +2,7 @@
  * 配置（设置的子页面，入口为主视图单行卡片）
  * - 录音：自动进入/保存音频/判停/时长/码率/增益/震动/自动回放/麦克风
  * - 训练：训练靶标（目标音高区间 + 达成率）、基线记录
+ * - 提醒：每日练习提醒（本地通知）
  * - 图表与回放：实时窗口、音高轴范围、语谱图配色、回放倍速
  * - 通用：启动默认页签、日记周起始日
  */
@@ -14,6 +15,7 @@ import type { AppSettings, SpecColormap, ViewType } from '@/types';
 import { NAV, navLabelKey } from './navItems';
 import { RecordingSection } from './RecordingSection';
 import { TrainingSection } from './TrainingSection';
+import { ReminderSection } from './ReminderSection';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 import {
@@ -59,6 +61,8 @@ export function ConfigPage({
         <RecordingSection settings={settings} update={update} />
 
         <TrainingSection settings={settings} update={update} />
+
+        <ReminderSection settings={settings} update={update} />
 
         {/* 图表与回放 */}
         <SettingsSection icon={SlidersHorizontal} title={t('settings.chartPlayback')}>

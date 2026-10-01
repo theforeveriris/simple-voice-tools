@@ -21,6 +21,7 @@ import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { MiniSpark } from '@/components/charts/MiniSpark';
 import { TrendChart } from '@/components/charts/TrendChart';
+import { WeeklyReportCard } from '@/components/history/WeeklyReportCard';
 import { DiaryHeatmap } from '@/components/charts/DiaryHeatmap';
 import type { DiaryMetric } from '@/components/charts/DiaryHeatmap';
 import { CompareSheet } from './CompareSheet';
@@ -409,6 +410,7 @@ export function HistoryPage() {
         records.length === 0 ? (
           <EmptyHistory />
         ) : (
+          <>
           <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
             {/* 模式过滤：长音/滑音的基频与朗读不可比 */}
             <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
@@ -463,6 +465,9 @@ export function HistoryPage() {
               </>
             )}
           </div>
+          {/* AI 周报（实验性 · 大模型）：聚合近 7 天出总结 */}
+          <WeeklyReportCard records={records} />
+          </>
         )
       ) : records.length === 0 ? (
         <EmptyHistory />

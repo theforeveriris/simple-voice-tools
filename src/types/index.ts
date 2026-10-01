@@ -256,4 +256,8 @@ export interface AppSettings {
   llmExtraRules?: string[];
   /** 大模型配置：整体覆写内置提示词（设置后不再使用内置分析标准） */
   llmPromptOverride?: string;
+  /** 练习提醒：每日本地通知开关（应用在后台运行时生效；当天已有记录不打扰） */
+  practiceReminderEnabled: boolean;
+  /** 练习提醒：提醒时间（HH:mm，24 小时制） */
+  practiceReminderTime: string;
 }

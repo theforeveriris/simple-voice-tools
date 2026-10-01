@@ -1,22 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { parseLlmAdviceResult, buildSystemPrompt } from './llm';
 
+const BASE = '内置分析标准 ## Analysis standard';
+
 describe('buildSystemPrompt', () => {
   it('无定制时返回内置标准', () => {
-    const p = buildSystemPrompt(undefined, undefined);
-    expect(p).toContain('## Analysis standard');
-    expect(p).not.toContain('## User rules');
+    const p = buildSystemPrompt(BASE, undefined, undefined);
+    expect(p).toBe(BASE);
   });
 
   it('补充规则追加在标准之后，空行被过滤', () => {
-    const p = buildSystemPrompt(['  优先评估共鸣  ', '', '   '], undefined);
+    const p = buildSystemPrompt(BASE, ['  优先评估共鸣  ', '', '   '], undefined);
     expect(p).toContain('## Analysis standard');
     expect(p).toContain('## User rules (follow these too; on conflict they win)');
     expect(p).toContain('1. 优先评估共鸣');
   });
 
   it('覆写时完全使用覆写内容（规则不再拼接）', () => {
-    const p = buildSystemPrompt(['规则A'], '完全自定义的提示词');
+    const p = buildSystemPrompt(BASE, ['规则A'], '完全自定义的提示词');
     expect(p).toBe('完全自定义的提示词');
   });
 });

@@ -13,12 +13,11 @@ import { useHistoryStore } from '@/store/useHistoryStore';
 import { buildAdvice, type AdviceTarget } from '@/lib/advice';
 import {
   cachedLlmAdvice, fetchLlmAdvice, llmAdviceKey, resolveLlmConfig,
-  type AdviceAssessment, type LlmAdviceResult,
+  type LlmAdviceResult,
 } from '@/lib/llm';
 import { t } from '@/i18n';
-import type { DictKey } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
-import { cn } from '@/lib/utils';
+import { LlmResultView } from '@/components/analysis/LlmResultView';
 
 /** 建议卡通用骨架：标题行 + 内容 + 底部提示 */
 export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
@@ -102,12 +101,6 @@ function RuleAdvice({ records, target }: { records: AnalysisRecord[]; target: Ad
 }
 
 /** 评估状态 → 圆点颜色 + 文案词条 */
-const STATUS_META: Record<AdviceAssessment['status'], { dot: string; key: DictKey }> = {
-  good: { dot: 'bg-accent', key: 'analysis.adviceStatusGood' },
-  fair: { dot: 'bg-black/30', key: 'analysis.adviceStatusFair' },
-  attention: { dot: 'bg-red-500', key: 'analysis.adviceStatusAttention' },
-};
-
 interface LlmState {
   /** 已收到结果的请求键（key#nonce），与当前请求键不一致即处于加载中 */
   doneKey: string | null;
@@ -189,41 +182,7 @@ function LlmAdvice({
   }
   const result = state.result;
   if (!result) return null;
-  return (
-    <div className="flex flex-col gap-2">
-      {result.summary && (
-        <p className="px-0.5 text-xs leading-relaxed text-ink">{result.summary}</p>
-      )}
-      {result.assessments.length > 0 && (
-        <ul className="flex flex-col gap-1">
-          {result.assessments.map((a, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-ink">
-              <span
-                className={cn('mt-1.5 size-1.5 shrink-0 rounded-full', STATUS_META[a.status].dot)}
-                aria-label={t(STATUS_META[a.status].key)}
-                title={t(STATUS_META[a.status].key)}
-              />
-              <span>
-                <span className="font-medium">{a.aspect}</span>
-                <span className="text-ink-2"> · {t(STATUS_META[a.status].key)}</span>
-                <span> — {a.comment}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {result.advice.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
-          {result.advice.map((line, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-ink">
-              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
-              <span>{line}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+  return <LlmResultView result={result} />;
 }
 
 function fmtDate(ts: number): string {

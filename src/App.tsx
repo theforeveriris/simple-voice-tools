@@ -20,6 +20,7 @@ import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/im
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
+import { checkPracticeReminder } from '@/lib/reminder';
 import type { ViewType } from '@/types';
 
 const TABS: ViewType[] = ['test', 'analysis', 'history', 'settings'];
@@ -88,6 +89,23 @@ function App() {
       return () => mq.removeEventListener('change', apply);
     }
   }, [hue, huePreset, theme]);
+
+  // 每日练习提醒：每分钟 + 回到前台时检查（到点且当天无录音 → 本地通知）
+  const reminderEnabled = useStore((s) => s.settings.practiceReminderEnabled);
+  const reminderTime = useStore((s) => s.settings.practiceReminderTime);
+  useEffect(() => {
+    if (!reminderEnabled) return;
+    checkPracticeReminder(true, reminderTime);
+    const timer = setInterval(() => checkPracticeReminder(true, reminderTime), 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkPracticeReminder(true, reminderTime);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [reminderEnabled, reminderTime]);
 
   // 开发辅助：?demo=1 生成一条示例记录，便于无麦克风环境体验
   useEffect(() => {

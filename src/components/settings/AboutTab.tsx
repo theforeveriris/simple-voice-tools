@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap } from 'lucide-react';
+import { GuideSheet } from './GuideSheet';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui';
@@ -94,6 +95,8 @@ export function AboutTab() {
   useI18n();
   // 免责声明：每次进入关于标签页自动弹出（本组件随标签切换挂载/卸载）
   const [disclaimerOpen, setDisclaimerOpen] = useState(true);
+  // 使用说明（guide.md 应用内查看）
+  const [guideOpen, setGuideOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -128,13 +131,29 @@ export function AboutTab() {
         </div>
       </SettingsSection>
 
-      {/* 文档：使用说明 + 开发者文档（GitHub 仓库内源文件） */}
+      {/* 文档：使用说明（应用内查看 guide.md）+ 开发者文档（GitHub 仓库内源文件） */}
       <SettingsSection icon={GraduationCap} title={t('settings.userDocs')}>
+        <button
+          onClick={() => setGuideOpen(true)}
+          className="flex w-full items-center justify-between gap-2 py-3 text-left first:border-t-0"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <BookOpen size={14} className="shrink-0 text-accent" />
+            <span className="truncate">
+              {t('settings.guideTitle')}
+              <span className="ml-2 text-[11px] font-normal text-ink-2">{t('settings.guideDesc')}</span>
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-medium text-accent">{t('settings.guideOpen')}</span>
+        </button>
         <DocList entries={USER_DOC_ENTRIES} />
       </SettingsSection>
       <SettingsSection icon={Code2} title={t('settings.devDocs')}>
         <DocList entries={DEV_DOC_ENTRIES} />
       </SettingsSection>
+
+      {/* 使用说明（全屏查看器） */}
+      {guideOpen && <GuideSheet onClose={() => setGuideOpen(false)} />}
     </div>
   );
 }
