@@ -259,6 +259,7 @@ export const ja = {
   'settings.hue': 'アクセントカラー',
   'settings.showGrid': 'グラフのグリッド補助線',
   'settings.syncRange': 'グラフの時間軸を連動',
+  'settings.mobileSpark': 'モバイルのミニピッチ',
   'settings.autoEnter': '録音終了後に自動で分析を開く',
   'settings.audioSave': '録音音声を保存',
   'settings.maxDuration': '最長録音時間',

@@ -95,6 +95,12 @@ export function AppearanceSection({
           onCheckedChange={(v) => update({ syncChartRange: v })}
         />
       </SettingRow>
+      <SettingRow label={t('settings.mobileSpark')}>
+        <Switch
+          checked={settings.mobileSpark}
+          onCheckedChange={(v) => update({ mobileSpark: v })}
+        />
+      </SettingRow>
     </SettingsSection>
   );
 }

@@ -164,6 +164,8 @@ export interface AppSettings {
   testMode: TestMode;
   /** 四个图表是否共用同一时间轴区间（关闭后可独立缩放，统计跟随音高曲线） */
   syncChartRange: boolean;
+  /** 移动端历史卡片底部的整行迷你基频曲线（桌面端内联曲线不受影响） */
+  mobileSpark: boolean;
   /** GitHub 云备份：用户自己的 OAuth App / GitHub App Client ID（仅存本地） */
   githubClientId?: string;
   /** GitHub 云备份：目标私有仓库名 */

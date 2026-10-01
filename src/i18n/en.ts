@@ -258,6 +258,7 @@ export const en = {
   'settings.hue': 'Accent color',
   'settings.showGrid': 'Chart grid lines',
   'settings.syncRange': 'Sync chart time ranges',
+  'settings.mobileSpark': 'Mobile mini pitch',
   'settings.autoEnter': 'Auto-open analysis after recording',
   'settings.audioSave': 'Save recording audio',
   'settings.maxDuration': 'Max recording length',

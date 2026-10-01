@@ -258,6 +258,7 @@ export const zhTW = {
   'settings.hue': '主題色',
   'settings.showGrid': '圖表網格輔助線',
   'settings.syncRange': '圖表時間軸聯動',
+  'settings.mobileSpark': '行動裝置迷你基頻',
   'settings.autoEnter': '錄音結束後自動進入分析',
   'settings.audioSave': '儲存錄音音訊',
   'settings.maxDuration': '最長錄音時長',

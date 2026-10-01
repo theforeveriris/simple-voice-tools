@@ -106,6 +106,8 @@ function RecordCard({
   const band = bandOf(record.stats.avgF0);
   const note = freqToNote(record.stats.avgF0);
   const press = useLongPress(onEnterSelection);
+  // 移动端整行迷你曲线开关（设置 → 外观；桌面端内联曲线不受影响）
+  const mobileSpark = useStore((s) => s.settings.mobileSpark);
 
   const handleClick = () => {
     if (press.consumeClick()) return;
@@ -203,6 +205,9 @@ function RecordCard({
           )}
         </div>
       </div>
+
+      {/* 基频曲线（移动端：信息行下方整行铺满，可在设置 → 外观关闭；桌面端内联在信息行左侧） */}
+      {mobileSpark && <MiniSpark full series={record.series} className="sm:hidden" />}
     </motion.div>
   );
 }

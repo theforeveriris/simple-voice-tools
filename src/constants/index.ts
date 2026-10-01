@@ -142,6 +142,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   audioSave: true,
   testMode: 'reading',
   syncChartRange: true,
+  mobileSpark: true,
   targetEnabled: false,
   targetF0Min: 165,
   targetF0Max: 255,

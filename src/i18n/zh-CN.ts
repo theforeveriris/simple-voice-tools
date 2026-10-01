@@ -259,6 +259,7 @@ export const zhCN = {
   'settings.hue': '主题色',
   'settings.showGrid': '图表网格辅助线',
   'settings.syncRange': '图表时间轴联动',
+  'settings.mobileSpark': '移动端迷你基频',
   'settings.autoEnter': '录音结束后自动进入分析',
   'settings.audioSave': '保存录音音频',
   'settings.maxDuration': '最长录音时长',
