@@ -33,6 +33,21 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        // 长按图标快捷入口：hash 深链直达历史 / 设置页（App 启动时解析 location.hash）
+        shortcuts: [
+          {
+            name: '历史记录',
+            short_name: '历史',
+            url: './index.html#/history',
+            icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: '设置',
+            short_name: '设置',
+            url: './index.html#/settings',
+            icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+        ],
         // 系统分享入口：录音/语音文件「分享到」本应用后走离线分析管线
         // POST 由 public/sw-custom.js 拦截暂存并重定向回应用（?share-target=1）
         share_target: {
