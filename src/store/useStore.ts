@@ -52,8 +52,9 @@ export const useStore = create<AppState>()(
         if (get().isRecording) return;
         const { settings } = get();
         const meta = MODE_META[settings.testMode];
-        // 提前置位：权限弹窗等待期间也保持全局录音态，
-        // 任何页面都能看到录音球并停止（否则自动停止回调会因状态为 false 而漏停）
+        // 提前置位（权限弹窗等待期间也保持录音态）：
+        // 自动停止回调触发 stopRecording 时依赖该状态，为 false 会直接 return 漏停；
+        // 圆球仅在测试页渲染，离开后录音在后台继续，回来时据此恢复「录音中」状态
         set({ isRecording: true });
         try {
           await recorder.start({

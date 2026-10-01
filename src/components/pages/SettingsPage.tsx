@@ -4,16 +4,17 @@
  * - 录音：麦克风设备、最长录音时长、结束后自动进入分析
  * - 训练：训练靶标（目标音高区间 + 达成率）、基线记录
  * - 数据管理：历史记录导出 / 导入 / 清空（导出为 IndexedDB 全量）
- * - 实验性功能：GitHub 云备份（Device Flow，仍在打磨）
+ * - 实验性功能：设置的子页面（无描述行），内含 GitHub 云备份（Device Flow）
  * - 关于
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ElementType, ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import {
   Palette, Mic, DatabaseBackup, Info, Download, Upload, Trash2, Eraser, Sparkles,
   BookOpen, ChevronRight, Smartphone, FileSpreadsheet, Archive, Cloud,
-  Link2, Unlink, CloudUpload, CloudDownload, FlaskConical, Target,
+  Link2, Unlink, CloudUpload, CloudDownload, FlaskConical, Target, ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
@@ -544,6 +545,129 @@ export function SettingsPage() {
   /** 基线选择器可选项（最近 50 条） */
   const baselineOptions = records.slice(0, 50);
 
+  /* ------------------------------ 实验性功能（设置的子页面） ------------------------------ */
+
+  // 入口在主视图收起为单行卡片（无描述行）；labsOpen 不持久化，切换页签即回主视图
+  if (labsOpen) {
+    return (
+      <div className="flex flex-col gap-3.5 pb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+          className="flex flex-col gap-3.5"
+        >
+          {/* 子页面头：返回 + 标题 */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setLabsOpen(false)}
+              aria-label={t('common.back')}
+              className="grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <p className="text-base font-semibold text-ink">{t('settings.labs')}</p>
+          </div>
+
+          {/* GitHub 云备份 */}
+          <SettingsSection icon={Cloud} title={t('settings.ghTitle')}>
+            <SettingRow stacked label={t('settings.ghClientId')}>
+              <input
+                value={settings.githubClientId ?? ''}
+                onChange={(e) => update({ githubClientId: e.target.value.trim() })}
+                placeholder={t('settings.ghClientIdPlaceholder')}
+                spellCheck={false}
+                autoComplete="off"
+                className="w-full rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
+              />
+            </SettingRow>
+            <SettingRow label={t('settings.ghRepo')}>
+              <input
+                value={settings.githubRepo ?? ''}
+                onChange={(e) => update({ githubRepo: e.target.value.trim() })}
+                placeholder={DEFAULT_REPO}
+                spellCheck={false}
+                autoComplete="off"
+                className="w-40 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
+              />
+            </SettingRow>
+            <SettingRow
+              label={t('settings.ghStatus')}
+              desc={ghChecking ? t('settings.ghChecking') : ghLogin ? t('settings.ghConnected', { login: ghLogin }) : t('settings.ghNotConnected')}
+            >
+              {ghChecking ? undefined : ghLogin ? (
+                <button
+                  onClick={onGhDisconnect}
+                  className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-ink-2 transition-opacity hover:opacity-70"
+                >
+                  <Unlink size={14} />
+                  {t('common.disconnect')}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setConnectOpen(true)}
+                  disabled={!clientId}
+                  className={cn(
+                    'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+                    clientId ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+                  )}
+                >
+                  <Link2 size={14} />
+                  {t('common.connect')}
+                </button>
+              )}
+            </SettingRow>
+            <SettingRow
+              label={t('settings.ghPush')}
+              desc={
+                ghBusy === 'push'
+                  ? ghProgress || '…'
+                  : ghLastPush
+                    ? t('settings.ghLastPush', { time: new Date(ghLastPush).toLocaleString(localeTag(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
+                    : undefined
+              }
+            >
+              <button
+                onClick={onGhPush}
+                disabled={!ghLogin || ghBusy != null}
+                className={cn(
+                  'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+                  ghLogin && ghBusy == null ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+                )}
+              >
+                <CloudUpload size={14} />
+                {ghBusy === 'push' ? t('settings.ghPushing') : t('settings.ghPushNow')}
+              </button>
+            </SettingRow>
+            <SettingRow
+              label={t('settings.ghPull')}
+              desc={ghBusy === 'pull' ? ghProgress || '…' : undefined}
+            >
+              <button
+                onClick={onGhPull}
+                disabled={!ghLogin || ghBusy != null}
+                className={cn(
+                  'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+                  ghLogin && ghBusy == null ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+                )}
+              >
+                <CloudDownload size={14} />
+                {ghBusy === 'pull' ? t('settings.ghRestoring') : t('common.restore')}
+              </button>
+            </SettingRow>
+          </SettingsSection>
+        </motion.div>
+
+        <ConnectGithubDialog
+          clientId={clientId}
+          open={connectOpen}
+          onOpenChange={setConnectOpen}
+          onConnected={onGhConnected}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3.5 pb-4">
       {/* 外观 */}
@@ -844,109 +968,18 @@ export function SettingsPage() {
         </SettingRow>
       </SettingsSection>
 
-      {/* 实验性功能 */}
-      <SettingsSection icon={FlaskConical} title={t('settings.labs')}>
-        <p className="pb-1 text-[11px] text-ink-2">{t('settings.labsDesc')}</p>
-        <button
-          onClick={() => setLabsOpen(!labsOpen)}
-          className="flex w-full items-center justify-between border-t border-black/[0.04] py-2.5 text-left"
-          aria-expanded={labsOpen}
-        >
-          <span className="flex items-center gap-2 text-sm font-medium text-ink">
-            <Cloud size={14} className="text-accent" />
-            {t('settings.ghTitle')}
-          </span>
-          <ChevronRight size={15} className={cn('text-ink-2 transition-transform', labsOpen && 'rotate-90')} />
-        </button>
-        {labsOpen && (
-          <div className="flex flex-col gap-0.5 border-t border-black/[0.04]">
-            <SettingRow stacked label={t('settings.ghClientId')}>
-              <input
-                value={settings.githubClientId ?? ''}
-                onChange={(e) => update({ githubClientId: e.target.value.trim() })}
-                placeholder={t('settings.ghClientIdPlaceholder')}
-                spellCheck={false}
-                autoComplete="off"
-                className="w-full rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
-              />
-            </SettingRow>
-            <SettingRow label={t('settings.ghRepo')}>
-              <input
-                value={settings.githubRepo ?? ''}
-                onChange={(e) => update({ githubRepo: e.target.value.trim() })}
-                placeholder={DEFAULT_REPO}
-                spellCheck={false}
-                autoComplete="off"
-                className="w-40 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
-              />
-            </SettingRow>
-            <SettingRow
-              label={t('settings.ghStatus')}
-              desc={ghChecking ? t('settings.ghChecking') : ghLogin ? t('settings.ghConnected', { login: ghLogin }) : t('settings.ghNotConnected')}
-            >
-              {ghChecking ? undefined : ghLogin ? (
-                <button
-                  onClick={onGhDisconnect}
-                  className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-ink-2 transition-opacity hover:opacity-70"
-                >
-                  <Unlink size={14} />
-                  {t('common.disconnect')}
-                </button>
-              ) : (
-                <button
-                  onClick={() => setConnectOpen(true)}
-                  disabled={!clientId}
-                  className={cn(
-                    'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
-                    clientId ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
-                  )}
-                >
-                  <Link2 size={14} />
-                  {t('common.connect')}
-                </button>
-              )}
-            </SettingRow>
-            <SettingRow
-              label={t('settings.ghPush')}
-              desc={
-                ghBusy === 'push'
-                  ? ghProgress || '…'
-                  : ghLastPush
-                    ? t('settings.ghLastPush', { time: new Date(ghLastPush).toLocaleString(localeTag(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
-                    : undefined
-              }
-            >
-              <button
-                onClick={onGhPush}
-                disabled={!ghLogin || ghBusy != null}
-                className={cn(
-                  'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
-                  ghLogin && ghBusy == null ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
-                )}
-              >
-                <CloudUpload size={14} />
-                {ghBusy === 'push' ? t('settings.ghPushing') : t('settings.ghPushNow')}
-              </button>
-            </SettingRow>
-            <SettingRow
-              label={t('settings.ghPull')}
-              desc={ghBusy === 'pull' ? ghProgress || '…' : undefined}
-            >
-              <button
-                onClick={onGhPull}
-                disabled={!ghLogin || ghBusy != null}
-                className={cn(
-                  'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
-                  ghLogin && ghBusy == null ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
-                )}
-              >
-                <CloudDownload size={14} />
-                {ghBusy === 'pull' ? t('settings.ghRestoring') : t('common.restore')}
-              </button>
-            </SettingRow>
-          </div>
-        )}
-      </SettingsSection>
+      {/* 实验性功能（子页面入口） */}
+      <button
+        onClick={() => setLabsOpen(true)}
+        className="flex w-full items-center justify-between rounded-[22px] bg-card px-5 py-4 text-left shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-[0.99]"
+        aria-label={t('settings.labs')}
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+          <FlaskConical size={15} className="text-accent" />
+          {t('settings.labs')}
+        </span>
+        <ChevronRight size={15} className="text-ink-2" />
+      </button>
 
       {/* 应用（PWA） */}
       <SettingsSection icon={Smartphone} title={t('settings.app')}>

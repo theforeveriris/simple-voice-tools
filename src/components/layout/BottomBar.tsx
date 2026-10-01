@@ -393,7 +393,7 @@ const Dock = memo(function Dock({
 
   return (
     <motion.div
-      animate={{ x: ballDocked ? 0 : -34 }}
+      animate={{ x: ballDocked ? 0 : isTest ? -34 : 0 }}
       transition={SPRING}
       className="pointer-events-auto relative flex items-center"
     >
@@ -413,18 +413,17 @@ const Dock = memo(function Dock({
           transition={SPRING}
           className="relative shrink-0"
         >
-          {ballDocked && <RecordBall docked onLongPress={onLongPress} />}
+          {isTest && ballDocked && <RecordBall docked onLongPress={onLongPress} />}
         </motion.div>
 
         {/* 右组：历史 / 设置 */}
         <div className="flex items-center gap-0.5">{TABS.slice(2).map(renderTab)}</div>
       </motion.nav>
 
-      {/*
-        悬浮圆球：所有页面常驻（分体时让位给中缝里的圆球，layoutId 衔接飞行）。
-        录音进行中离开测试页也保持可见可点停——否则录音在后台无人能停。
-      */}
-      {!ballDocked && (
+      {/* 悬浮圆球：仅测试页渲染，分体时让位给中缝里的圆球（layoutId 衔接飞行）。
+          录音进行中离开测试页：录音在后台继续、自动停止照常触发；
+          回到测试页时圆球由 isRecording 恢复「录音中」状态，进度无感衔接。 */}
+      {isTest && !ballDocked && (
         <RecordBall docked={false} entrance={ballEntrance} onLongPress={onLongPress} />
       )}
     </motion.div>
@@ -439,7 +438,6 @@ export function BottomBar() {
   const currentTab = useStore((s) => s.currentTab);
   const updateSettings = useStore((s) => s.updateSettings);
   const startRecording = useStore((s) => s.startRecording);
-  const setTab = useStore((s) => s.setTab);
   const isTest = currentTab === 'test';
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -478,8 +476,6 @@ export function BottomBar() {
   }
 
   const openMenu = useCallback(() => {
-    // 非测试页长按：先跳回测试页，扇形选择器仍以底栏中缝为圆心展开
-    if (!isTest) setTab('test');
     setMenuOpen(true);
     navigator.vibrate?.(12);
     // 等圆球落座、底栏分开后再唤出扇形选项
@@ -488,7 +484,7 @@ export function BottomBar() {
       const r = slotRef.current?.getBoundingClientRect();
       if (r) setFanCenter({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     }, 320);
-  }, [isTest, setTab]);
+  }, []);
 
   const closeMenu = useCallback(() => {
     if (fanTimer.current !== null) {
