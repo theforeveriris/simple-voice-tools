@@ -16,6 +16,7 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
+import { maybeAutoBackup } from '@/lib/backup/local';
 import { useI18n } from '@/i18n/hook';
 
 function App() {
@@ -54,6 +55,11 @@ function App() {
     setCurrentAnalysis(demo);
     setTab('analysis');
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 实验性：本地自动备份的每周兜底（距上次 ≥7 天才写，未配置文件夹时为空操作）
+  useEffect(() => {
+    void maybeAutoBackup('launch');
   }, []);
 
   return (

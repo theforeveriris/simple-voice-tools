@@ -64,6 +64,7 @@ export const zhCN = {
   'test.inTargetBelow': '偏低 {hz} Hz',
   'test.inTargetAbove': '偏高 {hz} Hz',
   'test.noReading': '— Hz',
+  'test.titleSpectrum': '实时频谱',
 
   /* ---------- 分析页 ---------- */
   'analysis.emptyHint': '请先进行测试以获得数据进行分析',
@@ -141,6 +142,15 @@ export const zhCN = {
   'analysis.cvValue': '{n}%',
   'analysis.decayValue': '{n} dB/s',
   'analysis.unitSec': '秒',
+  'analysis.adviceTitle': '训练建议',
+  'analysis.adviceHint': '由本地规则生成，仅供参考，不构成医学建议',
+  'analysis.adviceTargetBelow': '平均基频比目标下限低 {n} Hz，试着整体抬高音调',
+  'analysis.adviceTargetAbove': '平均基频比目标上限高 {n} Hz，放松些，试着降低音调',
+  'analysis.adviceMpt': '最长声时 {n} 秒偏短，每天练几组长音，逐步延长',
+  'analysis.adviceJitter': 'Jitter {n}% 偏高，声音可能偏紧；多喝水，注意用声休息',
+  'analysis.adviceStd': '基频波动 {n} Hz 偏大，说话时试着放慢语速、放松喉部',
+  'analysis.adviceVoiced': '有效发声占比 {n}%，录音中停顿较多，尽量保持连贯发声',
+  'analysis.adviceGood': '各项指标都在常见参考范围内，保持！',
 
   /* ---------- 历史页 ---------- */
   'history.viewList': '列表',
@@ -190,6 +200,10 @@ export const zhCN = {
   'settings.training': '训练',
   'settings.data': '数据管理',
   'settings.labs': '实验性功能',
+  'settings.labsToggles': '功能开关',
+  'settings.showSpec': '分析页语谱图',
+  'settings.liveSpectrum': '实时频谱图（测试页）',
+  'settings.adviceEnable': '训练建议',
   'settings.app': '应用',
   'settings.about': '关于',
   'settings.theme': '主题',
@@ -243,6 +257,18 @@ export const zhCN = {
   'settings.clearConfirm': '确认清空',
   'settings.clearDone': '已清空全部历史记录',
   'settings.zipPacking': '打包中…',
+  'settings.autoBackup': '本地自动备份',
+  'settings.autoBackupDesc': '完整备份 ZIP 按天写入所选文件夹；每次录音后与每周首次使用时自动执行',
+  'settings.autoBackupFolder': '备份文件夹',
+  'settings.autoBackupPick': '选择文件夹',
+  'settings.autoBackupRepick': '更换文件夹',
+  'settings.autoBackupStatus': '授权状态',
+  'settings.autoBackupOn': '已授权',
+  'settings.autoBackupNeedAuth': '需要重新授权',
+  'settings.autoBackupUnsupported': '当前浏览器不支持',
+  'settings.autoBackupReauth': '重新授权',
+  'settings.autoBackupNow': '立即备份',
+  'settings.autoBackupLast': '上次自动备份 {time}',
   'settings.ghTitle': 'GitHub 云备份',
   'settings.ghClientId': 'Client ID',
   'settings.ghClientIdMissing': '请先在上方填写 Client ID',
@@ -329,6 +355,9 @@ export const zhCN = {
   'toast.shareFail': '分享图生成失败',
   'toast.frameCsvExported': '已导出帧级 CSV 数据',
   'toast.storageUnavailable': '浏览器本地存储不可用，本次数据仅保存在内存中',
+  'toast.autoBackupDone': '已自动备份到本地文件夹',
+  'toast.autoBackupFail': '本地自动备份失败',
+  'toast.autoBackupNeedAuth': '备份文件夹授权已过期，请到 实验性功能 中重新授权',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

@@ -40,15 +40,25 @@ export function downloadBlob(filename: string, blob: Blob): void {
   URL.revokeObjectURL(url);
 }
 
+export interface FullBackupZip {
+  blob: Blob;
+  /** 打包的记录条数 */
+  records: number;
+  /** 打包的音频条数 */
+  audio: number;
+  /** 建议的文件名（按天命名，自动备份同日覆盖） */
+  filename: string;
+}
+
 /**
- * 打包并下载完整备份
+ * 打包完整备份为 Blob（不触发下载，供手动导出与本地自动备份共用）
  * 记录取自 IndexedDB 全量（界面列表有 200 条截断，直接读内存会漏掉更早的记录）
- * @returns 导出的记录条数与音频条数
+ * @returns 无记录时返回 null
  */
-export async function exportFullBackup(): Promise<{ records: number; audio: number }> {
+export async function buildFullBackupZip(): Promise<FullBackupZip | null> {
   const store = useHistoryStore.getState();
   const records = await store.getAllRecords();
-  if (records.length === 0) return { records: 0, audio: 0 };
+  if (records.length === 0) return null;
 
   const payload = {
     app: 'simple-voice-tools',
@@ -70,11 +80,23 @@ export async function exportFullBackup(): Promise<{ records: number; audio: numb
   const zipped = zipSync(files);
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
-  downloadBlob(
-    `voice-backup-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.zip`,
-    new Blob([zipped], { type: 'application/zip' }),
-  );
-  return { records: records.length, audio };
+  return {
+    blob: new Blob([zipped], { type: 'application/zip' }),
+    records: records.length,
+    audio,
+    filename: `voice-backup-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.zip`,
+  };
+}
+
+/**
+ * 打包并下载完整备份
+ * @returns 导出的记录条数与音频条数
+ */
+export async function exportFullBackup(): Promise<{ records: number; audio: number }> {
+  const built = await buildFullBackupZip();
+  if (!built) return { records: 0, audio: 0 };
+  downloadBlob(built.filename, built.blob);
+  return { records: built.records, audio: built.audio };
 }
 
 export interface BackupImportResult {

@@ -103,6 +103,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   targetEnabled: false,
   targetF0Min: 165,
   targetF0Max: 255,
+  // 实验性功能
+  showSpectrogram: true,
+  liveSpectrum: false,
+  adviceEnabled: true,
 };
 
 /**

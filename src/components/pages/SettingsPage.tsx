@@ -15,6 +15,7 @@ import {
   Palette, Mic, DatabaseBackup, Info, Download, Upload, Trash2, Eraser, Sparkles,
   BookOpen, ChevronRight, Smartphone, FileSpreadsheet, Archive, Cloud,
   Link2, Unlink, CloudUpload, CloudDownload, FlaskConical, Target, ArrowLeft,
+  SlidersHorizontal, HardDriveDownload, FolderOpen, ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
@@ -23,6 +24,11 @@ import { applyTheme } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { downloadText, recordsToSummaryCsv } from '@/lib/export/csv';
 import { exportFullBackup, importFullBackup } from '@/lib/export/backup';
+import {
+  pickAutoBackupFolder, getAutoBackupState,
+  requestAutoBackupPermission, runAutoBackupNow,
+  type AutoBackupState,
+} from '@/lib/backup/local';
 import { idbGetAllAudio } from '@/lib/storage/idb';
 import {
   requestDeviceCode, waitForToken, completeConnection, disconnectGithub,
@@ -345,6 +351,16 @@ export function SettingsPage() {
   const [ghProgress, setGhProgress] = useState('');
   const [ghLastPush, setGhLastPush] = useState<number | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
+  // 本地自动备份（实验性）
+  const [autoBackup, setAutoBackup] = useState<AutoBackupState | null>(null);
+
+  const refreshAutoBackup = useCallback(() => {
+    void getAutoBackupState().then(setAutoBackup);
+  }, []);
+
+  useEffect(() => {
+    refreshAutoBackup();
+  }, [refreshAutoBackup]);
 
   // 枚举麦克风设备（授权过一次后才能拿到名称）
   useEffect(() => {
@@ -569,6 +585,28 @@ export function SettingsPage() {
             <p className="text-base font-semibold text-ink">{t('settings.labs')}</p>
           </div>
 
+          {/* 功能开关 */}
+          <SettingsSection icon={SlidersHorizontal} title={t('settings.labsToggles')}>
+            <SettingRow label={t('settings.showSpec')}>
+              <Switch
+                checked={settings.showSpectrogram}
+                onCheckedChange={(v) => update({ showSpectrogram: v })}
+              />
+            </SettingRow>
+            <SettingRow label={t('settings.liveSpectrum')}>
+              <Switch
+                checked={settings.liveSpectrum}
+                onCheckedChange={(v) => update({ liveSpectrum: v })}
+              />
+            </SettingRow>
+            <SettingRow label={t('settings.adviceEnable')}>
+              <Switch
+                checked={settings.adviceEnabled}
+                onCheckedChange={(v) => update({ adviceEnabled: v })}
+              />
+            </SettingRow>
+          </SettingsSection>
+
           {/* GitHub 云备份 */}
           <SettingsSection icon={Cloud} title={t('settings.ghTitle')}>
             <SettingRow stacked label={t('settings.ghClientId')}>
@@ -655,6 +693,75 @@ export function SettingsPage() {
                 {ghBusy === 'pull' ? t('settings.ghRestoring') : t('common.restore')}
               </button>
             </SettingRow>
+          </SettingsSection>
+
+          {/* 本地自动备份（File System Access API） */}
+          <SettingsSection icon={HardDriveDownload} title={t('settings.autoBackup')}>
+            {!autoBackup?.supported ? (
+              <SettingRow label={t('settings.autoBackup')} desc={t('settings.autoBackupUnsupported')} />
+            ) : (
+              <>
+                <SettingRow
+                  label={t('settings.autoBackupFolder')}
+                  desc={t('settings.autoBackupDesc')}
+                  stacked
+                >
+                  <button
+                    onClick={() => {
+                      void pickAutoBackupFolder().then((ok) => {
+                        if (ok) refreshAutoBackup();
+                      });
+                    }}
+                    className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+                  >
+                    <FolderOpen size={14} />
+                    {autoBackup.hasHandle ? t('settings.autoBackupRepick') : t('settings.autoBackupPick')}
+                  </button>
+                </SettingRow>
+                {autoBackup.hasHandle && (
+                  <>
+                    <SettingRow
+                      label={t('settings.autoBackupStatus')}
+                      desc={autoBackup.permission === 'granted' ? t('settings.autoBackupOn') : t('settings.autoBackupNeedAuth')}
+                    >
+                      {autoBackup.permission !== 'granted' ? (
+                        <button
+                          onClick={() => {
+                            void requestAutoBackupPermission().then((ok) => {
+                              if (ok) refreshAutoBackup();
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+                        >
+                          <ShieldCheck size={14} />
+                          {t('settings.autoBackupReauth')}
+                        </button>
+                      ) : undefined}
+                    </SettingRow>
+                    <SettingRow
+                      label={t('settings.autoBackupNow')}
+                      desc={autoBackup.lastTs
+                        ? t('settings.autoBackupLast', { time: new Date(autoBackup.lastTs).toLocaleString(localeTag(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
+                        : undefined}
+                    >
+                      <button
+                        onClick={() => {
+                          void runAutoBackupNow().then(refreshAutoBackup);
+                        }}
+                        disabled={autoBackup.permission !== 'granted'}
+                        className={cn(
+                          'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+                          autoBackup.permission === 'granted' ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+                        )}
+                      >
+                        <CloudUpload size={14} />
+                        {t('common.export')}
+                      </button>
+                    </SettingRow>
+                  </>
+                )}
+              </>
+            )}
           </SettingsSection>
         </motion.div>
 

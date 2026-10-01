@@ -41,6 +41,7 @@ src/
 │   ├── charts/
 │   │   ├── chartPainters.ts      # 三种图表共用的 Canvas 画笔（网格/曲线/着色）
 │   │   ├── SeriesChart.tsx       # 画布组件：live(实时滚动) / static(区间) 双模式
+│   │   ├── LiveSpectrum.tsx      # 实时频谱图（实验性，AnalyserNode 频域直读）
 │   │   ├── TimeRangeSelector.tsx # 分析页双滑块时间轴（能量密度预览）
 │   │   └── MiniSpark.tsx         # 历史卡片迷你波形
 │   ├── layout/
@@ -63,14 +64,16 @@ src/
 │   │   ├── spectrogram.ts        # 语谱频带量化 + base64 编解码 + magma 伪彩色
 │   │   ├── sustained.ts          # 长音指标：MPT / 音高稳定度 CV / 响度衰减斜率
 │   │   └── demo.ts               # 示例数据生成（?demo=1 / 载入示例按钮）
+│   ├── advice.ts                 # 训练建议（实验性，本地规则引擎，纯函数）
 │   ├── storage/
 │   │   └── idb.ts                # IndexedDB：records / audio / kv 三仓库（DB v2）
 │   ├── export/
 │   │   ├── csv.ts                # 帧级 CSV / 汇总 CSV
 │   │   ├── shareCard.ts          # PNG 分享报告卡
-│   │   └── backup.ts             # ZIP 完整备份/恢复（fflate）
+│   │   └── backup.ts             # ZIP 完整备份/恢复（fflate，buildFullBackupZip 供自动备份复用）
 │   ├── backup/
-│   │   └── github.ts             # GitHub 私有库云备份（Device Flow + Contents API）
+│   │   ├── github.ts             # GitHub 私有库云备份（Device Flow + Contents API）
+│   │   └── local.ts              # 本地自动备份（实验性，File System Access API，句柄存 kv 仓库）
 │   └── theme/
 │       └── monet.ts              # OKLCH 莫奈色板生成 → CSS 变量
 ├── store/

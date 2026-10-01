@@ -259,6 +259,16 @@ class VoiceRecorder {
   lastPitch: { freq: number; prob: number } | null = null;
 
   /**
+   * 读取当前频谱幅度（0-255，getByteFrequencyData）填入 out（按 out 长度截取），
+   * 返回采样率 Hz；非录音态返回 0（实时频谱图用，与主循环的 getFloatFrequencyData 互不干扰）
+   */
+  getSpectrum(out: Uint8Array<ArrayBuffer>): number {
+    if (!this.analyser || !this.audioContext) return 0;
+    this.analyser.getByteFrequencyData(out);
+    return this.audioContext.sampleRate;
+  }
+
+  /**
    * 启动录音与分析
    * getUserMedia 等待期间 isStarting() 为 true，可通过 cancelStart() 无痕取消；
    * 权限弹窗期间用户切页/停止时，授权返回后直接释放资源，不进入录音循环。

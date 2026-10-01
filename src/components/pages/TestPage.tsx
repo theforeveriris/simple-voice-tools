@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { SeriesChart } from '@/components/charts/SeriesChart';
+import { LiveSpectrum } from '@/components/charts/LiveSpectrum';
 import { recorder } from '@/lib/audio/recorder';
 import { freqToNote } from '@/constants';
 import { useStore } from '@/store/useStore';
@@ -174,6 +175,7 @@ export function TestPage() {
   const targetEnabled = useStore((s) => s.settings.targetEnabled);
   const targetMin = useStore((s) => s.settings.targetF0Min);
   const targetMax = useStore((s) => s.settings.targetF0Max);
+  const liveSpectrum = useStore((s) => s.settings.liveSpectrum);
   // 图表延迟挂载：三张 Canvas 的 rAF 绘制循环会占用主线程，
   // 推迟到页面入场与底栏弹簧动画结束（约 300ms）后再启动，保证动效满帧
   const [chartsReady, setChartsReady] = useState(false);
@@ -185,7 +187,8 @@ export function TestPage() {
   return (
     // 高度下探到距底栏约 12px（页头 pt-7 + 底栏顶 4.75rem + 间距 0.75rem = 7.25rem），
     // -mb-14 抵消 main 的 pb-36 中多余部分，页面不产生滚动；
-    // 三张图按 6 : 5 : 12 分配剩余高度（basis-0 使比例不受内容影响，min-h 防塌缩）
+    // 三张图按 6 : 5 : 12 分配剩余高度（basis-0 使比例不受内容影响，min-h 防塌缩）；
+    // 开启实时频谱（实验性）时追加第四张，压缩其余图的比例
     <div className="-mb-14 flex h-[calc(100dvh-7.25rem)] min-h-[360px] flex-col gap-3 sm:gap-3.5">
       {/* 模式提示（极简文字） */}
       <ModeHint mode={mode} />
@@ -221,6 +224,13 @@ export function TestPage() {
       >
         {chartsReady && <SeriesChart kind="pitch" live />}
       </ChartCard>
+
+      {/* 实时频谱（实验性）：窄带幅度谱，可见谐波列与共振峰峰包 */}
+      {liveSpectrum && (
+        <ChartCard title={t('test.titleSpectrum')} className="min-h-[72px] shrink basis-0 grow-[4]">
+          {chartsReady && <LiveSpectrum />}
+        </ChartCard>
+      )}
     </div>
   );
 }

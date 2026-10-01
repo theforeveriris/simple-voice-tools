@@ -176,4 +176,11 @@ export interface AppSettings {
   targetF0Max: number;
   /** 基线记录 id：分析页自动对比新记录与基线的 Δ 指标 */
   baselineRecordId?: string;
+  /* ---------- 实验性功能（设置 → 实验性功能 子页面） ---------- */
+  /** 分析页是否显示语谱图卡片 */
+  showSpectrogram: boolean;
+  /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */
+  liveSpectrum: boolean;
+  /** 分析页是否显示本地规则生成的训练建议 */
+  adviceEnabled: boolean;
 }
