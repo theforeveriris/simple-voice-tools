@@ -61,8 +61,10 @@ const FAN_SPREAD_DEG = 52;
 const FAN_SPREAD_COMPACT_DEG = 38;
 /** 逆时针旋转上限（度），防止左侧选项低到与圆球同排 */
 const FAN_MAX_ROTATE_DEG = 55;
-/** 圆球落座后底栏中缝的宽度（圆球 56 + 两侧呼吸 8） */
-const BALL_SLOT_W = 64;
+/** 圆球直径 = 底栏高度（实测 nav 53px：p-1.5 × 2 + 页签按钮 41px），两者保持等高 */
+const BALL_SIZE = 53;
+/** 圆球落座后底栏中缝的宽度（圆球 53 + 两侧呼吸 8） */
+const BALL_SLOT_W = BALL_SIZE + 8;
 
 /**
  * 模式选择覆盖层
@@ -103,7 +105,7 @@ function ModeFanSelector({
         // 且都分布在以圆球为圆心的同一弧上（旋转不脱离圆球，平移/逐个钳制会变形）。
         // 圆球落座底栏中缝后 center.x 即屏幕中心，常规扇形恒能放下，此分支仅作兜底。
         const vw = window.innerWidth;
-        const fanMargin = 56; // 圆钮半径 + 标签半宽
+        const fanMargin = BALL_SIZE / 2 + 28; // 圆钮半径 + 标签半宽
         const roomRight = vw - fanMargin - center.x;
         let spread = FAN_SPREAD_DEG;
         let rotateDeg = 0;
@@ -269,9 +271,9 @@ function BallCore({ onLongPress }: { onLongPress: () => void }) {
             className="grid place-items-center"
           >
             {isRecording ? (
-              <Square size={17} fill="currentColor" strokeWidth={0} />
+              <Square size={16} fill="currentColor" strokeWidth={0} />
             ) : (
-              <Play size={19} fill="currentColor" strokeWidth={0} className="translate-x-[2px]" />
+              <Play size={18} fill="currentColor" strokeWidth={0} className="translate-x-[2px]" />
             )}
           </motion.span>
         </AnimatePresence>
@@ -301,12 +303,14 @@ function RecordBall({
       transition={SPRING}
       initial={!docked && entrance ? { scale: 0, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
-      className="pointer-events-auto absolute z-10 size-14"
-      style={
-        docked
-          ? { left: '50%', top: '50%', marginLeft: -28, marginTop: -28 }
-          : { left: 'calc(100% + 12px)', top: '50%', marginTop: -28 }
-      }
+      className="pointer-events-auto absolute z-10"
+      style={{
+        width: BALL_SIZE,
+        height: BALL_SIZE,
+        ...(docked
+          ? { left: '50%', top: '50%', marginLeft: -BALL_SIZE / 2, marginTop: -BALL_SIZE / 2 }
+          : { left: 'calc(100% + 12px)', top: '50%', marginTop: -BALL_SIZE / 2 }),
+      }}
     >
       <BallCore onLongPress={onLongPress} />
     </motion.div>
@@ -393,7 +397,7 @@ const Dock = memo(function Dock({
 
   return (
     <motion.div
-      animate={{ x: ballDocked ? 0 : isTest ? -34 : 0 }}
+      animate={{ x: ballDocked ? 0 : isTest ? -(BALL_SIZE + 12) / 2 : 0 }}
       transition={SPRING}
       className="pointer-events-auto relative flex items-center"
     >
@@ -520,8 +524,8 @@ export function BottomBar() {
       {/*
         运动模型：
         - 分体时圆球在底栏中缝，整体由 justify-center 精确居中；
-        - 非分体时圆球悬浮于右缘，整体用纯 transform 左移 34px
-          （= 小球56px+间距12px 的一半）使"底栏+小球"视觉居中；
+        - 非分体时圆球悬浮于右缘，整体用纯 transform 左移 (圆球+间距)/2
+          （= 53px+12px 的一半 = 32.5px）使"底栏+小球"视觉居中；
         - 中缝宽度由 framer 弹簧驱动，页签组随文档流平滑滑开；
         - 圆球换位由 layoutId 共享元素动画完成，其余组件不为它重渲染
           （Dock memo），避免 layout 快照与进行中的动画叠加。
