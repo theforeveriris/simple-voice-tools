@@ -61,6 +61,17 @@ export interface AnalyzeAudioResult {
   truncated: boolean;
 }
 
+/** 解码任意音频 Blob 为 AudioBuffer（音高算法对比重算共用） */
+export async function decodeBlob(blob: Blob): Promise<AudioBuffer> {
+  const raw = await blob.arrayBuffer();
+  const decodeCtx = new AudioContext();
+  try {
+    return await decodeCtx.decodeAudioData(raw);
+  } finally {
+    void decodeCtx.close();
+  }
+}
+
 /** 用 <audio> 元素轻量探测时长（秒），读不出（如流式 webm）返回 0 */
 function probeDurationSec(file: Blob): Promise<number> {
   return new Promise((resolve) => {
@@ -79,8 +90,8 @@ function probeDurationSec(file: Blob): Promise<number> {
   });
 }
 
-/** 多声道混合为单声道（截取前 maxSec 秒） */
-function mixdown(decoded: AudioBuffer, maxSec: number): Float32Array<ArrayBuffer> {
+/** 多声道混合为单声道（截取前 maxSec 秒）；音高算法对比重算共用 */
+export function mixdown(decoded: AudioBuffer, maxSec: number): Float32Array<ArrayBuffer> {
   const len = Math.min(decoded.length, Math.ceil(maxSec * decoded.sampleRate));
   const chs = decoded.numberOfChannels;
   const out = new Float32Array(len);
@@ -91,8 +102,8 @@ function mixdown(decoded: AudioBuffer, maxSec: number): Float32Array<ArrayBuffer
   return out;
 }
 
-/** 重采样到管线采样率（OfflineAudioContext，线性插值质量足够分析用） */
-async function resample(pcm: Float32Array<ArrayBuffer>, fromHz: number): Promise<Float32Array<ArrayBuffer>> {
+/** 重采样到管线采样率（OfflineAudioContext，线性插值质量足够分析用）；音高算法对比重算共用 */
+export async function resample(pcm: Float32Array<ArrayBuffer>, fromHz: number): Promise<Float32Array<ArrayBuffer>> {
   const targetLen = Math.max(1, Math.ceil((pcm.length / fromHz) * PIPELINE_HZ));
   const off = new OfflineAudioContext(1, targetLen, PIPELINE_HZ);
   const buf = off.createBuffer(1, pcm.length, fromHz);

@@ -160,6 +160,32 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'analysis.adviceStatusFair': '平',
   'analysis.adviceStatusAttention': '宜慎',
 
+  /* ---------- 析頁 · 音高諸法相較（實驗） ---------- */
+  'ab.title': '音高諸法相較',
+  'ab.desc': '以 pYIN、MPM 二法重推此錄之基頻，疊於 YIN 舊線之上，以驗諸法之異同',
+  'ab.needAudio': '重推需錄音之聲：未存聲者不可用',
+  'ab.run': '重推相較',
+  'ab.rerun': '再較',
+  'ab.running': '重推中 {pct}%',
+  'ab.fail': '相較不成：聲不可解',
+  'ab.agree': '合率',
+  'ab.medDev': '中位之偏',
+  'ab.agreeHint': '二法同檢而差不逾 ±50 cents 者謂之合（計諸有聲之幀）',
+
+  /* ---------- 析頁 · 可動 HTML 報之錄出（實驗） ---------- */
+  'analysis.htmlAria': '錄出可動之 HTML 報',
+  'analysis.htmlTitle': '錄出可動之 HTML 報（單簡之卷）',
+  'html.dialogTitle': '錄出可動之報',
+  'html.dialogDesc': '生自足之 HTML 一卷，以覽器啟之即可縮觀諸圖，毋庸安裝。',
+  'html.withAudio': '附錄音之聲',
+  'html.withAudioDesc': '卷稍巨，然可於報中復聽',
+  'html.withoutAudio': '惟圖與數',
+  'html.withoutAudioDesc': '卷至簡，惟曲線、統計、語譜而已',
+  'html.exporting': '方生…',
+  'html.zoomHint': '輪以縮 · 曳以移 · 再擊以復',
+  'toast.htmlExported': '可動之報已錄出',
+  'toast.htmlExportFail': '可動之報生之不成',
+
   /* ---------- 历史页 ---------- */
   'history.viewList': '列冊',
   'history.viewTrend': '趨勢',
@@ -261,6 +287,45 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'vowelLive.hint': '橫軸 F2：愈左則舌愈前 · 縱軸 F1：愈上則口愈斂 · 點跡愈新愈明，× 者心也',
   'vowelLive.recordingBadge': '錄中',
   'vowelLive.noSignal': '俟聲…',
+
+  /* ---------- 實驗 · 即時之功 ---------- */
+  'labs.realtime': '即時之功',
+  'labs.rtVowel': '即時元音落點',
+  'labs.rtVowelDesc': '言之際，即觀 F1/F2 落點行乎元音之域，以佐正音之練',
+  'labs.rtF0': '即時 F0 基頻之線',
+  'labs.rtF0Desc': '巨幅即時音高之線，帶音區之色與靶標之帶，宜滑音長音之習',
+  'labs.rtSpec': '即時聲譜之圖',
+  'labs.rtSpecDesc': '滿幅滾動之語譜熱圖，可疊音高之跡，諧波共振之勢瞭然',
+  'labs.rtVrp': '即時聲域之圖（VRP）',
+  'labs.rtVrpDesc': '滑唱之際，半音 × 響度之矩陣隨聲而明，音域力度立現',
+  'labs.pitchAlgo': '即時音高之法',
+  'labs.pitchAlgoDesc': '即時之線與錄音之析所共之音高法：YIN 穩而通；pYIN 多閾而抗噪；MPM 於低音尤敏',
+  'labs.algoYin': 'YIN（舊章）',
+  'labs.algoPyin': 'pYIN（幾率）',
+  'labs.algoMpm': 'MPM（麥氏）',
+
+  /* ---------- 實驗 · 即時 F0 之線 ---------- */
+  'f0Live.title': '即時 F0 基頻之線',
+  'f0Live.start': '始觀',
+  'f0Live.hintIdle': '啟麥克風即見基頻之線，不錄不存',
+  'f0Live.note': '音律',
+  'f0Live.hint': '線依音區而色 · 右緣為今 · 靶標之帶隨所設',
+  'f0Live.noSignal': '俟聲…',
+
+  /* ---------- 實驗 · 即時聲譜之圖 ---------- */
+  'specLive.title': '即時聲譜之圖',
+  'specLive.start': '始觀',
+  'specLive.hintIdle': '啟麥克風即見滾動之語譜熱圖，不錄不存',
+  'specLive.hint': '橫為時（右緣為今）· 縱為頻（對數）· 愈明聲愈強 · 紅線者音高之跡',
+  'specLive.overlay': '音高之跡',
+  'specLive.noSignal': '俟聲…',
+
+  /* ---------- 實驗 · 即時聲域之圖 ---------- */
+  'vrpLive.title': '即時聲域之圖（VRP）',
+  'vrpLive.start': '始積',
+  'vrpLive.hintIdle': '啟麥克風而滑唱，則半音 × 響度之矩陣漸積漸明',
+  'vrpLive.hint': '縱為半音（C2–C6）· 橫為響（自適）· 色深者久駐 · 存近約二分',
+  'vrpLive.noSignal': '俟聲…',
 
   /* ---------- 实验性 · 导入音频离线分析 ---------- */
   'settings.importAudio': '納聲以析',

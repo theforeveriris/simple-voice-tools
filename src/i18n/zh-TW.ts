@@ -159,6 +159,32 @@ export const zhTW = {
   'analysis.adviceStatusFair': '平穩',
   'analysis.adviceStatusAttention': '需注意',
 
+  /* ---------- 分析頁 · 音高演算法對比（實驗性） ---------- */
+  'ab.title': '音高演算法對比',
+  'ab.desc': '用 pYIN 與 MPM 對本條錄音重算基頻，與錄音時的 YIN 曲線疊加對比，檢驗結果的演算法敏感性',
+  'ab.needAudio': '重算需要錄音音訊：未保存音訊的記錄不可用',
+  'ab.run': '重算並對比',
+  'ab.rerun': '重新對比',
+  'ab.running': '重算中 {pct}%',
+  'ab.fail': '對比計算失敗：音訊無法解碼',
+  'ab.agree': '一致率',
+  'ab.medDev': '中位偏差',
+  'ab.agreeHint': '兩演算法同時檢出且偏差 ≤ ±50 cents 視為一致（基於全部有聲幀）',
+
+  /* ---------- 分析頁 · 互動 HTML 報告匯出（實驗性） ---------- */
+  'analysis.htmlAria': '匯出互動式 HTML 報告',
+  'analysis.htmlTitle': '匯出互動式 HTML 報告（單一檔案）',
+  'html.dialogTitle': '匯出互動報告',
+  'html.dialogDesc': '產生一個自包含的 HTML 檔案，瀏覽器直接開啟即可縮放查看全部圖表，無需安裝應用。',
+  'html.withAudio': '含錄音音訊',
+  'html.withAudioDesc': '檔案較大，但可在報告中直接回放',
+  'html.withoutAudio': '僅圖表資料',
+  'html.withoutAudioDesc': '檔案最小，只含曲線、統計與語譜圖',
+  'html.exporting': '產生中…',
+  'html.zoomHint': '滾輪縮放 · 拖動平移 · 雙擊復位',
+  'toast.htmlExported': '互動報告已匯出',
+  'toast.htmlExportFail': '互動報告產生失敗',
+
   /* ---------- 歷史頁 ---------- */
   'history.viewList': '列表',
   'history.viewTrend': '趨勢',
@@ -260,6 +286,45 @@ export const zhTW = {
   'vowelLive.hint': '橫軸 F2：越靠左舌位越前 · 縱軸 F1：越靠上開口越小 · 點跡越新越亮，× 為質心',
   'vowelLive.recordingBadge': '錄音中',
   'vowelLive.noSignal': '等待發聲…',
+
+  /* ---------- 實驗性 · 即時功能分區 ---------- */
+  'labs.realtime': '即時功能',
+  'labs.rtVowel': '即時元音落點',
+  'labs.rtVowelDesc': '說話時即時觀察 F1/F2 落點在元音空間中的移動，語言訓練 / 發音矯正的即時回饋',
+  'labs.rtF0': '即時 F0 基頻曲線',
+  'labs.rtF0Desc': '高幅面即時音高曲線，帶音區色帶與訓練靶標疊加，適合滑音與長音練習的即時觀察',
+  'labs.rtSpec': '即時聲譜圖',
+  'labs.rtSpecDesc': '全螢幕滾動語譜熱力圖，可疊加音高軌跡，直觀看到諧波結構與共振峰走向',
+  'labs.rtVrp': '即時聲域圖（VRP）',
+  'labs.rtVrpDesc': '邊滑唱邊點亮「半音 × 響度」駐留矩陣，即時勾勒自己的音域與力度分布',
+  'labs.pitchAlgo': '即時音高演算法',
+  'labs.pitchAlgoDesc': '即時曲線與錄音分析共用的音高檢測器：YIN 穩定通用；pYIN 多閾值機率化，抗噪更強；MPM 對低頻更敏感',
+  'labs.algoYin': 'YIN（預設）',
+  'labs.algoPyin': 'pYIN（機率化）',
+  'labs.algoMpm': 'MPM（麥氏法）',
+
+  /* ---------- 實驗性 · 即時 F0 曲線 ---------- */
+  'f0Live.title': '即時 F0 基頻曲線',
+  'f0Live.start': '開始即時觀察',
+  'f0Live.hintIdle': '開啟麥克風即可即時查看基頻曲線，無需保存錄音',
+  'f0Live.note': '音符',
+  'f0Live.hint': '曲線按音區著色 · 右緣為當前時刻 · 靶標帶跟隨訓練設定',
+  'f0Live.noSignal': '等待發聲…',
+
+  /* ---------- 實驗性 · 即時聲譜圖 ---------- */
+  'specLive.title': '即時聲譜圖',
+  'specLive.start': '開始即時觀察',
+  'specLive.hintIdle': '開啟麥克風即可看到滾動的語譜熱力圖，無需保存錄音',
+  'specLive.hint': '橫軸時間（右緣為當前）· 縱軸頻率（對數）· 亮色 = 能量強 · 紅線為音高軌跡',
+  'specLive.overlay': '音高軌跡',
+  'specLive.noSignal': '等待發聲…',
+
+  /* ---------- 實驗性 · 即時聲域圖 ---------- */
+  'vrpLive.title': '即時聲域圖（VRP）',
+  'vrpLive.start': '開始即時累積',
+  'vrpLive.hintIdle': '開啟麥克風後邊滑唱邊累積「半音 × 響度」駐留矩陣',
+  'vrpLive.hint': '縱軸半音（C2–C6）· 橫軸響度（自適應）· 色深 = 駐留時長 · 保留最近約 2 分鐘',
+  'vrpLive.noSignal': '等待發聲…',
 
   /* ---------- 實驗性 · 匯入音訊離線分析 ---------- */
   'settings.importAudio': '匯入音訊分析',

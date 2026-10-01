@@ -3,7 +3,7 @@
  * 音高区间、莫奈主题预设、音符换算、默认设置
  */
 
-import type { AppSettings, PitchBand, TestMode } from '@/types';
+import type { AppSettings, PitchAlgorithm, PitchBand, TestMode } from '@/types';
 
 /**
  * 音符名称列表
@@ -150,6 +150,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // 实验性功能
   showSpectrogram: true,
   liveSpectrum: false,
+  pitchAlgorithm: 'yin',
   adviceMode: 'rules',
   adviceOnCompare: false,
   practiceReminderEnabled: false,
@@ -224,6 +225,15 @@ export function getSpecColormap() {
 }
 export function setSpecColormap(c: 'magma' | 'gray' | 'accent'): void {
   currentSpecColormap = c;
+}
+
+/** 运行时实时音高算法（recorder 分析循环读取；store 订阅同步，与音区边界同一模式） */
+let currentPitchAlgorithm: PitchAlgorithm = 'yin';
+export function getPitchAlgorithm(): PitchAlgorithm {
+  return currentPitchAlgorithm;
+}
+export function setPitchAlgorithm(a: PitchAlgorithm): void {
+  currentPitchAlgorithm = a;
 }
 
 /* ------------------------------ 元音空间散点图 ------------------------------ */

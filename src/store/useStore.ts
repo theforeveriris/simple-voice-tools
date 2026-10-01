@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import type { AnalysisRecord, AppSettings, ViewType } from '@/types';
 import {
   DEFAULT_SETTINGS, MODE_META, setBandBounds,
-  setPitchAxis, setLiveWindowSec, setSpecColormap,
+  setPitchAxis, setLiveWindowSec, setSpecColormap, setPitchAlgorithm,
 } from '@/constants';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
@@ -149,6 +149,7 @@ function syncModuleSettings(s: AppSettings): void {
   setPitchAxis(s.pitchAxisMin, s.pitchAxisMax);
   setLiveWindowSec(s.liveWindowSec);
   setSpecColormap(s.specColormap);
+  setPitchAlgorithm(s.pitchAlgorithm);
 }
 syncModuleSettings(useStore.getState().settings);
 useStore.subscribe((state, prev) => {

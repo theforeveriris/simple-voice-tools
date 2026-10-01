@@ -2,8 +2,9 @@
  * 实验性功能（设置的子页面）
  * - 功能开关（语谱图 / 实时频谱 / 训练建议三态 + 对比页建议）
  * - 大模型配置（训练建议「基于大模型判断」的接口参数 + 提示词子页面）
+ * - 实时功能：实时元音落点 / F0 基频曲线 / 声谱图 / 声域图（VRP）
+ *   + 实时音高算法选择（yin / pyin / mpm）
  * - 自定义音区边界（实验性）
- * - 实时元音落点
  * - 导入音频离线分析
  * - GitHub 云备份（Device Flow）
  * （本地自动备份已移至 数据管理 子页面）
@@ -13,6 +14,7 @@ import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, SlidersHorizontal, Ruler, RotateCcw, LocateFixed, FileAudio,
+  Radar, AudioWaveform, Waves, LayoutGrid,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
@@ -22,8 +24,11 @@ import { analyzeAudioFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import type { AdviceMode, AppSettings } from '@/types';
+import type { AdviceMode, AppSettings, PitchAlgorithm } from '@/types';
 import { VowelLiveSheet } from '@/components/pages/VowelLiveSheet';
+import { F0LiveSheet } from '@/components/pages/F0LiveSheet';
+import { SpecLiveSheet } from '@/components/pages/SpecLiveSheet';
+import { VrpLiveSheet } from '@/components/pages/VrpLiveSheet';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
 import { SettingsSection, SettingRow } from './rows';
@@ -46,8 +51,11 @@ export function LabsPage({
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
 
-  // 实时元音落点（Labs 子页面入口）
+  // 实时功能子页面（一次一个）
   const [vowelLiveOpen, setVowelLiveOpen] = useState(false);
+  const [f0LiveOpen, setF0LiveOpen] = useState(false);
+  const [specLiveOpen, setSpecLiveOpen] = useState(false);
+  const [vrpLiveOpen, setVrpLiveOpen] = useState(false);
   // 自定义提示词（大模型配置的二级子页面）
   const [promptOpen, setPromptOpen] = useState(false);
   // 导入音频离线分析
@@ -210,9 +218,9 @@ export function LabsPage({
           </SettingRow>
         </SettingsSection>
 
-        {/* 实时元音落点 */}
-        <SettingsSection icon={LocateFixed} title={t('vowelLive.title')}>
-          <SettingRow label={<InfoTip label={t('vowelLive.title')} text={t('vowelLive.labsDesc')} />}>
+        {/* 实时功能：元音落点 / F0 曲线 / 声谱图 / 声域图 + 音高算法 */}
+        <SettingsSection icon={Radar} title={t('labs.realtime')}>
+          <SettingRow label={<InfoTip label={t('labs.rtVowel')} text={t('labs.rtVowelDesc')} />}>
             <button
               onClick={() => setVowelLiveOpen(true)}
               className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
@@ -220,6 +228,48 @@ export function LabsPage({
               <LocateFixed size={14} />
               {t('vowelLive.openAction')}
             </button>
+          </SettingRow>
+          <SettingRow label={<InfoTip label={t('labs.rtF0')} text={t('labs.rtF0Desc')} />}>
+            <button
+              onClick={() => setF0LiveOpen(true)}
+              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+            >
+              <AudioWaveform size={14} />
+              {t('vowelLive.openAction')}
+            </button>
+          </SettingRow>
+          <SettingRow label={<InfoTip label={t('labs.rtSpec')} text={t('labs.rtSpecDesc')} />}>
+            <button
+              onClick={() => setSpecLiveOpen(true)}
+              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+            >
+              <Waves size={14} />
+              {t('vowelLive.openAction')}
+            </button>
+          </SettingRow>
+          <SettingRow label={<InfoTip label={t('labs.rtVrp')} text={t('labs.rtVrpDesc')} />}>
+            <button
+              onClick={() => setVrpLiveOpen(true)}
+              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+            >
+              <LayoutGrid size={14} />
+              {t('vowelLive.openAction')}
+            </button>
+          </SettingRow>
+          <SettingRow label={<InfoTip label={t('labs.pitchAlgo')} text={t('labs.pitchAlgoDesc')} />}>
+            <Select
+              value={settings.pitchAlgorithm}
+              onValueChange={(v) => update({ pitchAlgorithm: v as PitchAlgorithm })}
+            >
+              <SelectTrigger className="w-40 border-0 bg-transparent px-0 text-sm shadow-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                <SelectItem value="yin">{t('labs.algoYin')}</SelectItem>
+                <SelectItem value="pyin">{t('labs.algoPyin')}</SelectItem>
+                <SelectItem value="mpm">{t('labs.algoMpm')}</SelectItem>
+              </SelectContent>
+            </Select>
           </SettingRow>
         </SettingsSection>
 
@@ -272,8 +322,11 @@ export function LabsPage({
         <GithubBackupSection settings={settings} update={update} />
       </motion.div>
 
-      {/* 实时元音落点（全屏子页面，从 Labs 或测试页打开） */}
+      {/* 实时功能子页面（全屏，从 Labs 或测试页打开；一次最多一个） */}
       {vowelLiveOpen && <VowelLiveSheet onClose={() => setVowelLiveOpen(false)} />}
+      {f0LiveOpen && <F0LiveSheet onClose={() => setF0LiveOpen(false)} />}
+      {specLiveOpen && <SpecLiveSheet onClose={() => setSpecLiveOpen(false)} />}
+      {vrpLiveOpen && <VrpLiveSheet onClose={() => setVrpLiveOpen(false)} />}
     </div>
   );
 }

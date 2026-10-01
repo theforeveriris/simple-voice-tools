@@ -159,6 +159,32 @@ export const en = {
   'analysis.adviceStatusFair': 'Fair',
   'analysis.adviceStatusAttention': 'Needs attention',
 
+  /* ---------- Analysis · Pitch algorithm comparison (experimental) ---------- */
+  'ab.title': 'Pitch algorithm comparison',
+  'ab.desc': 'Recomputes fundamental frequency with pYIN and MPM, overlaying both on the YIN curve recorded during the session to show how sensitive the result is to the algorithm',
+  'ab.needAudio': 'Recomputation needs the recorded audio: unavailable for records saved without audio',
+  'ab.run': 'Recompute & compare',
+  'ab.rerun': 'Compare again',
+  'ab.running': 'Recomputing {pct}%',
+  'ab.fail': 'Comparison failed: audio could not be decoded',
+  'ab.agree': 'Agreement',
+  'ab.medDev': 'Median deviation',
+  'ab.agreeHint': 'Frames where both algorithms detect a pitch within ±50 cents count as agreement (over all voiced frames)',
+
+  /* ---------- Analysis · Interactive HTML report export (experimental) ---------- */
+  'analysis.htmlAria': 'Export interactive HTML report',
+  'analysis.htmlTitle': 'Export interactive HTML report (single file)',
+  'html.dialogTitle': 'Export interactive report',
+  'html.dialogDesc': 'Generates a self-contained HTML file — open it in any browser to zoom through all charts, no app install needed.',
+  'html.withAudio': 'With recorded audio',
+  'html.withAudioDesc': 'Larger file, but playback inside the report',
+  'html.withoutAudio': 'Charts only',
+  'html.withoutAudioDesc': 'Smallest file: curves, stats and spectrogram only',
+  'html.exporting': 'Generating…',
+  'html.zoomHint': 'Wheel to zoom · drag to pan · double-click to reset',
+  'toast.htmlExported': 'Interactive report exported',
+  'toast.htmlExportFail': 'Failed to generate the interactive report',
+
   /* ---------- History page ---------- */
   'history.viewList': 'List',
   'history.viewTrend': 'Trend',
@@ -260,6 +286,45 @@ export const en = {
   'vowelLive.hint': 'X axis F2: left = front tongue · Y axis F1: up = smaller opening · newer points are brighter, × = centroid',
   'vowelLive.recordingBadge': 'Recording',
   'vowelLive.noSignal': 'Waiting for voice…',
+
+  /* ---------- Labs · Realtime tools ---------- */
+  'labs.realtime': 'Realtime tools',
+  'labs.rtVowel': 'Live vowel tracker',
+  'labs.rtVowelDesc': 'Watch your F1/F2 move through the vowel space in real time — instant feedback for pronunciation training',
+  'labs.rtF0': 'Live F0 pitch curve',
+  'labs.rtF0Desc': 'Tall real-time pitch curve with voice-range bands and training target overlay, for glide and sustained practice',
+  'labs.rtSpec': 'Live spectrogram',
+  'labs.rtSpecDesc': 'Full-screen scrolling spectrogram heatmap with optional pitch track — see harmonics and formants move',
+  'labs.rtVrp': 'Live voice range profile (VRP)',
+  'labs.rtVrpDesc': 'Light up the semitone × loudness dwell matrix while gliding, mapping your range and dynamics live',
+  'labs.pitchAlgo': 'Realtime pitch algorithm',
+  'labs.pitchAlgoDesc': 'Pitch detector shared by live views and recordings: YIN is the stable baseline; pYIN is probabilistic and noise-robust; MPM is more sensitive to low frequencies',
+  'labs.algoYin': 'YIN (default)',
+  'labs.algoPyin': 'pYIN (probabilistic)',
+  'labs.algoMpm': 'MPM (McLeod)',
+
+  /* ---------- Labs · Live F0 curve ---------- */
+  'f0Live.title': 'Live F0 pitch curve',
+  'f0Live.start': 'Start live view',
+  'f0Live.hintIdle': 'Turn on the microphone to see your pitch curve in real time — nothing is recorded',
+  'f0Live.note': 'Note',
+  'f0Live.hint': 'Curve colored by voice band · right edge is now · target band follows training settings',
+  'f0Live.noSignal': 'Waiting for voice…',
+
+  /* ---------- Labs · Live spectrogram ---------- */
+  'specLive.title': 'Live spectrogram',
+  'specLive.start': 'Start live view',
+  'specLive.hintIdle': 'Turn on the microphone to see a scrolling spectrogram heatmap — nothing is recorded',
+  'specLive.hint': 'X axis time (right edge is now) · Y axis frequency (log) · brighter = stronger · red line is the pitch track',
+  'specLive.overlay': 'Pitch track',
+  'specLive.noSignal': 'Waiting for voice…',
+
+  /* ---------- Labs · Live VRP ---------- */
+  'vrpLive.title': 'Live voice range profile (VRP)',
+  'vrpLive.start': 'Start accumulating',
+  'vrpLive.hintIdle': 'Turn on the microphone and glide — the semitone × loudness dwell matrix builds up live',
+  'vrpLive.hint': 'Y axis semitones (C2–C6) · X axis loudness (auto-scaled) · darker = longer dwell · last ~2 minutes kept',
+  'vrpLive.noSignal': 'Waiting for voice…',
 
   /* ---------- Labs · import audio analysis ---------- */
   'settings.importAudio': 'Import audio analysis',

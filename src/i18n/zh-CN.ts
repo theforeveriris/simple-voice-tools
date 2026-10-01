@@ -160,6 +160,32 @@ export const zhCN = {
   'analysis.adviceStatusFair': '平稳',
   'analysis.adviceStatusAttention': '需注意',
 
+  /* ---------- 分析页 · 音高算法对比（实验性） ---------- */
+  'ab.title': '音高算法对比',
+  'ab.desc': '用 pYIN 与 MPM 对本条录音重算基频，与录音时的 YIN 曲线叠加对比，检验结果的算法敏感性',
+  'ab.needAudio': '重算需要录音音频：未保存音频的记录不可用',
+  'ab.run': '重算并对比',
+  'ab.rerun': '重新对比',
+  'ab.running': '重算中 {pct}%',
+  'ab.fail': '对比计算失败：音频无法解码',
+  'ab.agree': '一致率',
+  'ab.medDev': '中位偏差',
+  'ab.agreeHint': '两算法同时检出且偏差 ≤ ±50 cents 视为一致（基于全部有声帧）',
+
+  /* ---------- 分析页 · 交互 HTML 报告导出（实验性） ---------- */
+  'analysis.htmlAria': '导出交互式 HTML 报告',
+  'analysis.htmlTitle': '导出交互式 HTML 报告（单文件）',
+  'html.dialogTitle': '导出交互报告',
+  'html.dialogDesc': '生成一个自包含的 HTML 文件，浏览器直接打开即可缩放查看全部图表，无需安装应用。',
+  'html.withAudio': '含录音音频',
+  'html.withAudioDesc': '文件较大，但可在报告中直接回放',
+  'html.withoutAudio': '仅图表数据',
+  'html.withoutAudioDesc': '文件最小，只含曲线、统计与语谱图',
+  'html.exporting': '生成中…',
+  'html.zoomHint': '滚轮缩放 · 拖动平移 · 双击复位',
+  'toast.htmlExported': '交互报告已导出',
+  'toast.htmlExportFail': '交互报告生成失败',
+
   /* ---------- 历史页 ---------- */
   'history.viewList': '列表',
   'history.viewTrend': '趋势',
@@ -261,6 +287,45 @@ export const zhCN = {
   'vowelLive.hint': '横轴 F2：越靠左舌位越前 · 纵轴 F1：越靠上开口越小 · 点迹越新越亮，× 为质心',
   'vowelLive.recordingBadge': '录音中',
   'vowelLive.noSignal': '等待发声…',
+
+  /* ---------- 实验性 · 实时功能分区 ---------- */
+  'labs.realtime': '实时功能',
+  'labs.rtVowel': '实时元音落点',
+  'labs.rtVowelDesc': '说话时实时观察 F1/F2 落点在元音空间中的移动，语言训练 / 发音矫正的即时反馈',
+  'labs.rtF0': '实时 F0 基频曲线',
+  'labs.rtF0Desc': '高幅面实时音高曲线，带音区色带与训练靶标叠加，适合滑音与长音练习的即时观察',
+  'labs.rtSpec': '实时声谱图',
+  'labs.rtSpecDesc': '全屏滚动语谱热力图，可叠加音高轨迹，直观看到谐波结构与共振峰走向',
+  'labs.rtVrp': '实时声域图（VRP）',
+  'labs.rtVrpDesc': '边滑唱边点亮「半音 × 响度」驻留矩阵，实时勾勒自己的音域与力度分布',
+  'labs.pitchAlgo': '实时音高算法',
+  'labs.pitchAlgoDesc': '实时曲线与录音分析共用的音高检测器：YIN 稳定通用；pYIN 多阈值概率化，抗噪更强；MPM 对低频更敏感',
+  'labs.algoYin': 'YIN（默认）',
+  'labs.algoPyin': 'pYIN（概率化）',
+  'labs.algoMpm': 'MPM（麦氏法）',
+
+  /* ---------- 实验性 · 实时 F0 曲线 ---------- */
+  'f0Live.title': '实时 F0 基频曲线',
+  'f0Live.start': '开始实时观察',
+  'f0Live.hintIdle': '开启麦克风即可实时查看基频曲线，无需保存录音',
+  'f0Live.note': '音符',
+  'f0Live.hint': '曲线按音区着色 · 右缘为当前时刻 · 靶标带跟随训练设置',
+  'f0Live.noSignal': '等待发声…',
+
+  /* ---------- 实验性 · 实时声谱图 ---------- */
+  'specLive.title': '实时声谱图',
+  'specLive.start': '开始实时观察',
+  'specLive.hintIdle': '开启麦克风即可看到滚动的语谱热力图，无需保存录音',
+  'specLive.hint': '横轴时间（右缘为当前）· 纵轴频率（对数）· 亮色 = 能量强 · 红线为音高轨迹',
+  'specLive.overlay': '音高轨迹',
+  'specLive.noSignal': '等待发声…',
+
+  /* ---------- 实验性 · 实时声域图 ---------- */
+  'vrpLive.title': '实时声域图（VRP）',
+  'vrpLive.start': '开始实时累积',
+  'vrpLive.hintIdle': '开启麦克风后边滑唱边累积「半音 × 响度」驻留矩阵',
+  'vrpLive.hint': '纵轴半音（C2–C6）· 横轴响度（自适应）· 色深 = 驻留时长 · 保留最近约 2 分钟',
+  'vrpLive.noSignal': '等待发声…',
 
   /* ---------- 实验性 · 导入音频离线分析 ---------- */
   'settings.importAudio': '导入音频分析',

@@ -4,12 +4,14 @@
  * 回退到主线程执行同一纯函数管线，功能不缺失、只是可能短暂阻塞 UI。
  */
 
-import { analyzePcmFrames, computeVqMetrics, type FrameAnalysisResult, type VqMetrics } from './analysisPipeline';
+import { analyzePcmFrames, analyzePitchFrames, computeVqMetrics, type FrameAnalysisResult, type PitchSeriesResult, type VqMetrics } from './analysisPipeline';
 import type { AnalysisRequest } from './analysisWorker';
+import type { PitchAlgorithm } from '@/types';
 
 type WorkerResponse =
   | { type: 'frames'; id: number; result: FrameAnalysisResult }
   | { type: 'vq'; id: number; metrics: VqMetrics }
+  | { type: 'pitch'; id: number; series: PitchSeriesResult }
   | { type: 'progress'; id: number; frac: number }
   | { type: 'error'; id: number; message: string };
 
@@ -41,7 +43,11 @@ function ensureWorker(): Worker | null {
         entry.reject(new Error(msg.message));
       } else {
         pending.delete(msg.id);
-        entry.resolve(msg.type === 'frames' ? msg.result : msg.metrics);
+        entry.resolve(
+          msg.type === 'frames' ? msg.result
+            : msg.type === 'pitch' ? msg.series
+              : msg.metrics,
+        );
       }
     };
     worker.onerror = () => {
@@ -81,6 +87,20 @@ function requestVq(w: Worker, pcm: Float32Array, sampleRate: number): Promise<Vq
   });
 }
 
+/** Worker 内跑单算法音高重算（音高算法对比） */
+function requestPitch(
+  w: Worker,
+  pcm: Float32Array,
+  algo: PitchAlgorithm,
+  onProgress?: (frac: number) => void,
+): Promise<PitchSeriesResult> {
+  return new Promise((resolve, reject) => {
+    const id = ++seq;
+    pending.set(id, { resolve: resolve as (value: unknown) => void, reject, onProgress });
+    w.postMessage({ type: 'pitch', id, pcm, algo } satisfies AnalysisRequest);
+  });
+}
+
 /**
  * 逐帧分析（YIN / LPC / 语谱 / 嗓音质量）。
  * @param pcm 管线采样率（32kHz）单声道 PCM
@@ -111,4 +131,24 @@ export async function runVqMetrics(pcm: Float32Array, sampleRate: number): Promi
     }
   }
   return computeVqMetrics(pcm, sampleRate);
+}
+
+/**
+ * 单算法音高重算（音高算法对比用）
+ * @param pcm 管线采样率（32kHz）单声道 PCM
+ */
+export async function runPitchOnly(
+  pcm: Float32Array,
+  algo: PitchAlgorithm,
+  onProgress?: (frac: number) => void,
+): Promise<PitchSeriesResult> {
+  const w = ensureWorker();
+  if (w) {
+    try {
+      return await requestPitch(w, pcm, algo, onProgress);
+    } catch (err) {
+      console.warn('Worker 音高重算失败，回退主线程执行:', err);
+    }
+  }
+  return analyzePitchFrames(pcm, algo, onProgress);
 }

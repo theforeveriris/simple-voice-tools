@@ -38,6 +38,12 @@ export type SpecColormap = 'magma' | 'gray' | 'accent';
 export type AdviceMode = 'none' | 'rules' | 'llm';
 
 /**
+ * 实时音高检测算法（实验性）
+ * yin 经典基线；pyin 多阈值概率化，抗噪更强；mpm 麦克劳德法，对低频更敏感
+ */
+export type PitchAlgorithm = 'yin' | 'pyin' | 'mpm';
+
+/**
  * 分析页图表卡显隐
  */
 export interface AnalysisCards {
@@ -238,6 +244,8 @@ export interface AppSettings {
   /* ---------- 实验性功能（设置 → 实验性功能 子页面） ---------- */
   /** 自定义音区边界（Hz，自低到高四个分界点），undefined = 默认 85/165/180/255 */
   bandBounds?: [number, number, number, number];
+  /** 实时音高检测算法（实验性）：影响实时曲线与录音分析所用的音高检测器 */
+  pitchAlgorithm: PitchAlgorithm;
   /** 分析页是否显示语谱图卡片 */
   showSpectrogram: boolean;
   /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */

@@ -7,11 +7,13 @@
  */
 
 import { detectPitchYin, rmsDb } from './pitch';
+import { detectPitch } from './pitchAlt';
 import { extractFormants } from './formants';
 import { computeVoiceQuality } from './voiceQuality';
 import { computeCpps, fft } from './cpp';
 import { spectrumRowToBands } from './spectrogram';
 import { SPEC_BANDS } from '@/constants';
+import type { PitchAlgorithm } from '@/types';
 
 /** 分析管线统一采样率（Hz）：兼顾 F2 覆盖与 YIN 计算量 */
 export const PIPELINE_HZ = 32000;
@@ -136,4 +138,41 @@ export function computeVqMetrics(pcm: Float32Array, sampleRate: number): VqMetri
   const vq = computeVoiceQuality(pcm, sampleRate);
   const cppsDb = computeCpps(pcm, sampleRate);
   return { ...vq, cppsDb };
+}
+
+/* --------------------------- 音高算法对比（实验性） --------------------------- */
+
+/** 单算法音高序列（NaN = 该帧未检出），时间轴与 analyzePcmFrames 对齐 */
+export interface PitchSeriesResult {
+  t: number[];
+  f0: number[];
+}
+
+/**
+ * 用指定算法对管线采样率（32kHz 单声道）PCM 逐帧重算基频
+ * 帧率 / 窗长 / 能量门限与主分析管线一致，仅音高检测器可替换
+ */
+export function analyzePitchFrames(
+  pcm: Float32Array,
+  algo: PitchAlgorithm,
+  onProgress?: (frac: number) => void,
+): PitchSeriesResult {
+  const hop = Math.round(PIPELINE_HZ / FRAME_HZ);
+  const frames = Math.max(0, Math.floor((pcm.length - FRAME_SAMPLES) / hop) + 1);
+  const t: number[] = [];
+  const f0: number[] = [];
+  for (let k = 0; k < frames; k++) {
+    const start = k * hop;
+    const frame = pcm.subarray(start, start + FRAME_SAMPLES);
+    const now = (start + FRAME_SAMPLES) / PIPELINE_HZ;
+    const dbFrame = rmsDb(frame);
+    const pitch = dbFrame > -55 ? detectPitch(frame, PIPELINE_HZ, 60, 600, algo) : null;
+    t.push(Math.round(now * 1000) / 1000);
+    f0.push(pitch ? pitch.freq : NaN);
+    if (onProgress && k % PROGRESS_EVERY_FRAMES === PROGRESS_EVERY_FRAMES - 1) {
+      onProgress((k + 1) / frames);
+    }
+  }
+  onProgress?.(1);
+  return { t, f0 };
 }

@@ -160,6 +160,32 @@ export const ja = {
   'analysis.adviceStatusFair': 'まずまず',
   'analysis.adviceStatusAttention': '要注意',
 
+  /* ---------- 分析ページ · 音高アルゴリズム比較（実験的） ---------- */
+  'ab.title': '音高アルゴリズム比較',
+  'ab.desc': 'pYIN と MPM でこの録音の基本周波数を再計算し、録音時の YIN 曲線に重ねて比較します',
+  'ab.needAudio': '再計算には録音音声が必要です：音声未保存の記録では使えません',
+  'ab.run': '再計算して比較',
+  'ab.rerun': '再比較',
+  'ab.running': '再計算中 {pct}%',
+  'ab.fail': '比較の計算に失敗しました：音声をデコードできません',
+  'ab.agree': '一致率',
+  'ab.medDev': '中央値偏差',
+  'ab.agreeHint': '両アルゴリズムが同時に検出し偏差が ±50 cents 以内のフレームを一致とみなします（全有声フレーム基準）',
+
+  /* ---------- 分析ページ · インタラクティブ HTML レポート書き出し（実験的） ---------- */
+  'analysis.htmlAria': 'インタラクティブ HTML レポートを書き出す',
+  'analysis.htmlTitle': 'インタラクティブ HTML レポートを書き出す（単一ファイル）',
+  'html.dialogTitle': 'インタラクティブレポートの書き出し',
+  'html.dialogDesc': '自己完結した HTML ファイルを生成します。ブラウザで開くだけで全チャートを拡大縮小して閲覧できます。',
+  'html.withAudio': '録音音声を含める',
+  'html.withAudioDesc': 'ファイルは大きくなりますが、レポート内で再生できます',
+  'html.withoutAudio': 'チャートのみ',
+  'html.withoutAudioDesc': '最小サイズ：曲線・統計・スペクトログラムのみ',
+  'html.exporting': '生成中…',
+  'html.zoomHint': 'ホイールで拡大縮小 · ドラッグで移動 · ダブルクリックでリセット',
+  'toast.htmlExported': 'インタラクティブレポートを書き出しました',
+  'toast.htmlExportFail': 'インタラクティブレポートの生成に失敗しました',
+
   /* ---------- 历史页 ---------- */
   'history.viewList': 'リスト',
   'history.viewTrend': '推移',
@@ -261,6 +287,45 @@ export const ja = {
   'vowelLive.hint': '横軸 F2：左ほど舌が前 · 縦軸 F1：上ほど開口が小さい · 新しい点ほど明るく、× は重心',
   'vowelLive.recordingBadge': '録音中',
   'vowelLive.noSignal': '発声を待機中…',
+
+  /* ---------- 実験的 · リアルタイム機能 ---------- */
+  'labs.realtime': 'リアルタイム機能',
+  'labs.rtVowel': 'リアルタイム母音トラッカー',
+  'labs.rtVowelDesc': '発話時に F1/F2 の母音空間上の落点をリアルタイムに観察します',
+  'labs.rtF0': 'リアルタイム F0 基本周波数曲線',
+  'labs.rtF0Desc': '音域帯・目標バンド付きの大画面リアルタイム音高曲線。スライド発声とロングトーンの練習に',
+  'labs.rtSpec': 'リアルタイムスペクトログラム',
+  'labs.rtSpecDesc': '全画面スクロールのスペクトログラム熱量図。音高軌跡を重ねられ、倍音とフォルマントの動きが見えます',
+  'labs.rtVrp': 'リアルタイム声域図（VRP）',
+  'labs.rtVrpDesc': 'グリッサンドしながら「半音 × 音量」の滞留マトリクスを点灯させ、声域とダイナミクスを可視化',
+  'labs.pitchAlgo': 'リアルタイム音高アルゴリズム',
+  'labs.pitchAlgoDesc': 'リアルタイム表示と録音分析で共用する音高検出器：YIN は安定な基準、pYIN は確率化して耐ノイズ、MPM は低音に敏感',
+  'labs.algoYin': 'YIN（既定）',
+  'labs.algoPyin': 'pYIN（確率化）',
+  'labs.algoMpm': 'MPM（マクロード法）',
+
+  /* ---------- 実験的 · リアルタイム F0 曲線 ---------- */
+  'f0Live.title': 'リアルタイム F0 曲線',
+  'f0Live.start': 'ライブ表示を開始',
+  'f0Live.hintIdle': 'マイクを有効にすると基本周波数の曲線をリアルタイムに表示します（録音はしません）',
+  'f0Live.note': '音符',
+  'f0Live.hint': '曲線は音域で色分け · 右端が現在 · 目標バンドはトレーニング設定に従います',
+  'f0Live.noSignal': '発声を待機中…',
+
+  /* ---------- 実験的 · リアルタイムスペクトログラム ---------- */
+  'specLive.title': 'リアルタイムスペクトログラム',
+  'specLive.start': 'ライブ表示を開始',
+  'specLive.hintIdle': 'マイクを有効にするとスクロールするスペクトログラムを表示します（録音はしません）',
+  'specLive.hint': '横軸時間（右端が現在）· 縦軸周波数（対数）· 明るい = エネルギー大 · 赤線は音高軌跡',
+  'specLive.overlay': '音高軌跡',
+  'specLive.noSignal': '発声を待機中…',
+
+  /* ---------- 実験的 · リアルタイム声域図 ---------- */
+  'vrpLive.title': 'リアルタイム声域図（VRP）',
+  'vrpLive.start': '蓄積を開始',
+  'vrpLive.hintIdle': 'マイクを有効にしてグリッサンドすると「半音 × 音量」のマトリクスが蓄積されます',
+  'vrpLive.hint': '縦軸半音（C2–C6）· 横軸音量（自動）· 濃い = 滞留長い · 直近約 2 分を保持',
+  'vrpLive.noSignal': '発声を待機中…',
 
   /* ---------- 実験的機能 · 音声ファイル取り込み分析 ---------- */
   'settings.importAudio': '音声ファイル取り込み分析',

@@ -4,7 +4,8 @@
  * 协议见 analysisClient.ts；任何错误都以 { type: 'error' } 回报，由调用方降级。
  */
 
-import { analyzePcmFrames, computeVqMetrics, type VqMetrics } from './analysisPipeline';
+import { analyzePcmFrames, analyzePitchFrames, computeVqMetrics, type VqMetrics } from './analysisPipeline';
+import type { PitchAlgorithm } from '@/types';
 
 export interface FramesRequest {
   type: 'frames';
@@ -21,7 +22,15 @@ export interface VqRequest {
   sampleRate: number;
 }
 
-export type AnalysisRequest = FramesRequest | VqRequest;
+export interface PitchRequest {
+  type: 'pitch';
+  id: number;
+  /** 管线采样率（32kHz）单声道 PCM（音高算法对比的重算） */
+  pcm: Float32Array;
+  algo: PitchAlgorithm;
+}
+
+export type AnalysisRequest = FramesRequest | VqRequest | PitchRequest;
 
 // 手动收敛 self 类型：tsconfig 的 lib 为 DOM，这里只需 DedicatedWorker 的两个方法
 const ctx = self as unknown as {
@@ -37,9 +46,14 @@ ctx.onmessage = (e: MessageEvent<AnalysisRequest>) => {
         ctx.postMessage({ type: 'progress', id: msg.id, frac });
       });
       ctx.postMessage({ type: 'frames', id: msg.id, result }, [result.specFlat.buffer]);
-    } else {
+    } else if (msg.type === 'vq') {
       const metrics: VqMetrics = computeVqMetrics(msg.pcm, msg.sampleRate);
       ctx.postMessage({ type: 'vq', id: msg.id, metrics });
+    } else {
+      const series = analyzePitchFrames(msg.pcm, msg.algo, (frac) => {
+        ctx.postMessage({ type: 'progress', id: msg.id, frac });
+      });
+      ctx.postMessage({ type: 'pitch', id: msg.id, series });
     }
   } catch (err) {
     ctx.postMessage({

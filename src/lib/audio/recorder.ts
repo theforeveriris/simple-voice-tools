@@ -6,11 +6,12 @@
  * 嗓音质量指标（Jitter / Shimmer / HNR）并返回音频 Blob 供持久化。
  */
 
-import { detectPitchYin, rmsDb } from './pitch';
+import { rmsDb } from './pitch';
+import { detectPitch } from './pitchAlt';
 import { extractFormants } from './formants';
 import { runVqMetrics } from './analysisClient';
 import { spectrumRowToBands, base64FromBytes } from './spectrogram';
-import { SPEC_BANDS, SPEC_MAX_ROWS, getBandRanges } from '@/constants';
+import { SPEC_BANDS, SPEC_MAX_ROWS, getBandRanges, getPitchAlgorithm } from '@/constants';
 import type { AnalysisRecord, RecordSeries, TestMode, VoiceStats } from '@/types';
 
 /** 序列降采样倍率：60fps 采集 → 约 30Hz 存储 */
@@ -287,6 +288,14 @@ class VoiceRecorder {
     if (!this.analyser || !this.audioContext) return 0;
     this.analyser.getByteFrequencyData(out);
     return this.audioContext.sampleRate;
+  }
+
+  /**
+   * 语谱行缓冲的实时引用（每帧一行量化频带，行序与 getLive().t 对齐）。
+   * 实时声谱图逐帧读取，返回引用避免每帧复制（缓冲仅在头部 splice / 尾部 push）。
+   */
+  getSpecRows(): { t: number[]; rows: Uint8Array[] } {
+    return { t: this.bufT, rows: this.bufSpec };
   }
 
   /**
@@ -593,8 +602,10 @@ class VoiceRecorder {
       }
     }
 
-    // 音高（每帧）
-    const pitch = db > -55 ? detectPitchYin(this.timeBuf, this.audioContext.sampleRate) : null;
+    // 音高（每帧，算法跟随设置：yin / pyin / mpm，见 pitchAlt.ts）
+    const pitch = db > -55
+      ? detectPitch(this.timeBuf, this.audioContext.sampleRate, 60, 600, getPitchAlgorithm())
+      : null;
     this.lastPitch = pitch ? { freq: pitch.freq, prob: pitch.prob } : null;
 
     // 共振峰（每 2 帧一次，带指数平滑）

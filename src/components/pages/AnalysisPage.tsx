@@ -18,23 +18,26 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { FileSpreadsheet, Pencil, Share2 } from 'lucide-react';
+import { FileCode2, FileSpreadsheet, Pencil, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { computeStats } from '@/lib/audio/recorder';
 import { downloadText, recordToFrameCsv } from '@/lib/export/csv';
 import { exportShareImage } from '@/lib/export/shareCard';
+import { exportInteractiveHtml } from '@/lib/export/interactiveHtml';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AnalysisRecord, RecordSeries } from '@/types';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui';
 import { HeroSummary } from '@/components/analysis/HeroCard';
 import { BaselineStrip } from '@/components/analysis/BaselineStrip';
 import { PlaybackCard } from '@/components/analysis/PlaybackCard';
 import { SustainedCard } from '@/components/analysis/SustainedCard';
 import { AdviceCard } from '@/components/analysis/AdviceCard';
 import { StatsTable } from '@/components/analysis/StatsTables';
+import { PitchAlgorithmCard } from '@/components/analysis/PitchAlgorithmCard';
 import { AnalysisChart, FormantCard, SpecCard, VrpCard } from '@/components/analysis/ChartCards';
 import { NoteDialog } from '@/components/analysis/NoteDialog';
 import { EmptyState } from '@/components/analysis/EmptyState';
@@ -75,6 +78,9 @@ export function AnalysisPage() {
   const [ownRanges, setOwnRanges] = useState<Partial<Record<RangedKind, [number, number]>>>({});
   const [noteOpen, setNoteOpen] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  // 交互 HTML 报告：含音频与否的选择弹窗（无音频记录直接导出）
+  const [htmlDialogOpen, setHtmlDialogOpen] = useState(false);
+  const [htmlBusy, setHtmlBusy] = useState(false);
 
   const fullRange = useMemo<[number, number]>(() => [0, record?.durationSec ?? 0], [record?.durationSec]);
   const getRange = (kind: RangedKind): [number, number] =>
@@ -146,6 +152,30 @@ export function AnalysisPage() {
     toast.success(t('toast.frameCsvExported'));
   };
 
+  /** 交互 HTML 报告导出（withAudio 决定是否内嵌录音） */
+  const onExportHtml = async (withAudio: boolean) => {
+    if (htmlBusy) return;
+    setHtmlBusy(true);
+    setHtmlDialogOpen(false);
+    try {
+      const audio = withAudio ? await useHistoryStore.getState().getAudio(record.id) : null;
+      await exportInteractiveHtml(record, { audio });
+      toast.success(t('toast.htmlExported'));
+    } catch {
+      toast.error(t('toast.htmlExportFail'));
+    } finally {
+      setHtmlBusy(false);
+    }
+  };
+
+  /** 入口：有录音音频先弹选择，无音频直接导出纯数据版 */
+  const onHtmlClick = async () => {
+    if (htmlBusy) return;
+    const audio = await useHistoryStore.getState().getAudio(record.id);
+    if (audio) setHtmlDialogOpen(true);
+    else void onExportHtml(false);
+  };
+
   return (
     <div className="flex flex-col gap-3.5">
       <HeroSummary
@@ -171,6 +201,15 @@ export function AnalysisPage() {
               <FileSpreadsheet size={16} />
             </button>
             <button
+              onClick={() => void onHtmlClick()}
+              disabled={htmlBusy}
+              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent disabled:opacity-60"
+              aria-label={t('analysis.htmlAria')}
+              title={t('analysis.htmlTitle')}
+            >
+              <FileCode2 size={16} />
+            </button>
+            <button
               onClick={() => setNoteOpen(true)}
               className={cn(
                 'grid size-9 place-items-center rounded-full transition-colors hover:bg-surface-hi hover:text-accent',
@@ -194,6 +233,7 @@ export function AnalysisPage() {
         onSeek={playback.seekPlay}
       />
       {record.mode === 'sustained' && <SustainedCard record={record} />}
+      <PitchAlgorithmCard record={record} />
       <StatsTable record={recordWithStats} />
       <AdviceCard records={[record]} />
 
@@ -248,6 +288,34 @@ export function AnalysisPage() {
       )}
 
       <NoteDialog record={record} open={noteOpen} onOpenChange={setNoteOpen} />
+
+      {/* 交互 HTML 报告：是否内嵌录音音频 */}
+      <Dialog open={htmlDialogOpen} onOpenChange={setHtmlDialogOpen}>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>{t('html.dialogTitle')}</DialogTitle>
+            <DialogDescription>{t('html.dialogDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => void onExportHtml(true)}
+              disabled={htmlBusy}
+              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
+            >
+              <span className="block text-sm font-medium text-ink">{t('html.withAudio')}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{t('html.withAudioDesc')}</span>
+            </button>
+            <button
+              onClick={() => void onExportHtml(false)}
+              disabled={htmlBusy}
+              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-60"
+            >
+              <span className="block text-sm font-medium text-ink">{t('html.withoutAudio')}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{t('html.withoutAudioDesc')}</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 回放音频源（页面级，播放头位置由 rAF 循环同步到各图表） */}
       <audio {...playback.audioProps} />
