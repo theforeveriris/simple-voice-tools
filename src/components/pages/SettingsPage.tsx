@@ -16,17 +16,20 @@ import {
   BookOpen, ChevronRight, Smartphone, FileSpreadsheet, Archive, Cloud,
   Link2, Unlink, CloudUpload, CloudDownload, FlaskConical, Target, ArrowLeft,
   SlidersHorizontal, HardDriveDownload, FolderOpen, ShieldCheck,
+  Ruler, FileAudio, LocateFixed, RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
+import { DEFAULT_BAND_BOUNDS } from '@/constants';
+import { analyzeAudioFile, importErrorKey } from '@/lib/audio/importAudio';
 import { downloadText, recordsToSummaryCsv } from '@/lib/export/csv';
 import { exportFullBackup, importFullBackup } from '@/lib/export/backup';
 import {
   pickAutoBackupFolder, getAutoBackupState,
-  requestAutoBackupPermission, runAutoBackupNow,
+  requestAutoBackupPermission, runAutoBackupNow, maybeAutoBackup,
   type AutoBackupState,
 } from '@/lib/backup/local';
 import { idbGetAllAudio } from '@/lib/storage/idb';
@@ -40,6 +43,7 @@ import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { LOCALES, localeTag } from '@/i18n';
 import type { AppSettings, Locale, ThemeMode } from '@/types';
+import { VowelLiveSheet } from './VowelLiveSheet';
 import { cn } from '@/lib/utils';
 
 const DOC_BASE_URL = 'https://github.com/theforeveriris/simple-voice-tools/blob/main/documentation';
@@ -339,11 +343,19 @@ export function SettingsPage() {
   const importRecords = useHistoryStore((s) => s.importRecords);
   const clearAll = useHistoryStore((s) => s.clearAll);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
+  const setTab = useStore((s) => s.setTab);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [zipBusy, setZipBusy] = useState(false);
   const [labsOpen, setLabsOpen] = useState(false);
+  // 实时元音落点（Labs 子页面入口）
+  const [vowelLiveOpen, setVowelLiveOpen] = useState(false);
+  // 导入音频离线分析
+  const [importBusy, setImportBusy] = useState(false);
+  const [importPct, setImportPct] = useState(0);
+  const [importDragOver, setImportDragOver] = useState(false);
   // GitHub 云备份
   const [ghLogin, setGhLogin] = useState<string | null>(null);
   const [ghChecking, setGhChecking] = useState(true);
@@ -561,6 +573,54 @@ export function SettingsPage() {
   /** 基线选择器可选项（最近 50 条） */
   const baselineOptions = records.slice(0, 50);
 
+  /* ------------------------------ 自定义音区边界（实验性） ------------------------------ */
+
+  const bandBounds = settings.bandBounds ?? DEFAULT_BAND_BOUNDS;
+
+  /** 修改单个边界：与相邻边界互相挤开（最小间距 10Hz），越界时放弃本次修改 */
+  const setBandBound = (idx: 0 | 1 | 2 | 3, raw: string) => {
+    const v = Math.max(60, Math.min(500, Math.round(Number(raw) || 0)));
+    const next = [...bandBounds] as [number, number, number, number];
+    next[idx] = v;
+    for (let i = idx - 1; i >= 0; i--) if (next[i] >= next[i + 1]) next[i] = next[i + 1] - 10;
+    for (let i = idx + 1; i < 4; i++) if (next[i] <= next[i - 1]) next[i] = next[i - 1] + 10;
+    if (next[0] < 60 || next[3] > 500) return;
+    if (!(next[0] < next[1] && next[1] < next[2] && next[2] < next[3])) return;
+    update({ bandBounds: next });
+  };
+
+  const resetBandBounds = () => {
+    if (!settings.bandBounds) return;
+    update({ bandBounds: undefined });
+    toast.success(t('toast.bandResetDone'));
+  };
+
+  /* ------------------------------ 导入音频离线分析（实验性） ------------------------------ */
+
+  const runAudioImport = (file: File) => {
+    if (importBusy) return;
+    setImportBusy(true);
+    setImportPct(0);
+    void (async () => {
+      try {
+        const { record, audio, truncated } = await analyzeAudioFile(file, {
+          targetRange: settings.targetEnabled ? [settings.targetF0Min, settings.targetF0Max] : null,
+          saveAudio: settings.audioSave,
+          onProgress: setImportPct,
+        });
+        useHistoryStore.getState().addRecord(record, audio ?? undefined);
+        setCurrentAnalysis(record);
+        setTab('analysis');
+        void maybeAutoBackup('record');
+        toast.success(truncated ? t('toast.importAudioTruncated') : t('toast.importAudioDone'));
+      } catch (err) {
+        toast.error(t(importErrorKey(err)));
+      } finally {
+        setImportBusy(false);
+      }
+    })();
+  };
+
   /* ------------------------------ 实验性功能（设置的子页面） ------------------------------ */
 
   // 入口在主视图收起为单行卡片（无描述行）；labsOpen 不持久化，切换页签即回主视图
@@ -605,6 +665,103 @@ export function SettingsPage() {
                 onCheckedChange={(v) => update({ adviceEnabled: v })}
               />
             </SettingRow>
+          </SettingsSection>
+
+          {/* 自定义音区边界 */}
+          <SettingsSection icon={Ruler} title={t('settings.bandCustom')}>
+            <SettingRow stacked label={t('settings.bandBounds')} desc={t('settings.bandCustomDesc')}>
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+                {([0, 1, 2, 3] as const).map((idx) => (
+                  <label key={idx} className="flex flex-col gap-1">
+                    <span className="text-[10px] text-ink-2">{t(`settings.bandBound${idx}`)}</span>
+                    <span className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={60}
+                        max={500}
+                        value={bandBounds[idx]}
+                        onChange={(e) => setBandBound(idx, e.target.value)}
+                        className="w-20 rounded-xl border border-black/10 bg-surface-hi px-2.5 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+                        aria-label={t(`settings.bandBound${idx}`)}
+                      />
+                      <span className="text-[10px] text-ink-2">Hz</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </SettingRow>
+            <SettingRow label={t('settings.bandReset')} desc={t('settings.bandResetDesc')}>
+              <button
+                onClick={resetBandBounds}
+                disabled={!settings.bandBounds}
+                className={cn(
+                  'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
+                  settings.bandBounds ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
+                )}
+              >
+                <RotateCcw size={14} />
+                {t('settings.bandResetAction')}
+              </button>
+            </SettingRow>
+          </SettingsSection>
+
+          {/* 实时元音落点 */}
+          <SettingsSection icon={LocateFixed} title={t('vowelLive.title')}>
+            <SettingRow stacked label={t('vowelLive.title')} desc={t('vowelLive.labsDesc')}>
+              <button
+                onClick={() => setVowelLiveOpen(true)}
+                className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+              >
+                <LocateFixed size={14} />
+                {t('vowelLive.openAction')}
+              </button>
+            </SettingRow>
+          </SettingsSection>
+
+          {/* 导入音频离线分析 */}
+          <SettingsSection icon={FileAudio} title={t('settings.importAudio')}>
+            <SettingRow stacked label={t('settings.importAudio')} desc={t('settings.importAudioDesc')}>
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setImportDragOver(true);
+                }}
+                onDragLeave={() => setImportDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setImportDragOver(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) runAudioImport(file);
+                }}
+                className={cn(
+                  'flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-colors',
+                  importDragOver ? 'border-accent bg-accent-soft/40' : 'border-black/10 bg-surface-hi/40',
+                )}
+              >
+                <button
+                  onClick={() => audioInputRef.current?.click()}
+                  disabled={importBusy}
+                  className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-60"
+                >
+                  {importBusy
+                    ? `${t('importAudio.processing')} ${Math.round(importPct * 100)}%`
+                    : t('settings.importAudioPick')}
+                </button>
+                <p className="text-[10px] text-ink-2">{t('settings.importAudioHint')}</p>
+              </div>
+            </SettingRow>
+            <input
+              ref={audioInputRef}
+              type="file"
+              accept="audio/*,.amr,.3gp,.m4a,.aac"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) runAudioImport(file);
+                e.target.value = '';
+              }}
+            />
           </SettingsSection>
 
           {/* GitHub 云备份 */}
@@ -771,6 +928,9 @@ export function SettingsPage() {
           onOpenChange={setConnectOpen}
           onConnected={onGhConnected}
         />
+
+        {/* 实时元音落点（全屏子页面，从 Labs 或测试页打开） */}
+        {vowelLiveOpen && <VowelLiveSheet onClose={() => setVowelLiveOpen(false)} />}
       </div>
     );
   }

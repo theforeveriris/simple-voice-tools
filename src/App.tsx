@@ -5,7 +5,7 @@
 
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { BottomBar } from '@/components/layout/BottomBar';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { TestPage } from '@/components/pages/TestPage';
@@ -16,8 +16,10 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
+import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { useI18n } from '@/i18n/hook';
+import { t } from '@/i18n';
 
 function App() {
   const currentTab = useStore((s) => s.currentTab);
@@ -60,6 +62,32 @@ function App() {
   // 实验性：本地自动备份的每周兜底（距上次 ≥7 天才写，未配置文件夹时为空操作）
   useEffect(() => {
     void maybeAutoBackup('launch');
+  }, []);
+
+  // PWA Share Target：系统「分享到 Simple Voice Tool」的音频文件
+  // 由 Service Worker 暂存并 303 重定向回来，这里取走并走离线分析管线
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('share-target')) return;
+    // 立即清掉查询参数，刷新/回退不会重复处理
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    void (async () => {
+      const file = await takeSharedFile();
+      if (!file) return;
+      const loading = toast.loading(t('importAudio.processing'));
+      try {
+        const { record, audio, truncated } = await analyzeAudioFile(file);
+        toast.dismiss(loading);
+        useHistoryStore.getState().addRecord(record, audio ?? undefined);
+        setCurrentAnalysis(record);
+        setTab('analysis');
+        void maybeAutoBackup('record');
+        toast.success(truncated ? t('toast.importAudioTruncated') : t('toast.importAudioDone'));
+      } catch (err) {
+        toast.dismiss(loading);
+        toast.error(t(importErrorKey(err)));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

@@ -11,20 +11,61 @@ import type { AppSettings, PitchBand, TestMode } from '@/types';
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 /**
- * 男女声音高区间定义（Hz）
- * < 85            low         偏低（淡紫）
- * 85  - 165       male        男声区（淡蓝）
- * 165 - 180       transition  男女过渡区（黑）
- * 180 - 255       female      女声区（淡粉）
- * > 255           high        偏高（淡紫）
+ * 音区边界（Hz），自低到高四个分界点：
+ *   < b1            low         偏低（淡紫）
+ *   b1  - b2        male        男声区（淡蓝）
+ *   b2  - b3        transition  男女过渡区（黑）
+ *   b3  - b4        female      女声区（淡粉）
+ *   > b4            high        偏高（淡紫）
+ * 曲线着色、音区色带、占比统计共用同一来源（getBandRanges / bandOf），
+ * 用户可在 设置 → 实验性功能 中自定义（适配变声期、童声、低音女声）。
  */
-export const BAND_RANGES: Record<PitchBand, [number, number]> = {
-  low: [50, 85],
-  male: [85, 165],
-  transition: [165, 180],
-  female: [180, 255],
-  high: [255, 520],
-};
+export type BandBounds = [number, number, number, number];
+
+/** 默认边界：85 / 165 / 180 / 255 Hz */
+export const DEFAULT_BAND_BOUNDS: BandBounds = [85, 165, 180, 255];
+
+/** 边界允许范围（与音高纵轴 PITCH_AXIS 对齐，留出音区最小宽度） */
+const BOUND_MIN = 60;
+const BOUND_MAX = 500;
+
+/** 模块级当前边界（由 store 同步，参照 i18n 的单例模式） */
+let currentBandBounds: BandBounds = DEFAULT_BAND_BOUNDS;
+
+/**
+ * 应用自定义音区边界（非法输入回退默认）
+ * 设置页已做相邻挤开，这里仅做最终兜底
+ */
+export function setBandBounds(bounds: readonly number[] | undefined | null): void {
+  if (!bounds || bounds.length !== 4) {
+    currentBandBounds = DEFAULT_BAND_BOUNDS;
+    return;
+  }
+  const v = bounds.map((x) => {
+    const n = Math.round(Number(x));
+    return isFinite(n) ? Math.max(BOUND_MIN, Math.min(BOUND_MAX, n)) : NaN;
+  }) as unknown as BandBounds;
+  currentBandBounds = v.every(isFinite) && v[0] < v[1] && v[1] < v[2] && v[2] < v[3]
+    ? v
+    : DEFAULT_BAND_BOUNDS;
+}
+
+/** 读取当前音区边界（副本，防止外部误改） */
+export function getBandBounds(): BandBounds {
+  return [...currentBandBounds] as BandBounds;
+}
+
+/** 当前边界下的五段音区范围（低/高两端与音高纵轴对齐） */
+export function getBandRanges(): Record<PitchBand, [number, number]> {
+  const [b1, b2, b3, b4] = currentBandBounds;
+  return {
+    low: [50, b1],
+    male: [b1, b2],
+    transition: [b2, b3],
+    female: [b3, b4],
+    high: [b4, 520],
+  };
+}
 
 /**
  * 音高区间配色（固定，不随主题变化）
@@ -48,13 +89,14 @@ export const BAND_LABELS: Record<PitchBand, string> = {
 };
 
 /**
- * 判断频率所属音高区间
+ * 判断频率所属音高区间（跟随自定义音区边界）
  */
 export function bandOf(freq: number): PitchBand {
-  if (freq < BAND_RANGES.male[0]) return 'low';
-  if (freq < BAND_RANGES.transition[0]) return 'male';
-  if (freq < BAND_RANGES.female[0]) return 'transition';
-  if (freq <= BAND_RANGES.female[1]) return 'female';
+  const [b1, b2, b3, b4] = currentBandBounds;
+  if (freq < b1) return 'low';
+  if (freq < b2) return 'male';
+  if (freq < b3) return 'transition';
+  if (freq <= b4) return 'female';
   return 'high';
 }
 

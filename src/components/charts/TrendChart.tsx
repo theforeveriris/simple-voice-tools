@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { BAND_COLORS, BAND_RANGES } from '@/constants';
+import { BAND_COLORS, getBandRanges } from '@/constants';
 import { chartPalette } from './chartPainters';
 import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
@@ -90,10 +90,11 @@ function drawTrend(
   const t1 = last + pad;
   const xOf = (t: number) => padL + ((t - t0) / (t1 - t0)) * innerW;
 
-  // 音区背景色带
+  // 音区背景色带（边界跟随自定义音区边界）
+  const ranges = getBandRanges();
   const bands = ['low', 'male', 'transition', 'female', 'high'] as const;
   for (const band of bands) {
-    const [f0, f1] = BAND_RANGES[band];
+    const [f0, f1] = ranges[band];
     const yTop = yFor(f1, innerH) + padT;
     const yBot = yFor(f0, innerH) + padT;
     ctx.fillStyle = BAND_COLORS[band];

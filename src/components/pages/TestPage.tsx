@@ -15,8 +15,10 @@ import { freqToNote } from '@/constants';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
+import { VowelLiveSheet } from './VowelLiveSheet';
 import type { TestMode } from '@/types';
 import { cn } from '@/lib/utils';
+import { LocateFixed } from 'lucide-react';
 
 /** 图表卡片容器：白底、微圆角、无边框、微阴影 */
 function ChartCard({
@@ -176,6 +178,7 @@ export function TestPage() {
   const targetMin = useStore((s) => s.settings.targetF0Min);
   const targetMax = useStore((s) => s.settings.targetF0Max);
   const liveSpectrum = useStore((s) => s.settings.liveSpectrum);
+  const [vowelLiveOpen, setVowelLiveOpen] = useState(false);
   // 图表延迟挂载：三张 Canvas 的 rAF 绘制循环会占用主线程，
   // 推迟到页面入场与底栏弹簧动画结束（约 300ms）后再启动，保证动效满帧
   const [chartsReady, setChartsReady] = useState(false);
@@ -196,7 +199,19 @@ export function TestPage() {
       {/* F1 / F2 共振峰 */}
       <ChartCard
         title={t('test.titleFormant')}
-        right={<FormantLegend />}
+        right={
+          <div className="flex items-center gap-1.5">
+            <FormantLegend />
+            <button
+              onClick={() => setVowelLiveOpen(true)}
+              className="grid size-7 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
+              aria-label={t('vowelLive.openAria')}
+              title={t('vowelLive.title')}
+            >
+              <LocateFixed size={14} />
+            </button>
+          </div>
+        }
         className="min-h-[72px] shrink basis-0 grow-[6]"
       >
         {chartsReady && <SeriesChart kind="formant" live />}
@@ -231,6 +246,9 @@ export function TestPage() {
           {chartsReady && <LiveSpectrum />}
         </ChartCard>
       )}
+
+      {/* 实时元音落点（实验性，全屏子页面） */}
+      {vowelLiveOpen && <VowelLiveSheet onClose={() => setVowelLiveOpen(false)} />}
     </div>
   );
 }

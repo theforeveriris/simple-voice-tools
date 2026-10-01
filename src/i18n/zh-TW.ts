@@ -167,6 +167,17 @@ export const zhTW = {
   'history.trendEmpty': '該測試模式下暫無記錄',
   'history.recordAria': '開啟第 {n} 筆記錄',
 
+  /* ---------- 用聲日記 ---------- */
+  'history.diary': '用聲日記',
+  'history.diaryMetricCount': '次數',
+  'history.diaryMetricDuration': '時長',
+  'history.diaryMetricF0': '基頻',
+  'history.diaryHint': '每天一格 · 顏色越深當天錄音越多 · 點選查看當日概要',
+  'history.diaryLess': '少',
+  'history.diaryMore': '多',
+  'history.diaryCount': '{n} 次',
+  'history.diaryF0': '平均基頻 {f0} Hz',
+
   /* ---------- 對比檢視 ---------- */
   'compare.title': '記錄對比',
   'compare.closeAria': '關閉對比',
@@ -184,6 +195,8 @@ export const zhTW = {
   'compare.rangeP10P90': '音域 P10–P90',
   'compare.stdF0': '基頻標準差',
   'compare.avgDb': '平均響度',
+  'compare.shareAria': '產生對比分享圖',
+  'compare.shareTitle': '匯出對比分享圖（PNG）',
 
   /* ---------- 時間軸選擇器 ---------- */
   'trs.partial': '已選',
@@ -203,6 +216,37 @@ export const zhTW = {
   'settings.showSpec': '分析頁語譜圖',
   'settings.liveSpectrum': '即時頻譜圖（測試頁）',
   'settings.adviceEnable': '訓練建議',
+
+  /* ---------- 實驗性 · 自訂音區邊界 ---------- */
+  'settings.bandCustom': '自訂音區邊界',
+  'settings.bandBounds': '音區邊界（Hz）',
+  'settings.bandCustomDesc': '四個邊界將基頻劃分為偏低 / 男聲 / 過渡 / 女聲 / 偏高五個音區，曲線著色、色帶與佔比統計同步生效，適配變聲期、童聲與低音女聲',
+  'settings.bandBound0': '男聲下限',
+  'settings.bandBound1': '男聲上限',
+  'settings.bandBound2': '女聲下限',
+  'settings.bandBound3': '女聲上限',
+  'settings.bandReset': '恢復預設音區邊界',
+  'settings.bandResetDesc': '恢復為 85 / 165 / 180 / 255 Hz',
+  'settings.bandResetAction': '恢復預設',
+  'toast.bandResetDone': '已恢復預設音區邊界',
+
+  /* ---------- 實驗性 · 即時母音落點 ---------- */
+  'vowelLive.title': '即時母音落點',
+  'vowelLive.labsDesc': '說話時即時觀察 F1/F2 落點在母音空間中的移動，語言訓練 / 發音矯正的即時回饋；監聽模式不保存任何錄音',
+  'vowelLive.openAction': '開啟即時練習',
+  'vowelLive.openAria': '開啟即時母音落點',
+  'vowelLive.start': '開始即時練習',
+  'vowelLive.hintIdle': '開啟麥克風即可即時查看 F1/F2 落點，無需保存錄音',
+  'vowelLive.hint': '橫軸 F2：越靠左舌位越前 · 縱軸 F1：越靠上開口越小 · 點跡越新越亮，× 為質心',
+  'vowelLive.recordingBadge': '錄音中',
+  'vowelLive.noSignal': '等待發聲…',
+
+  /* ---------- 實驗性 · 匯入音訊離線分析 ---------- */
+  'settings.importAudio': '匯入音訊分析',
+  'settings.importAudioDesc': '把手機錄音、微信語音等外部音訊拖入或選擇檔案，走與錄音相同的離線管線生成完整分析報告；安裝為應用後也可從系統「分享到」直接進入',
+  'settings.importAudioPick': '選擇音訊檔案',
+  'importAudio.processing': '正在分析',
+  'settings.importAudioHint': '支援 wav / mp3 / m4a / ogg / webm / amr 等 · 最長分析前 5 分鐘 · 資料不出本機',
   'settings.app': '應用',
   'settings.about': '關於',
   'settings.theme': '主題',
@@ -295,7 +339,7 @@ export const zhTW = {
   'settings.installOneClick': '一鍵安裝',
   'settings.installManual': '手動安裝',
   'settings.installManualHint': '請在瀏覽器網址列點擊「安裝應用」圖示，或在瀏覽器選單選擇「加入主畫面」（iOS Safari）。需在 HTTPS 部署環境（正式頁面）下使用，本機開發伺服器不提供安裝入口。',
-  'settings.aboutVersion': 'v0.5.0 — 基於 Web Audio API 的語音測試與分析工具：YIN 音高檢測、LPC 共振峰提取、能量分析、語譜圖、Jitter/Shimmer/HNR/CPPS 嗓音品質指標、母音空間散點、聲域圖（VRP）、三種測試模式與錄音播放、ZIP/GitHub 雲端備份、訓練靶標、多語言與深色模式。',
+  'settings.aboutVersion': 'v0.6.0 — 基於 Web Audio API 的語音測試與分析工具：YIN 音高檢測、LPC 共振峰提取、能量分析、語譜圖、Jitter/Shimmer/HNR/CPPS 嗓音品質指標、母音空間散點、聲域圖（VRP）、三種測試模式與錄音播放、ZIP/GitHub 雲端備份、訓練靶標、外部音訊匯入分析、即時母音落點、用聲日記熱力圖、對比分享卡、自訂音區邊界、多語言與深色模式。',
   'settings.aboutPrivacy': '資料預設僅儲存在本機瀏覽器中；只有你主動使用完整備份或 GitHub 雲端備份時才會匯出/上傳。',
   'settings.docs': '文件',
   'settings.docYinTitle': '演算法 · 音高檢測（YIN）',
@@ -315,6 +359,7 @@ export const zhTW = {
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
   'share.footer': 'Simple Voice Tool · 本機分析，不上傳任何資料',
   'share.shareTitle': 'Simple Voice Tool · 分析報告',
+  'share.compareTitle': '對比報告',
 
   /* ---------- 提示（toast） ---------- */
   'toast.tooShort': '錄音時間太短（至少 1 秒），未儲存',
@@ -353,6 +398,11 @@ export const zhTW = {
   'toast.shareDownloaded': '報告圖已產生並下載',
   'toast.shareFail': '分享圖產生失敗',
   'toast.frameCsvExported': '已匯出逐框 CSV 資料',
+  'toast.importAudioDone': '音訊分析完成，已產生報告',
+  'toast.importAudioDecodeFail': '無法解碼該音訊檔案，請換 wav / mp3 / m4a 等常見格式重試',
+  'toast.importAudioTooShort': '音訊有效時長不足 1 秒',
+  'toast.importAudioTooLong': '音訊過長（超過 10 分鐘），請先剪輯後再匯入',
+  'toast.importAudioTruncated': '音訊較長，僅分析前 5 分鐘',
   'toast.storageUnavailable': '瀏覽器本機儲存不可用，本次資料僅儲存在記憶體中',
   'toast.autoBackupDone': '已自動備份到本機資料夾',
   'toast.autoBackupFail': '本機自動備份失敗',

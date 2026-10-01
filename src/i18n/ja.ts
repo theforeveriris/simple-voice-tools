@@ -168,6 +168,17 @@ export const ja = {
   'history.trendEmpty': 'このテストモードの記録はまだありません',
   'history.recordAria': '{n} 件目の記録を開く',
 
+  /* ---------- 声の日記 ---------- */
+  'history.diary': '声の日記',
+  'history.diaryMetricCount': '回数',
+  'history.diaryMetricDuration': '時間',
+  'history.diaryMetricF0': 'ピッチ',
+  'history.diaryHint': '1 日 1 マス · 濃いほど録音が多い · タップでその日の概要',
+  'history.diaryLess': '少',
+  'history.diaryMore': '多',
+  'history.diaryCount': '{n} 件',
+  'history.diaryF0': '平均ピッチ {f0} Hz',
+
   /* ---------- 对比视图 ---------- */
   'compare.title': '記録の比較',
   'compare.closeAria': '比較を閉じる',
@@ -185,6 +196,8 @@ export const ja = {
   'compare.rangeP10P90': '音域 P10–P90',
   'compare.stdF0': '基本周波数の標準偏差',
   'compare.avgDb': '平均ラウドネス',
+  'compare.shareAria': '比較シェア画像を生成',
+  'compare.shareTitle': '比較シェア画像を書き出す（PNG）',
 
   /* ---------- 时间轴选择器 ---------- */
   'trs.partial': '選択中',
@@ -204,6 +217,37 @@ export const ja = {
   'settings.showSpec': '分析ページのスペクトログラム',
   'settings.liveSpectrum': 'リアルタイムスペクトル（テストページ）',
   'settings.adviceEnable': 'トレーニングアドバイス',
+
+  /* ---------- 実験的機能 · カスタム音区境界 ---------- */
+  'settings.bandCustom': 'カスタム音区境界',
+  'settings.bandBounds': '音区境界（Hz）',
+  'settings.bandCustomDesc': '4 つの境界でピッチを低め / 男性声 / 遷移 / 女性声 / 高めの 5 音区に分割し、曲線の色分け・帯・占有率統計に即時反映。変声期・子ども・低音女性声に対応',
+  'settings.bandBound0': '男性声下限',
+  'settings.bandBound1': '男性声上限',
+  'settings.bandBound2': '女性声下限',
+  'settings.bandBound3': '女性声上限',
+  'settings.bandReset': '音区境界をデフォルトに戻す',
+  'settings.bandResetDesc': '85 / 165 / 180 / 255 Hz に戻す',
+  'settings.bandResetAction': 'デフォルトに戻す',
+  'toast.bandResetDone': '音区境界をデフォルトに戻しました',
+
+  /* ---------- 実験的機能 · リアルタイム母音マッピング ---------- */
+  'vowelLive.title': 'リアルタイム母音マッピング',
+  'vowelLive.labsDesc': '話しながら F1/F2 の落ちる位置を母音空間上でリアルタイムに確認できる、発音トレーニング・言語訓練の即時フィードバック。モニターモードは何も録音しません',
+  'vowelLive.openAction': 'ライブ練習を開く',
+  'vowelLive.openAria': 'リアルタイム母音マッピングを開く',
+  'vowelLive.start': 'ライブ練習を開始',
+  'vowelLive.hintIdle': 'マイクを許可すると F1/F2 の落点をリアルタイム表示。録音は保存されません',
+  'vowelLive.hint': '横軸 F2：左ほど舌が前 · 縦軸 F1：上ほど開口が小さい · 新しい点ほど明るく、× は重心',
+  'vowelLive.recordingBadge': '録音中',
+  'vowelLive.noSignal': '発声を待機中…',
+
+  /* ---------- 実験的機能 · 音声ファイル取り込み分析 ---------- */
+  'settings.importAudio': '音声ファイル取り込み分析',
+  'settings.importAudioDesc': 'ボイスメモやメッセージの音声などの外部音声ファイルをドラッグ＆ドロップまたは選択すると、録音と同じオフライン解析で完全なレポートを生成。アプリとしてインストールすれば OS の「共有」からも実行できます',
+  'settings.importAudioPick': '音声ファイルを選択',
+  'importAudio.processing': '解析中',
+  'settings.importAudioHint': 'wav / mp3 / m4a / ogg / webm / amr など対応 · 先頭 5 分を解析 · データは端末内にのみ保存',
   'settings.app': 'アプリ',
   'settings.about': 'このアプリについて',
   'settings.theme': 'テーマ',
@@ -296,7 +340,7 @@ export const ja = {
   'settings.installOneClick': 'ワンクリックでインストール',
   'settings.installManual': '手動でインストール',
   'settings.installManualHint': 'ブラウザのアドレスバーで「アプリをインストール」アイコンをクリックするか、ブラウザメニューから「ホーム画面に追加」（iOS Safari）を選択してください。HTTPS で配信されている本番ページでのみ利用でき、ローカル開発サーバーにはインストール入口がありません。',
-  'settings.aboutVersion': 'v0.5.0 — Web Audio API ベースの音声テスト・分析ツール：YIN ピッチ検出、LPC フォルマント抽出、エネルギー分析、スペクトログラム、Jitter/Shimmer/HNR/CPPS 声質指標、母音空間散布図、声域図（VRP）、3 つのテストモードと録音再生、ZIP/GitHub クラウドバックアップ、トレーニングターゲット、多言語対応とダークモード。',
+  'settings.aboutVersion': 'v0.6.0 — Web Audio API ベースの音声テスト・分析ツール：YIN ピッチ検出、LPC フォルマント抽出、エネルギー分析、スペクトログラム、Jitter/Shimmer/HNR/CPPS 声質指標、母音空間散布図、声域図（VRP）、3 つのテストモードと録音再生、ZIP/GitHub クラウドバックアップ、トレーニングターゲット、外部音声ファイル取り込み分析、リアルタイム母音マッピング、声の日記ヒートマップ、比較シェアカード、カスタム音区境界、多言語対応とダークモード。',
   'settings.aboutPrivacy': 'データはデフォルトでこのブラウザ内にのみ保存されます。完全バックアップまたは GitHub クラウドバックアップを明示的に実行したときにのみ、エクスポート/アップロードされます。',
   'settings.docs': 'ドキュメント',
   'settings.docYinTitle': 'アルゴリズム · ピッチ検出（YIN）',
@@ -316,6 +360,7 @@ export const ja = {
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
   'share.footer': 'Simple Voice Tool · ローカル分析、データは一切アップロードされません',
   'share.shareTitle': 'Simple Voice Tool · 分析レポート',
+  'share.compareTitle': '比較レポート',
 
   /* ---------- 提示（toast） ---------- */
   'toast.tooShort': '録音時間が短すぎます（1 秒以上が必要）。保存しませんでした',
@@ -354,6 +399,11 @@ export const ja = {
   'toast.shareDownloaded': 'レポート画像を生成してダウンロードしました',
   'toast.shareFail': 'シェア画像の生成に失敗しました',
   'toast.frameCsvExported': 'フレーム単位 CSV データをエクスポートしました',
+  'toast.importAudioDone': '音声の解析が完了し、レポートを生成しました',
+  'toast.importAudioDecodeFail': 'この音声ファイルをデコードできません。wav / mp3 / m4a などの一般的な形式でお試しください',
+  'toast.importAudioTooShort': '有効な音声長が 1 秒未満です',
+  'toast.importAudioTooLong': '音声が長すぎます（10 分超）。先にカットしてください',
+  'toast.importAudioTruncated': '音声が長いため、先頭 5 分のみ解析しました',
   'toast.storageUnavailable': 'ブラウザのローカルストレージを利用できないため、今回のデータはメモリ上にのみ保存されます',
   'toast.autoBackupDone': 'ローカルフォルダに自動バックアップしました',
   'toast.autoBackupFail': 'ローカル自動バックアップに失敗しました',

@@ -24,8 +24,9 @@ function nextPow2(n: number): number {
 /**
  * 基-2 迭代 FFT（原地，实部/虚部分离数组）
  * 也用于实倒谱计算：对偶对称的实序列做正变换即得其实倒谱（除以 N）
+ * 导出供音频导入管线的语谱图频谱计算复用
  */
-function fft(re: Float32Array, im: Float32Array): void {
+export function fft(re: Float32Array, im: Float32Array): void {
   const n = re.length;
   // 位反转重排
   for (let i = 1, j = 0; i < n; i++) {

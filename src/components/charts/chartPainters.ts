@@ -4,7 +4,7 @@
  * 曲线按音高区间分段着色，网格为淡灰虚线，整体遵循 M3 莫奈色板。
  */
 
-import { BAND_COLORS, BAND_RANGES, PITCH_AXIS, ENERGY_AXIS, FORMANT_AXIS, VOWEL_AXIS_F1, VOWEL_AXIS_F2, VOWEL_REFS, VRP_NOTE_MIN, VRP_NOTE_MAX, freqToNote } from '@/constants';
+import { BAND_COLORS, bandOf, getBandRanges, PITCH_AXIS, ENERGY_AXIS, FORMANT_AXIS, VOWEL_AXIS_F1, VOWEL_AXIS_F2, VOWEL_REFS, VRP_NOTE_MIN, VRP_NOTE_MAX, freqToNote } from '@/constants';
 import { t } from '@/i18n';
 import type { PitchBand } from '@/types';
 
@@ -141,7 +141,10 @@ function drawTimeGrid(p: PaintContext): void {
 
 /* ---------------------------------- 音高图 ---------------------------------- */
 
-/** 音高区间的背景色带（淡紫 / 淡蓝 / 黑 / 淡粉 / 淡紫） */
+/**
+ * 音高区间的背景色带（淡紫 / 淡蓝 / 黑 / 淡粉 / 淡紫）
+ * 边界跟随自定义音区边界（设置 → 实验性功能）
+ */
 export function drawPitchBands(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -150,9 +153,10 @@ export function drawPitchBands(
   fMax: number,
   yFor: (f: number) => number,
 ): void {
+  const ranges = getBandRanges();
   const bands: PitchBand[] = ['low', 'male', 'transition', 'female', 'high'];
   for (const band of bands) {
-    const [f0, f1] = BAND_RANGES[band];
+    const [f0, f1] = ranges[band];
     const yTop = Math.max(0, yFor(Math.min(f1, fMax)));
     const yBot = Math.min(h, yFor(Math.max(f0, fMin)));
     if (yBot <= yTop) continue;
@@ -167,7 +171,7 @@ export function drawPitchBands(
   ctx.setLineDash(DASH);
   ctx.lineWidth = 1;
   ctx.strokeStyle = chartPalette().grid;
-  for (const boundary of [BAND_RANGES.male[0], BAND_RANGES.transition[0], BAND_RANGES.female[0], BAND_RANGES.female[1]]) {
+  for (const boundary of [ranges.male[0], ranges.transition[0], ranges.female[0], ranges.female[1]]) {
     const y = yFor(boundary);
     if (y > 8 && y < h - 8) dashedLine(ctx, 0, y, w, y);
   }
@@ -251,10 +255,7 @@ export function drawPitchLine(
     if (t < p.t0 - 0.05 || t > p.t1 + 0.05) continue;
     const x = xOf(t);
     const y = yFor(f);
-    const band = f < BAND_RANGES.male[0] ? 'low'
-      : f < BAND_RANGES.transition[0] ? 'male'
-      : f < BAND_RANGES.female[0] ? 'transition'
-      : f <= BAND_RANGES.female[1] ? 'female' : 'high';
+    const band = bandOf(f);
 
     if (!segOpen) {
       beginSeg(band, x, y);
@@ -281,7 +282,7 @@ export function drawPitchLine(
       if (f != null && isFinite(f) && series.t[i] >= p.t0) {
         const x = xOf(series.t[i]);
         const y = yFor(f);
-        const band = f < 85 ? 'low' : f < 165 ? 'male' : f < 180 ? 'transition' : f <= 255 ? 'female' : 'high';
+        const band = bandOf(f);
         ctx.save();
         ctx.shadowColor = BAND_COLORS[band as PitchBand];
         ctx.shadowBlur = 14;
@@ -527,6 +528,77 @@ export function drawVowelRefs(
       ctx.fillText(`${ref.label} ${ref.zh}`, x, y - 8);
     }
     ctx.restore();
+  }
+}
+
+/**
+ * 实时元音落点视图（vowelSpace 画笔的 live 模式）
+ * 窗口内落点按新旧渐隐（越新越亮越大），叠加窗口质心 × 与当前帧呼吸光点，
+ * 供实时元音落点练习页逐帧调用（调用方负责清屏与尺寸）。
+ */
+export function paintVowelSpaceLive(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  series: SeriesLike,
+  t0: number,
+  t1: number,
+  showLabels: boolean,
+): void {
+  const pal = chartPalette();
+  drawVowelSpaceFrame(ctx, w, h, pal, showLabels);
+  drawVowelRefs(ctx, w, h, pal, showLabels);
+
+  // 渐隐落点：age 0（旧）→ 1（新），亮度/尺寸随之增长，密度形成残影轨迹
+  const span = Math.max(1e-3, t1 - t0);
+  let count = 0;
+  let sf1 = 0;
+  let sf2 = 0;
+  ctx.save();
+  ctx.fillStyle = pal.accent;
+  for (let i = 0; i < series.t.length; i++) {
+    const tt = series.t[i];
+    if (tt < t0 - 0.05 || tt > t1 + 0.05) continue;
+    const f1 = series.f1[i];
+    const f2 = series.f2[i];
+    if (series.f0[i] == null || f1 == null || f2 == null || !isFinite(f1) || !isFinite(f2)) continue;
+    const age = Math.max(0, Math.min(1, (tt - t0) / span));
+    ctx.globalAlpha = 0.06 + 0.5 * age * age;
+    const [x, y] = vowelXY(f1, f2, w, h);
+    ctx.beginPath();
+    ctx.arc(x, y, 1.8 + 1.6 * age, 0, Math.PI * 2);
+    ctx.fill();
+    count++;
+    sf1 += f1;
+    sf2 += f2;
+  }
+  ctx.restore();
+
+  // 窗口质心 ×（整体发音位置的锚点）
+  if (count > 0) {
+    drawVowelCentroid(ctx, w, h, [{ f1: sf1 / count, f2: sf2 / count }], pal.accent2);
+  }
+
+  // 当前落点呼吸光点（最新一个有效帧）
+  for (let i = series.t.length - 1; i >= 0; i--) {
+    const f1 = series.f1[i];
+    const f2 = series.f2[i];
+    if (series.f0[i] == null || f1 == null || f2 == null || !isFinite(f1) || !isFinite(f2)) continue;
+    const [x, y] = vowelXY(f1, f2, w, h);
+    ctx.save();
+    ctx.shadowColor = pal.accent;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = pal.accent;
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    break;
   }
 }
 

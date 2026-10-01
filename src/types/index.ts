@@ -177,6 +177,8 @@ export interface AppSettings {
   /** 基线记录 id：分析页自动对比新记录与基线的 Δ 指标 */
   baselineRecordId?: string;
   /* ---------- 实验性功能（设置 → 实验性功能 子页面） ---------- */
+  /** 自定义音区边界（Hz，自低到高四个分界点），undefined = 默认 85/165/180/255 */
+  bandBounds?: [number, number, number, number];
   /** 分析页是否显示语谱图卡片 */
   showSpectrogram: boolean;
   /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */

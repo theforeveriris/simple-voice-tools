@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
 import type { AnalysisRecord, AppSettings, ViewType } from '@/types';
-import { DEFAULT_SETTINGS, MODE_META } from '@/constants';
+import { DEFAULT_SETTINGS, MODE_META, setBandBounds } from '@/constants';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
@@ -113,3 +113,13 @@ export const useStore = create<AppState>()(
     },
   ),
 );
+
+// 音区边界：设置 → 模块级单例同步（bandOf / 曲线着色 / 音区色带 / 占比统计共用）。
+// 初始化一次（persist 从 localStorage 同步恢复后 merge 会触发订阅），
+// 之后仅在实际变化时刷新
+setBandBounds(useStore.getState().settings.bandBounds);
+useStore.subscribe((state, prev) => {
+  if (state.settings.bandBounds !== prev.settings.bandBounds) {
+    setBandBounds(state.settings.bandBounds);
+  }
+});

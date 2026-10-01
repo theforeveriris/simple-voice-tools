@@ -32,7 +32,7 @@ import { exportShareImage } from '@/lib/export/shareCard';
 import { SeriesChart } from '@/components/charts/SeriesChart';
 import { SpecChart } from '@/components/charts/SpecChart';
 import { TimeRangeSelector } from '@/components/charts/TimeRangeSelector';
-import { freqToNote, bandOf, BAND_COLORS } from '@/constants';
+import { freqToNote, bandOf, BAND_COLORS, getBandRanges } from '@/constants';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { localeTag } from '@/i18n';
@@ -71,14 +71,17 @@ const posPct = (f: number) => ((Math.log(f / RULER_MIN) / Math.log(RULER_MAX / R
 function RangeRuler({ record }: { record: AnalysisRecord }) {
   const { avgF0, p10F0, p90F0 } = record.stats;
   const band = bandOf(avgF0);
+  // 色带分段跟随自定义音区边界（与曲线着色、占比统计同一来源）
+  const ranges = getBandRanges();
+  const seg = (a: number, b: number) => `${Number(posPct(b)) - Number(posPct(a))}%`;
   return (
     <div className="w-full">
       <div className="relative h-3.5 w-full overflow-hidden rounded-full">
         <div className="absolute inset-0 flex">
-          <span className="h-full" style={{ width: `${posPct(85)}%`, background: `${BAND_COLORS.low}30` }} />
-          <span className="h-full" style={{ width: `${Number(posPct(165)) - Number(posPct(85))}%`, background: `${BAND_COLORS.male}45` }} />
-          <span className="h-full" style={{ width: `${Number(posPct(180)) - Number(posPct(165))}%`, background: `${BAND_COLORS.transition}26` }} />
-          <span className="h-full" style={{ width: `${Number(posPct(255)) - Number(posPct(180))}%`, background: `${BAND_COLORS.female}45` }} />
+          <span className="h-full" style={{ width: `${posPct(ranges.male[0])}%`, background: `${BAND_COLORS.low}30` }} />
+          <span className="h-full" style={{ width: seg(ranges.male[0], ranges.transition[0]), background: `${BAND_COLORS.male}45` }} />
+          <span className="h-full" style={{ width: seg(ranges.transition[0], ranges.female[0]), background: `${BAND_COLORS.transition}26` }} />
+          <span className="h-full" style={{ width: seg(ranges.female[0], ranges.female[1]), background: `${BAND_COLORS.female}45` }} />
           <span className="h-full flex-1" style={{ background: `${BAND_COLORS.high}30` }} />
         </div>
         {/* P10–P90 音域括条（颜色取自主题变量，深浅模式均可见） */}

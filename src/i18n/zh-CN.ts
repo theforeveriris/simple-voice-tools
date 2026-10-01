@@ -168,6 +168,17 @@ export const zhCN = {
   'history.trendEmpty': '该测试模式下暂无记录',
   'history.recordAria': '打开第 {n} 条记录',
 
+  /* ---------- 用声日记 ---------- */
+  'history.diary': '用声日记',
+  'history.diaryMetricCount': '次数',
+  'history.diaryMetricDuration': '时长',
+  'history.diaryMetricF0': '基频',
+  'history.diaryHint': '每天一格 · 颜色越深当天录音越多 · 点选查看当日概要',
+  'history.diaryLess': '少',
+  'history.diaryMore': '多',
+  'history.diaryCount': '{n} 次',
+  'history.diaryF0': '平均基频 {f0} Hz',
+
   /* ---------- 对比视图 ---------- */
   'compare.title': '记录对比',
   'compare.closeAria': '关闭对比',
@@ -185,6 +196,8 @@ export const zhCN = {
   'compare.rangeP10P90': '音域 P10–P90',
   'compare.stdF0': '基频标准差',
   'compare.avgDb': '平均响度',
+  'compare.shareAria': '生成对比分享图',
+  'compare.shareTitle': '导出对比分享图（PNG）',
 
   /* ---------- 时间轴选择器 ---------- */
   'trs.partial': '已选',
@@ -204,6 +217,37 @@ export const zhCN = {
   'settings.showSpec': '分析页语谱图',
   'settings.liveSpectrum': '实时频谱图（测试页）',
   'settings.adviceEnable': '训练建议',
+
+  /* ---------- 实验性 · 自定义音区边界 ---------- */
+  'settings.bandCustom': '自定义音区边界',
+  'settings.bandBounds': '音区边界（Hz）',
+  'settings.bandCustomDesc': '四个边界将基频划分为偏低 / 男声 / 过渡 / 女声 / 偏高五个音区，曲线着色、色带与占比统计同步生效，适配变声期、童声与低音女声',
+  'settings.bandBound0': '男声下限',
+  'settings.bandBound1': '男声上限',
+  'settings.bandBound2': '女声下限',
+  'settings.bandBound3': '女声上限',
+  'settings.bandReset': '恢复默认音区边界',
+  'settings.bandResetDesc': '恢复为 85 / 165 / 180 / 255 Hz',
+  'settings.bandResetAction': '恢复默认',
+  'toast.bandResetDone': '已恢复默认音区边界',
+
+  /* ---------- 实验性 · 实时元音落点 ---------- */
+  'vowelLive.title': '实时元音落点',
+  'vowelLive.labsDesc': '说话时实时观察 F1/F2 落点在元音空间中的移动，语言训练 / 发音矫正的即时反馈；监听模式不保存任何录音',
+  'vowelLive.openAction': '打开实时练习',
+  'vowelLive.openAria': '打开实时元音落点',
+  'vowelLive.start': '开始实时练习',
+  'vowelLive.hintIdle': '开启麦克风即可实时查看 F1/F2 落点，无需保存录音',
+  'vowelLive.hint': '横轴 F2：越靠左舌位越前 · 纵轴 F1：越靠上开口越小 · 点迹越新越亮，× 为质心',
+  'vowelLive.recordingBadge': '录音中',
+  'vowelLive.noSignal': '等待发声…',
+
+  /* ---------- 实验性 · 导入音频离线分析 ---------- */
+  'settings.importAudio': '导入音频分析',
+  'settings.importAudioDesc': '把手机录音、微信语音等外部音频拖入或选择文件，走与录音相同的离线管线生成完整分析报告；安装为应用后也可从系统「分享到」直接进入',
+  'settings.importAudioPick': '选择音频文件',
+  'importAudio.processing': '正在分析',
+  'settings.importAudioHint': '支持 wav / mp3 / m4a / ogg / webm / amr 等 · 最长分析前 5 分钟 · 数据不出本机',
   'settings.app': '应用',
   'settings.about': '关于',
   'settings.theme': '主题',
@@ -296,7 +340,7 @@ export const zhCN = {
   'settings.installOneClick': '一键安装',
   'settings.installManual': '手动安装',
   'settings.installManualHint': '请在浏览器地址栏点击「安装应用」图标，或在浏览器菜单选择「添加到主屏幕」（iOS Safari）。需在 HTTPS 部署环境（生产页面）下使用，本地开发服务器不提供安装入口。',
-  'settings.aboutVersion': 'v0.5.0 — 基于 Web Audio API 的语音测试与分析工具：YIN 音高检测、LPC 共振峰提取、能量分析、语谱图、Jitter/Shimmer/HNR/CPPS 嗓音质量指标、元音空间散点、声域图（VRP）、三种测试模式与录音回放、ZIP/GitHub 云备份、训练靶标、多语言与深色模式。',
+  'settings.aboutVersion': 'v0.6.0 — 基于 Web Audio API 的语音测试与分析工具：YIN 音高检测、LPC 共振峰提取、能量分析、语谱图、Jitter/Shimmer/HNR/CPPS 嗓音质量指标、元音空间散点、声域图（VRP）、三种测试模式与录音回放、ZIP/GitHub 云备份、训练靶标、外部音频导入分析、实时元音落点、用声日记热力图、对比分享卡、自定义音区边界、多语言与深色模式。',
   'settings.aboutPrivacy': '数据默认仅保存在本机浏览器中；只有你主动使用完整备份或 GitHub 云备份时才会导出/上传。',
   'settings.docs': '文档',
   'settings.docYinTitle': '算法 · 音高检测（YIN）',
@@ -316,6 +360,7 @@ export const zhCN = {
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
   'share.footer': 'Simple Voice Tool · 本地分析，不上传任何数据',
   'share.shareTitle': 'Simple Voice Tool · 分析报告',
+  'share.compareTitle': '对比报告',
 
   /* ---------- 提示（toast） ---------- */
   'toast.tooShort': '录音时间太短（至少 1 秒），未保存',
@@ -354,6 +399,11 @@ export const zhCN = {
   'toast.shareDownloaded': '报告图已生成并下载',
   'toast.shareFail': '分享图生成失败',
   'toast.frameCsvExported': '已导出帧级 CSV 数据',
+  'toast.importAudioDone': '音频分析完成，已生成报告',
+  'toast.importAudioDecodeFail': '无法解码该音频文件，请换 wav / mp3 / m4a 等常见格式重试',
+  'toast.importAudioTooShort': '音频有效时长不足 1 秒',
+  'toast.importAudioTooLong': '音频过长（超过 10 分钟），请先剪辑后再导入',
+  'toast.importAudioTruncated': '音频较长，仅分析前 5 分钟',
   'toast.storageUnavailable': '浏览器本地存储不可用，本次数据仅保存在内存中',
   'toast.autoBackupDone': '已自动备份到本地文件夹',
   'toast.autoBackupFail': '本地自动备份失败',

@@ -13,7 +13,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Trash2, ChevronRight, SquareTerminal, FileQuestion,
-  Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote,
+  Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote, CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -21,6 +21,8 @@ import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { MiniSpark } from '@/components/charts/MiniSpark';
 import { TrendChart } from '@/components/charts/TrendChart';
+import { DiaryHeatmap } from '@/components/charts/DiaryHeatmap';
+import type { DiaryMetric } from '@/components/charts/DiaryHeatmap';
 import { CompareSheet } from './CompareSheet';
 import { freqToNote, bandOf, BAND_COLORS, MAX_HISTORY } from '@/constants';
 import { t } from '@/i18n';
@@ -279,6 +281,13 @@ const TREND_FILTERS: { id: 'all' | TestMode; labelKey: 'common.all' | 'mode.read
   { id: 'glide', labelKey: 'mode.glide' },
 ];
 
+/** 用声日记的指标切换 */
+const DIARY_METRICS: { id: DiaryMetric; labelKey: 'history.diaryMetricCount' | 'history.diaryMetricDuration' | 'history.diaryMetricF0' }[] = [
+  { id: 'count', labelKey: 'history.diaryMetricCount' },
+  { id: 'duration', labelKey: 'history.diaryMetricDuration' },
+  { id: 'avgF0', labelKey: 'history.diaryMetricF0' },
+];
+
 export function HistoryPage() {
   useI18n();
   const records = useHistoryStore((s) => s.records);
@@ -295,6 +304,7 @@ export function HistoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [comparePair, setComparePair] = useState<[AnalysisRecord, AnalysisRecord] | null>(null);
   const [trendFilter, setTrendFilter] = useState<'all' | TestMode>('all');
+  const [diaryMetric, setDiaryMetric] = useState<DiaryMetric>('count');
 
   const open = (record: AnalysisRecord) => {
     setCurrentAnalysis(record);
@@ -416,6 +426,31 @@ export function HistoryPage() {
               <p className="py-16 text-center text-sm text-ink-2">{t('history.trendEmpty')}</p>
             ) : (
               <>
+                {/* 用声日记：日历热力图（打卡概览，跟随当前模式过滤） */}
+                <div className="mb-4">
+                  <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                      <CalendarDays size={13} className="text-accent" />
+                      {t('history.diary')}
+                    </span>
+                    <div className="flex items-center rounded-full bg-surface-hi p-0.5">
+                      {DIARY_METRICS.map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => setDiaryMetric(m.id)}
+                          className={cn(
+                            'rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors',
+                            diaryMetric === m.id ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
+                          )}
+                        >
+                          {t(m.labelKey)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <DiaryHeatmap records={trendRecords} metric={diaryMetric} />
+                </div>
+                <div className="mb-3 border-t border-black/[0.04]" />
                 <TrendChart records={trendRecords} connectLine={trendFilter !== 'all'} onOpen={open} />
                 <p className="mt-1 text-center text-[10px] text-ink-2">
                   {t('history.trendHint')}

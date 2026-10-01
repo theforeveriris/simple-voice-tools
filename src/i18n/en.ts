@@ -167,6 +167,17 @@ export const en = {
   'history.trendEmpty': 'No records for this test mode yet',
   'history.recordAria': 'Open record {n}',
 
+  /* ---------- Voice diary ---------- */
+  'history.diary': 'Voice diary',
+  'history.diaryMetricCount': 'Count',
+  'history.diaryMetricDuration': 'Duration',
+  'history.diaryMetricF0': 'Pitch',
+  'history.diaryHint': 'One cell per day · darker = more recordings · tap for the day summary',
+  'history.diaryLess': 'Less',
+  'history.diaryMore': 'More',
+  'history.diaryCount': '{n} records',
+  'history.diaryF0': 'Avg pitch {f0} Hz',
+
   /* ---------- Compare view ---------- */
   'compare.title': 'Record comparison',
   'compare.closeAria': 'Close comparison',
@@ -184,6 +195,8 @@ export const en = {
   'compare.rangeP10P90': 'Range P10–P90',
   'compare.stdF0': 'F0 standard deviation',
   'compare.avgDb': 'Average loudness',
+  'compare.shareAria': 'Generate comparison share image',
+  'compare.shareTitle': 'Export comparison share image (PNG)',
 
   /* ---------- Time range selector ---------- */
   'trs.partial': 'Selected',
@@ -203,6 +216,37 @@ export const en = {
   'settings.showSpec': 'Analysis spectrogram',
   'settings.liveSpectrum': 'Live spectrum (Test page)',
   'settings.adviceEnable': 'Training tips',
+
+  /* ---------- Labs · custom pitch bands ---------- */
+  'settings.bandCustom': 'Custom pitch bands',
+  'settings.bandBounds': 'Band boundaries (Hz)',
+  'settings.bandCustomDesc': 'Four boundaries split pitch into Low / Male / Transition / Female / High bands; curve coloring, band strips and share statistics follow. Useful for voice training, children and low-pitched female voices',
+  'settings.bandBound0': 'Male lower',
+  'settings.bandBound1': 'Male upper',
+  'settings.bandBound2': 'Female lower',
+  'settings.bandBound3': 'Female upper',
+  'settings.bandReset': 'Restore default band boundaries',
+  'settings.bandResetDesc': 'Restore to 85 / 165 / 180 / 255 Hz',
+  'settings.bandResetAction': 'Restore defaults',
+  'toast.bandResetDone': 'Default band boundaries restored',
+
+  /* ---------- Labs · live vowel space ---------- */
+  'vowelLive.title': 'Live vowel space',
+  'vowelLive.labsDesc': 'Watch your F1/F2 fall inside the vowel space in real time while speaking — instant feedback for language training and pronunciation coaching; monitor mode saves nothing',
+  'vowelLive.openAction': 'Open live practice',
+  'vowelLive.openAria': 'Open live vowel space',
+  'vowelLive.start': 'Start live practice',
+  'vowelLive.hintIdle': 'Enable the microphone to see your F1/F2 points live — no recording saved',
+  'vowelLive.hint': 'X axis F2: left = front tongue · Y axis F1: up = smaller opening · newer points are brighter, × = centroid',
+  'vowelLive.recordingBadge': 'Recording',
+  'vowelLive.noSignal': 'Waiting for voice…',
+
+  /* ---------- Labs · import audio analysis ---------- */
+  'settings.importAudio': 'Import audio analysis',
+  'settings.importAudioDesc': 'Drag in or pick an external recording (phone recorder, voice messages, …) and run the same offline pipeline for a full report; installed as an app it also accepts system "Share to"',
+  'settings.importAudioPick': 'Choose audio file',
+  'importAudio.processing': 'Analyzing',
+  'settings.importAudioHint': 'Supports wav / mp3 / m4a / ogg / webm / amr and more · first 5 minutes analyzed · data never leaves this device',
   'settings.app': 'App',
   'settings.about': 'About',
   'settings.theme': 'Theme',
@@ -295,7 +339,7 @@ export const en = {
   'settings.installOneClick': 'Install',
   'settings.installManual': 'Manual install',
   'settings.installManualHint': 'Click the "Install app" icon in the address bar, or choose "Add to Home Screen" in the browser menu (iOS Safari). Requires an HTTPS deployment (production page); the local dev server offers no install entry.',
-  'settings.aboutVersion': 'v0.5.0 — A Web Audio API based voice test & analysis tool: YIN pitch detection, LPC formant extraction, energy analysis, spectrogram, Jitter/Shimmer/HNR/CPPS voice quality, vowel space scatter, phonetogram (VRP), three test modes with playback, ZIP/GitHub cloud backup, training target, multi-language and dark mode.',
+  'settings.aboutVersion': 'v0.6.0 — A Web Audio API based voice test & analysis tool: YIN pitch detection, LPC formant extraction, energy analysis, spectrogram, Jitter/Shimmer/HNR/CPPS voice quality, vowel space scatter, phonetogram (VRP), three test modes with playback, ZIP/GitHub cloud backup, training target, external audio import, live vowel space, voice diary heatmap, comparison share card, custom pitch bands, multi-language and dark mode.',
   'settings.aboutPrivacy': 'Data is stored locally in your browser by default; it is only exported/uploaded when you explicitly run a full backup or GitHub cloud backup.',
   'settings.docs': 'Documentation',
   'settings.docYinTitle': 'Algorithm · Pitch detection (YIN)',
@@ -315,6 +359,7 @@ export const en = {
   'share.rangeLine': 'Range P10–P90: {a} – {b} Hz',
   'share.footer': 'Simple Voice Tool · analyzed locally, nothing uploaded',
   'share.shareTitle': 'Simple Voice Tool · Analysis report',
+  'share.compareTitle': 'Comparison report',
 
   /* ---------- Toasts ---------- */
   'toast.tooShort': 'Recording too short (at least 1 second), not saved',
@@ -353,6 +398,11 @@ export const en = {
   'toast.shareDownloaded': 'Report image generated and downloaded',
   'toast.shareFail': 'Failed to generate share image',
   'toast.frameCsvExported': 'Frame-level CSV exported',
+  'toast.importAudioDone': 'Audio analysis finished, report generated',
+  'toast.importAudioDecodeFail': 'Cannot decode this audio file, try common formats like wav / mp3 / m4a',
+  'toast.importAudioTooShort': 'Effective audio duration is under 1 second',
+  'toast.importAudioTooLong': 'Audio is too long (over 10 minutes), please trim it first',
+  'toast.importAudioTruncated': 'Long audio — only the first 5 minutes were analyzed',
   'toast.storageUnavailable': 'Browser local storage unavailable; data is kept in memory for this session only',
   'toast.autoBackupDone': 'Auto backup saved to your local folder',
   'toast.autoBackupFail': 'Local auto backup failed',

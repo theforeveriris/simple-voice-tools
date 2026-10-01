@@ -5,7 +5,7 @@
  * 跟随当前主题色板。优先走系统分享（Web Share API），不支持时下载。
  */
 
-import { BAND_COLORS, BAND_RANGES, bandOf, freqToNote } from '@/constants';
+import { BAND_COLORS, getBandRanges, bandOf, freqToNote } from '@/constants';
 // 该文件内 t 已被主题色板局部变量占用，i18n 翻译函数以 ti 引用
 import { t as ti } from '@/i18n';
 import type { AnalysisRecord, PitchBand } from '@/types';
@@ -201,7 +201,7 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
 }
 
 function bandRange(band: PitchBand): [number, number] {
-  return BAND_RANGES[band];
+  return getBandRanges()[band];
 }
 
 /** 迷你音高曲线（分区间着色） */
@@ -262,11 +262,16 @@ function drawMiniPitch(
  */
 export async function exportShareImage(record: AnalysisRecord): Promise<'shared' | 'downloaded'> {
   const canvas = drawCard(record);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-  if (!blob) throw new Error('PNG export failed');
   const d = new Date(record.createdAt);
   const pad = (n: number) => String(n).padStart(2, '0');
   const filename = `voice-report-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.png`;
+  return shareOrDownload(canvas, filename);
+}
+
+/** 画布 → PNG → 系统分享（可用时）或下载 */
+async function shareOrDownload(canvas: HTMLCanvasElement, filename: string): Promise<'shared' | 'downloaded'> {
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) throw new Error('PNG export failed');
   const file = new File([blob], filename, { type: 'image/png' });
 
   if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
@@ -280,4 +285,280 @@ export async function exportShareImage(record: AnalysisRecord): Promise<'shared'
   a.click();
   URL.revokeObjectURL(url);
   return 'downloaded';
+}
+
+/* ================================ 对比分享卡 ================================ */
+
+/** A/B 双方概要块的行高基准 */
+const CMP_TOP = PAD + 96;
+
+/** 对比 Δ 指标表行：[指标, A 值, B 值, Δ] */
+function compareRows(a: AnalysisRecord, b: AnalysisRecord): [string, string, string, string][] {
+  const sa = a.stats;
+  const sb = b.stats;
+  const sign = (v: number, digits = 1) => `${v > 0 ? '+' : ''}${v.toFixed(digits)}`;
+  const delta = (x: number | null | undefined, y: number | null | undefined, digits = 1) =>
+    x == null || y == null ? '—' : `${sign(y - x, digits)}`;
+  const fmt = (v: number | null | undefined, digits = 1, unit = ' Hz') =>
+    v == null ? '—' : `${v.toFixed(digits)}${unit}`;
+
+  const rows: [string, string, string, string][] = [
+    [ti('analysis.rowAvgF0'), fmt(sa.avgF0), fmt(sb.avgF0), `${delta(sa.avgF0, sb.avgF0)} Hz`],
+    [ti('compare.medianF0'), fmt(sa.medianF0), fmt(sb.medianF0), `${delta(sa.medianF0, sb.medianF0)} Hz`],
+    [
+      ti('compare.rangeP10P90'),
+      `${sa.p10F0.toFixed(0)}–${sa.p90F0.toFixed(0)}`,
+      `${sb.p10F0.toFixed(0)}–${sb.p90F0.toFixed(0)}`,
+      `${delta(sa.p10F0, sb.p10F0, 0)} / ${delta(sa.p90F0, sb.p90F0, 0)} Hz`,
+    ],
+    [ti('compare.stdF0'), fmt(sa.stdF0), fmt(sb.stdF0), `${delta(sa.stdF0, sb.stdF0)} Hz`],
+    [ti('analysis.rowAvgF1'), fmt(sa.avgF1, 0), fmt(sb.avgF1, 0), `${delta(sa.avgF1, sb.avgF1, 0)} Hz`],
+    [ti('analysis.rowAvgF2'), fmt(sa.avgF2, 0), fmt(sb.avgF2, 0), `${delta(sa.avgF2, sb.avgF2, 0)} Hz`],
+    [ti('compare.avgDb'), fmt(sa.avgDb, 1, ' dB'), fmt(sb.avgDb, 1, ' dB'), `${delta(sa.avgDb, sb.avgDb)} dB`],
+  ];
+  // 嗓音质量（任一方有值才显示，最多补两行保证排版）
+  const vq: [string, number | null | undefined, number | null | undefined, number, string][] = [
+    ['Jitter', sa.jitterPct, sb.jitterPct, 2, ' %'],
+    ['Shimmer', sa.shimmerPct, sb.shimmerPct, 2, ' %'],
+    ['HNR', sa.hnrDb, sb.hnrDb, 1, ' dB'],
+    ['CPPS', sa.cppsDb, sb.cppsDb, 1, ' dB'],
+  ].filter(([, x, y]) => x != null || y != null) as [string, number | null | undefined, number | null | undefined, number, string][];
+  for (const [label, x, y, digits, unit] of vq.slice(0, 2)) {
+    rows.push([label, fmt(x, digits, unit), fmt(y, digits, unit), `${delta(x, y, digits)}${unit}`]);
+  }
+  return rows;
+}
+
+/** 绘制 A vs B 对比报告卡（双曲线叠加 + Δ 指标表 + 各自音域） */
+function drawCompareCard(a: AnalysisRecord, b: AnalysisRecord): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D unavailable');
+  const t = readTheme();
+  const ranges = getBandRanges();
+  const fmtDate = (ts: number) => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // 背景 + 页眉
+  ctx.fillStyle = t.card;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = t.accent;
+  ctx.beginPath();
+  ctx.arc(PAD + 9, PAD + 14, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = t.ink2;
+  ctx.font = '500 30px "Inter Tight", system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Simple Voice Tool', PAD + 30, PAD + 15);
+  ctx.textAlign = 'right';
+  ctx.fillText(ti('share.compareTitle'), W - PAD, PAD + 15);
+  ctx.strokeStyle = t.line;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(PAD, PAD + 58);
+  ctx.lineTo(W - PAD, PAD + 58);
+  ctx.stroke();
+
+  /* A / B 概要块 */
+  const colW = (W - PAD * 2 - 48) / 2;
+  const sides: { tag: string; rec: AnalysisRecord; color: string; x: number }[] = [
+    { tag: 'A', rec: a, color: t.accent, x: PAD },
+    { tag: 'B', rec: b, color: t.accent2, x: PAD + colW + 48 },
+  ];
+  for (const { tag, rec, color, x } of sides) {
+    const stats = rec.stats;
+    // 标签圆点 + 日期
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x + 21, CMP_TOP + 21, 21, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = t.card;
+    ctx.font = '700 26px "Inter Tight", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tag, x + 21, CMP_TOP + 23);
+    ctx.fillStyle = t.ink2;
+    ctx.font = '400 26px "Inter Tight", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(fmtDate(rec.createdAt), x + 56, CMP_TOP + 24);
+
+    // 平均基频大字
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = t.ink;
+    ctx.font = '600 84px "Inter Tight", system-ui, sans-serif';
+    const numStr = stats.avgF0.toFixed(1);
+    ctx.fillText(numStr, x, CMP_TOP + 150);
+    const numW = ctx.measureText(numStr).width;
+    ctx.fillStyle = t.ink2;
+    ctx.font = '400 32px "Inter Tight", system-ui, sans-serif';
+    ctx.fillText('Hz', x + numW + 14, CMP_TOP + 150);
+    ctx.fillStyle = color;
+    ctx.font = '600 38px "Inter Tight", system-ui, sans-serif';
+    ctx.fillText(freqToNote(stats.avgF0).name, x + numW + 14 + 62, CMP_TOP + 150);
+
+    // 音区徽标
+    const band = bandOf(stats.avgF0);
+    const bandLabel = ti(`band.${band}`);
+    ctx.font = '600 26px "Inter Tight", system-ui, sans-serif';
+    const chipW = ctx.measureText(bandLabel).width + 44;
+    ctx.fillStyle = hexWithAlpha(BAND_COLORS[band], 0.18);
+    roundRect(ctx, x, CMP_TOP + 178, chipW, 50, 25);
+    ctx.fill();
+    ctx.fillStyle = t.ink;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(bandLabel, x + chipW / 2, CMP_TOP + 204);
+
+    // 音域行（P10–P90）
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = t.ink2;
+    ctx.font = '400 26px "Inter Tight", system-ui, sans-serif';
+    ctx.fillText(
+      ti('share.rangeLine', { a: stats.p10F0.toFixed(0), b: stats.p90F0.toFixed(0) }),
+      x, CMP_TOP + 282,
+    );
+  }
+
+  // 分隔线
+  ctx.strokeStyle = t.line;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(PAD, CMP_TOP + 320);
+  ctx.lineTo(W - PAD, CMP_TOP + 320);
+  ctx.stroke();
+
+  /* Δ 指标表 */
+  const rows = compareRows(a, b);
+  const headY = CMP_TOP + 352;
+  const rowH = 42;
+  const labelX = PAD;
+  const aRight = PAD + 500;
+  const bRight = PAD + 710;
+  const dRight = W - PAD;
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '500 24px "Inter Tight", system-ui, sans-serif';
+  ctx.fillStyle = t.ink2;
+  ctx.textAlign = 'left';
+  ctx.fillText(ti('compare.colMetric'), labelX, headY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = t.accent;
+  ctx.fillText('A', aRight, headY);
+  ctx.fillStyle = t.accent2;
+  ctx.fillText('B', bRight, headY);
+  ctx.fillStyle = t.ink2;
+  ctx.fillText(ti('compare.colDelta'), dRight, headY);
+
+  rows.forEach(([label, va, vb, vd], i) => {
+    const y = headY + 34 + i * rowH;
+    ctx.strokeStyle = t.line;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD, y - rowH / 2 + 4);
+    ctx.lineTo(W - PAD, y - rowH / 2 + 4);
+    ctx.stroke();
+    ctx.fillStyle = t.ink2;
+    ctx.textAlign = 'left';
+    ctx.font = '400 25px "Inter Tight", system-ui, sans-serif';
+    ctx.fillText(label, labelX, y);
+    ctx.fillStyle = t.ink;
+    ctx.font = '600 25px "Inter Tight", system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(va, aRight, y);
+    ctx.fillText(vb, bRight, y);
+    ctx.fillText(vd, dRight, y);
+  });
+  const tableEnd = headY + 34 + rows.length * rowH;
+
+  /* 双曲线叠加图（x 按各自时长归一化对齐） */
+  const chartY = tableEnd + 36;
+  const chartH = Math.max(240, H - PAD - 28 - chartY);
+  ctx.fillStyle = t.surface;
+  roundRect(ctx, PAD, chartY, W - PAD * 2, chartH, 28);
+  ctx.fill();
+
+  const fMin = 50;
+  const fMax = 520;
+  const inX = PAD + 20;
+  const inW = W - PAD * 2 - 40;
+  const inY = chartY + 20;
+  const inH = chartH - 40;
+  const xOf = (tt: number, dur: number) => inX + (tt / Math.max(dur, 0.01)) * inW;
+  const yOf = (f: number) => inY + inH - ((Math.max(fMin, Math.min(fMax, f)) - fMin) / (fMax - fMin)) * inH;
+
+  // 音区背景
+  for (const band of ['low', 'male', 'transition', 'female', 'high'] as PitchBand[]) {
+    const [f0, f1] = ranges[band];
+    ctx.fillStyle = hexWithAlpha(BAND_COLORS[band], 0.14);
+    ctx.fillRect(inX, yOf(f1), inW, yOf(f0) - yOf(f1));
+  }
+
+  // 两条曲线（区间着色淡化为主题色，A/B 色差优先）
+  for (const { rec, color } of [{ rec: a, color: t.accent }, { rec: b, color: t.accent2 }]) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    let open = false;
+    for (let i = 0; i < rec.series.t.length; i++) {
+      const f = rec.series.f0[i];
+      if (f == null || !isFinite(f)) {
+        open = false;
+        continue;
+      }
+      const x = xOf(rec.series.t[i], rec.durationSec);
+      const y = yOf(f);
+      if (!open) {
+        ctx.moveTo(x, y);
+        open = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 图例（自右向左排布，最终视觉顺序 A → B）
+  ctx.font = '600 26px "Inter Tight", system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+  let legendX = W - PAD - 20 - ctx.measureText('B').width - 46;
+  for (const [tag, color] of [['B', t.accent2], ['A', t.accent]] as const) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(legendX + 10, chartY + 30, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = t.ink;
+    ctx.textAlign = 'left';
+    ctx.fillText(tag, legendX + 28, chartY + 31);
+    legendX -= 56;
+  }
+
+  /* 页脚 */
+  ctx.fillStyle = t.ink2;
+  ctx.font = '400 24px "Inter Tight", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(ti('share.footer'), W / 2, H - PAD + 20);
+
+  return canvas;
+}
+
+/**
+ * 生成并分享/下载 A vs B 对比报告图
+ * 入口：历史页多选两条记录进入对比浮层 → 分享按钮。
+ */
+export async function exportShareCompareImage(a: AnalysisRecord, b: AnalysisRecord): Promise<'shared' | 'downloaded'> {
+  const canvas = drawCompareCard(a, b);
+  const d = new Date(a.createdAt);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const filename = `voice-compare-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.png`;
+  return shareOrDownload(canvas, filename);
 }

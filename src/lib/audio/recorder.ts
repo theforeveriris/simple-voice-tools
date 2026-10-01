@@ -11,7 +11,7 @@ import { extractFormants } from './formants';
 import { computeVoiceQuality } from './voiceQuality';
 import { computeCpps } from './cpp';
 import { spectrumRowToBands, base64FromBytes } from './spectrogram';
-import { SPEC_BANDS, SPEC_MAX_ROWS } from '@/constants';
+import { SPEC_BANDS, SPEC_MAX_ROWS, getBandRanges } from '@/constants';
 import type { AnalysisRecord, RecordSeries, TestMode, VoiceStats } from '@/types';
 
 /** 序列降采样倍率：60fps 采集 → 约 30Hz 存储 */
@@ -20,6 +20,8 @@ const STORAGE_DECIMATE = 2;
 const FORMANT_EVERY = 2;
 /** 发声帧能量门限（dB）：响度统计只计该值以上的帧，与 voiceQuality/CPPS 门限一致 */
 const ACTIVE_DB = -50;
+/** 监听模式缓冲上限（帧数，约 2 分钟 @60fps）：长时间练习不无限占用内存 */
+const MONITOR_BUFFER_FRAMES = 7200;
 
 /**
  * 由数据序列聚合统计信息
@@ -59,10 +61,12 @@ export function computeStats(series: RecordSeries, sampleHz: number): VoiceStats
     : 0;
 
   let male = 0, female = 0, transition = 0;
+  // 音区占比跟随自定义音区边界（与曲线着色同一来源）
+  const ranges = getBandRanges();
   for (const f of f0s) {
-    if (f >= 85 && f < 165) male++;
-    else if (f >= 165 && f < 180) transition++;
-    else if (f >= 180 && f <= 255) female++;
+    if (f >= ranges.male[0] && f < ranges.transition[0]) male++;
+    else if (f >= ranges.transition[0] && f < ranges.female[0]) transition++;
+    else if (f >= ranges.female[0] && f <= ranges.female[1]) female++;
   }
 
   const rmsVals = series.rmsDb;
@@ -114,8 +118,11 @@ export function computeInTargetPct(
   return voiced > 0 ? Math.round((inside / voiced) * 100) : null;
 }
 
-/** 将内部缓冲（NaN 缺口）转为可序列化序列（null 缺口），并降采样 */
-function toRecordSeries(
+/**
+ * 将内部缓冲（NaN 缺口）转为可序列化序列（null 缺口），并降采样
+ * 实时录音与音频文件导入共用（导入时 keepEvery = 1）
+ */
+export function toRecordSeries(
   t: number[], f0: number[], db: number[], f1: number[], f2: number[],
   keepEvery: number,
 ): RecordSeries {
@@ -130,8 +137,8 @@ function toRecordSeries(
   return s;
 }
 
-/** 将逐帧语谱行降采样（与分析序列对齐）、截断并编码为 base64 */
-function toRecordSpec(rows: Uint8Array[], keepEvery: number): string | undefined {
+/** 将逐帧语谱行降采样（与分析序列对齐）、截断并编码为 base64（导入管线共用） */
+export function toRecordSpec(rows: Uint8Array[], keepEvery: number): string | undefined {
   if (rows.length === 0) return undefined;
   const kept: Uint8Array[] = [];
   for (let i = 0; i < rows.length && kept.length < SPEC_MAX_ROWS; i += keepEvery) {
@@ -209,6 +216,8 @@ class VoiceRecorder {
   private onAutoStop: (() => void) | null = null;
   private autoStopFired = false;
   private pendingMode: TestMode | undefined;
+  /** 监听模式：只跑分析循环供练习视图读取，不抓音频不落记录 */
+  private monitoring = false;
   /** 静音自动停止（长音模式）：发声开始后持续静音阈值（秒，0 = 不启用） */
   private silenceStopSec = 0;
   /** 最近一次发声帧的时间戳（performance.now，ms） */
@@ -231,6 +240,11 @@ class VoiceRecorder {
   /** 是否正在录音（含权限等待期间） */
   isRecording(): boolean {
     return this.audioContext !== null || this.starting;
+  }
+
+  /** 是否在监听模式（实时元音落点等练习视图，不落记录） */
+  isMonitoring(): boolean {
+    return this.monitoring;
   }
 
   /** 是否仍在等待 getUserMedia（可无痕取消） */
@@ -269,6 +283,58 @@ class VoiceRecorder {
   }
 
   /**
+   * 建立分析链路：getUserMedia → MediaStreamSource → AnalyserNode。
+   * 等待权限期间被取消时释放资源并返回 false；失败向上抛由调用方提示。
+   */
+  private async setupGraph(ctx: AudioContext, deviceId?: string): Promise<boolean> {
+    const constraints: MediaStreamConstraints = {
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+      },
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    // 等待权限期间被取消：释放资源直接返回
+    if (this.cancelStartRequested) {
+      stream.getTracks().forEach((tr) => tr.stop());
+      void ctx.close();
+      return false;
+    }
+
+    this.stream = stream;
+    this.audioContext = ctx;
+    this.source = ctx.createMediaStreamSource(stream);
+    this.analyser = ctx.createAnalyser();
+    this.analyser.fftSize = this.timeBuf.length;
+    this.analyser.smoothingTimeConstant = 0;
+    this.source.connect(this.analyser);
+    this.freqBuf = new Float32Array(this.analyser.frequencyBinCount);
+    return true;
+  }
+
+  /** 释放采集与分析链路 */
+  private releaseGraph(): void {
+    this.source?.disconnect();
+    this.stream?.getTracks().forEach((tr) => tr.stop());
+    this.audioContext?.close();
+    this.audioContext = null;
+    this.analyser = null;
+    this.source = null;
+    this.stream = null;
+    this.freqBuf = null;
+  }
+
+  /** 清空帧缓冲与平滑链，为下一次采集做准备 */
+  private clearBuffers(): void {
+    this.bufT = []; this.bufF0 = []; this.bufDb = []; this.bufF1 = []; this.bufF2 = [];
+    this.bufSpec = [];
+    this.smoothF1 = null; this.smoothF2 = null;
+  }
+
+  /**
    * 启动录音与分析
    * getUserMedia 等待期间 isStarting() 为 true，可通过 cancelStart() 无痕取消；
    * 权限弹窗期间用户切页/停止时，授权返回后直接释放资源，不进入录音循环。
@@ -280,31 +346,7 @@ class VoiceRecorder {
 
     const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     try {
-      const constraints: MediaStreamConstraints = {
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          ...(opts.deviceId ? { deviceId: { exact: opts.deviceId } } : {}),
-        },
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-      // 等待权限期间被取消：释放资源直接返回
-      if (this.cancelStartRequested) {
-        stream.getTracks().forEach((tr) => tr.stop());
-        void ctx.close();
-        return;
-      }
-
-      this.stream = stream;
-      this.audioContext = ctx;
-      this.source = ctx.createMediaStreamSource(stream);
-      this.analyser = ctx.createAnalyser();
-      this.analyser.fftSize = this.timeBuf.length;
-      this.analyser.smoothingTimeConstant = 0;
-      this.source.connect(this.analyser);
-      this.freqBuf = new Float32Array(this.analyser.frequencyBinCount);
+      if (!(await this.setupGraph(ctx, opts.deviceId))) return;
 
       // 音频抓取（可选）：失败不影响分析主链路
       this.mediaRecorder = null;
@@ -313,7 +355,7 @@ class VoiceRecorder {
       if (opts.saveAudio !== false) {
         const mimeType = pickAudioMime();
         try {
-          const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+          const mr = new MediaRecorder(this.stream!, mimeType ? { mimeType } : undefined);
           mr.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) this.mediaChunks.push(e.data);
           };
@@ -329,9 +371,7 @@ class VoiceRecorder {
 
       this.startTime = performance.now();
       this.frameCount = 0;
-      this.bufT = []; this.bufF0 = []; this.bufDb = []; this.bufF1 = []; this.bufF2 = [];
-      this.bufSpec = [];
-      this.smoothF1 = null; this.smoothF2 = null;
+      this.clearBuffers();
       this.lastPitch = null;
       this.maxDurationSec = opts.maxDurationSec ?? 0;
       this.onAutoStop = opts.onAutoStop ?? null;
@@ -350,6 +390,55 @@ class VoiceRecorder {
     } finally {
       this.starting = false;
     }
+  }
+
+  /**
+   * 启动实时监听（不录音、不抓音频、不生成记录）
+   * 供实时元音落点等练习视图使用：说话即见落点，无需保存
+   */
+  async startMonitor(opts: { deviceId?: string } = {}): Promise<void> {
+    if (this.audioContext || this.starting) return;
+    this.starting = true;
+    this.cancelStartRequested = false;
+
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    try {
+      if (!(await this.setupGraph(ctx, opts.deviceId))) return;
+
+      this.startTime = performance.now();
+      this.frameCount = 0;
+      this.clearBuffers();
+      this.lastPitch = null;
+      this.monitoring = true;
+      this.maxDurationSec = 0;
+      this.onAutoStop = null;
+      this.autoStopFired = false;
+      this.pendingMode = undefined;
+      this.silenceStopSec = 0;
+      this.lastVoicedAt = 0;
+      this.voicedSeen = false;
+      this.targetRange = null;
+
+      this.loop();
+    } catch (err) {
+      void ctx.close().catch(() => undefined);
+      throw err;
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  /** 结束监听模式（仅释放资源，不产生任何记录） */
+  stopMonitor(): void {
+    if (!this.monitoring) return;
+    this.monitoring = false;
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    this.releaseGraph();
+    this.clearBuffers();
+    this.lastPitch = null;
   }
 
   /**
@@ -376,21 +465,13 @@ class VoiceRecorder {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
-    this.source?.disconnect();
-    this.stream?.getTracks().forEach((tr) => tr.stop());
-    this.audioContext.close();
-    this.audioContext = null;
-    this.analyser = null;
-    this.source = null;
-    this.stream = null;
-    this.freqBuf = null;
+    this.releaseGraph();
 
     const series = toRecordSeries(this.bufT, this.bufF0, this.bufDb, this.bufF1, this.bufF2, STORAGE_DECIMATE);
     const durationSec = series.t.length > 0 ? series.t[series.t.length - 1] : 0;
     const specData = toRecordSpec(this.bufSpec, STORAGE_DECIMATE);
     // 清空缓冲，为下次录音做准备
-    this.bufT = []; this.bufF0 = []; this.bufDb = []; this.bufF1 = []; this.bufF2 = [];
-    this.bufSpec = [];
+    this.clearBuffers();
     if (durationSec < 1 || series.t.length < 4) {
       this.mediaChunks = [];
       return null;
@@ -513,6 +594,17 @@ class VoiceRecorder {
     this.bufF2.push(this.smoothF2 ?? NaN);
     this.bufSpec.push(row);
     this.frameCount++;
+
+    // 监听模式：缓冲封顶（保留最新约 2 分钟），长时间练习不无限增长
+    if (this.monitoring && this.bufT.length > MONITOR_BUFFER_FRAMES) {
+      const drop = this.bufT.length - MONITOR_BUFFER_FRAMES;
+      this.bufT.splice(0, drop);
+      this.bufF0.splice(0, drop);
+      this.bufDb.splice(0, drop);
+      this.bufF1.splice(0, drop);
+      this.bufF2.splice(0, drop);
+      this.bufSpec.splice(0, drop);
+    }
   };
 }
 

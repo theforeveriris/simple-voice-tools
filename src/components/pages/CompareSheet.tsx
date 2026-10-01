@@ -4,10 +4,12 @@
  * 音高曲线按相对时间对齐叠加（A 主色 / B 次色），便于观察训练前后变化。
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, TrendingUp } from 'lucide-react';
-import { BAND_COLORS, BAND_RANGES, bandOf } from '@/constants';
+import { X, TrendingUp, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { BAND_COLORS, getBandRanges, bandOf } from '@/constants';
+import { exportShareCompareImage } from '@/lib/export/shareCard';
 import { chartPalette, collectVowelPoints, drawVowelSpaceFrame, drawVowelPoints, drawVowelCentroid, drawVowelRefs, vowelXY } from '@/components/charts/chartPainters';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -53,9 +55,10 @@ function drawOverlay(
   const xOf = (t: number, dur: number) => (t / Math.max(dur, 0.01)) * w;
   const yOf = (f: number) => h - padB - ((Math.max(F_MIN, Math.min(F_MAX, f)) - F_MIN) / (F_MAX - F_MIN)) * (h - padB);
 
-  // 音区背景
+  // 音区背景（边界跟随自定义音区边界）
+  const ranges = getBandRanges();
   for (const band of ['low', 'male', 'transition', 'female', 'high'] as const) {
-    const [f0, f1] = BAND_RANGES[band];
+    const [f0, f1] = ranges[band];
     const yTop = yOf(f1);
     const yBot = yOf(f0);
     ctx.fillStyle = BAND_COLORS[band];
@@ -155,6 +158,20 @@ export function CompareSheet({
   const [a, b] = pair;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const showGrid = useStore((s) => s.settings.showGrid);
+  const [shareBusy, setShareBusy] = useState(false);
+
+  const onShare = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
+    try {
+      const outcome = await exportShareCompareImage(a, b);
+      if (outcome === 'downloaded') toast.success(t('toast.shareDownloaded'));
+    } catch (err) {
+      if ((err as Error)?.name !== 'AbortError') toast.error(t('toast.shareFail'));
+    } finally {
+      setShareBusy(false);
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -223,13 +240,24 @@ export function CompareSheet({
             <TrendingUp size={19} className="text-accent" />
             {t('compare.title')}
           </h1>
-          <button
-            onClick={onClose}
-            className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-ink"
-            aria-label={t('compare.closeAria')}
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onShare}
+              disabled={shareBusy}
+              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent disabled:opacity-50"
+              aria-label={t('compare.shareAria')}
+              title={t('compare.shareTitle')}
+            >
+              <Share2 size={17} />
+            </button>
+            <button
+              onClick={onClose}
+              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-ink"
+              aria-label={t('compare.closeAria')}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* A / B 标识 */}
