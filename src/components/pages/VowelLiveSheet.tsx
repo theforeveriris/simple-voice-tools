@@ -21,7 +21,7 @@ const READOUT_INTERVAL_MS = 120;
 export function VowelLiveSheet({ onClose }: { onClose: () => void }) {
   useI18n();
   const [readout, setReadout] = useState<{ f0: number; f1: number; f2: number } | null>(null);
-  const { canvasRef, sizeRef, dprRef } = useLiveCanvas(true);
+  const { canvasRef, attachCanvas, sizeRef, dprRef } = useLiveCanvas();
 
   // 绘制 + 读数循环
   useEffect(() => {
@@ -82,7 +82,7 @@ export function VowelLiveSheet({ onClose }: { onClose: () => void }) {
     >
       {/* 元音空间画布 */}
       <div className="mt-4 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
-        <canvas ref={canvasRef} className="block h-[46vh] min-h-[280px] w-full" aria-label={t('vowelLive.title')} />
+        <canvas ref={attachCanvas} className="block h-[46vh] min-h-[280px] w-full" aria-label={t('vowelLive.title')} />
         <p className="mt-2 text-center text-[10px] leading-relaxed text-ink-2">{t('vowelLive.hint')}</p>
       </div>
 

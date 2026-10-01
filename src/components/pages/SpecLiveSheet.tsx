@@ -33,7 +33,7 @@ export function SpecLiveSheet({ onClose }: { onClose: () => void }) {
   const showGrid = useStore((s) => s.settings.showGrid);
   const [overlay, setOverlay] = useState(true);
 
-  const { canvasRef, sizeRef, dprRef } = useLiveCanvas(true);
+  const { canvasRef, attachCanvas, sizeRef, dprRef } = useLiveCanvas();
   // 可复用缓冲：窗口内行的扁平量化位图 + 行时间（避免每帧分配）
   const flatRef = useRef(new Uint8Array(MAX_WIN_ROWS * SPEC_BANDS));
   const timesRef = useRef<number[]>([]);
@@ -149,7 +149,7 @@ export function SpecLiveSheet({ onClose }: { onClose: () => void }) {
     >
       <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
         <canvas
-          ref={canvasRef}
+          ref={attachCanvas}
           className="block h-[62vh] min-h-[380px] w-full"
           aria-label={t('specLive.title')}
         />

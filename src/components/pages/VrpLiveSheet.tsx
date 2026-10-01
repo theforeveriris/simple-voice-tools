@@ -27,7 +27,7 @@ export function VrpLiveSheet({ onClose }: { onClose: () => void }) {
   useI18n();
   const showGrid = useStore((s) => s.settings.showGrid);
   const [readout, setReadout] = useState<Readout | null>(null);
-  const { canvasRef, sizeRef, dprRef } = useLiveCanvas(true);
+  const { canvasRef, attachCanvas, sizeRef, dprRef } = useLiveCanvas();
 
   // 绘制 + 读数循环：整个监听期累积（0 → 当前）
   useEffect(() => {
@@ -75,7 +75,7 @@ export function VrpLiveSheet({ onClose }: { onClose: () => void }) {
     >
       <div className="mt-4 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
         <canvas
-          ref={canvasRef}
+          ref={attachCanvas}
           className="block h-[58vh] min-h-[340px] w-full"
           aria-label={t('vrpLive.title')}
         />

@@ -5,7 +5,7 @@
  * 音高检测算法跟随 实验性功能 → 实时音高算法 设置。
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { recorder } from '@/lib/audio/recorder';
 import { paintChart } from '@/components/charts/chartPainters';
 import { freqToNote, getLiveWindowSec } from '@/constants';
@@ -29,10 +29,14 @@ export function F0LiveSheet({ onClose }: { onClose: () => void }) {
   const targetEnabled = useStore((s) => s.settings.targetEnabled);
   const targetF0Min = useStore((s) => s.settings.targetF0Min);
   const targetF0Max = useStore((s) => s.settings.targetF0Max);
-  const target: [number, number] | null = targetEnabled ? [targetF0Min, targetF0Max] : null;
+  // 稳定引用：避免每次渲染新数组导致绘制 effect 反复重建
+  const target = useMemo<[number, number] | null>(
+    () => (targetEnabled ? [targetF0Min, targetF0Max] : null),
+    [targetEnabled, targetF0Min, targetF0Max],
+  );
 
   const [readout, setReadout] = useState<Readout | null>(null);
-  const { canvasRef, sizeRef, dprRef } = useLiveCanvas(true);
+  const { canvasRef, attachCanvas, sizeRef, dprRef } = useLiveCanvas();
 
   // 绘制 + 读数循环
   useEffect(() => {
@@ -74,7 +78,7 @@ export function F0LiveSheet({ onClose }: { onClose: () => void }) {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [canvasRef, sizeRef, dprRef, showGrid, targetF0Min, targetF0Max, target]);
+  }, [canvasRef, sizeRef, dprRef, showGrid, target]);
 
   return (
     <LiveSheetFrame
@@ -85,7 +89,7 @@ export function F0LiveSheet({ onClose }: { onClose: () => void }) {
     >
       <div className="mt-4 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
         <canvas
-          ref={canvasRef}
+          ref={attachCanvas}
           className="block h-[62vh] min-h-[380px] w-full"
           aria-label={t('f0Live.title')}
         />
