@@ -407,4 +407,28 @@ export const en = {
   'toast.autoBackupDone': 'Auto backup saved to your local folder',
   'toast.autoBackupFail': 'Local auto backup failed',
   'toast.autoBackupNeedAuth': 'Backup folder permission has expired — re-authorize it under Experimental',
+
+  /* ---------- Backup format validation / GitHub cloud backup errors ---------- */
+  'backup.errJsonParse': 'Backup file is not valid JSON',
+  'backup.errBadPayload': 'Malformed backup: the records array is missing',
+  'backup.errVersionTooNew': 'Backup format version is too new (v{version}) — please update the app first',
+  'backup.errNoJson': 'records.json is missing from the backup',
+  'gh.errDeviceCode': 'Failed to request a device code (HTTP {status})',
+  'gh.errToken': 'Failed to obtain a token',
+  'gh.errCancelled': 'Cancelled',
+  'gh.errTimeout': 'Authorization timed out — please start over',
+  'gh.errRefresh': 'Failed to refresh the GitHub token',
+  'gh.errNotConnected': 'GitHub is not connected yet',
+  'gh.errExpired': 'GitHub authorization has expired — please reconnect',
+  'gh.errApi': 'GitHub API error (HTTP {status})',
+  'gh.errNotPrivate': 'Repository {repo} is not private — for privacy, set it to Private on GitHub first',
+  'gh.errCreateRepo': 'Failed to create the repository automatically ({detail}). Please create a private repository named {repo} on GitHub manually and install your GitHub App on it.',
+  'gh.errNoRecords': 'No local records to back up',
+  'gh.errNoBackup': 'No backup found in the cloud repository {repo} yet',
+
+  /* ---------- History page a11y ---------- */
+  'history.viewAria': '{name} view',
+
+  /* ---------- PWA install ---------- */
+  'toast.installSuccess': 'Installed — open it from your desktop or home screen',
 } as const;

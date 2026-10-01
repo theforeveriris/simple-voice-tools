@@ -95,6 +95,12 @@ npm run dev
 npm run build
 ```
 
+### 测试
+
+```bash
+npm test        # vitest 单测（DSP/导出/备份/i18n 完整性，CI 同步执行）
+```
+
 > 构建产物输出到 `docs/` 目录（GitHub Pages 约定）。注意 `docs/` 构建时会被清空，
 > 源文档位于 `documentation/` 目录。
 
@@ -134,3 +140,7 @@ npm run preview
 ## 浏览器兼容性
 
 建议使用最新版本的 Chrome、Edge、Firefox 或 Safari。
+
+## 许可证
+
+[MIT](LICENSE)

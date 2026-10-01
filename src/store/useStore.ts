@@ -38,7 +38,15 @@ export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       currentTab: 'test',
-      setTab: (tab) => set({ currentTab: tab }),
+      setTab: (tab) => {
+        set({ currentTab: tab });
+        // 同步 hash（pushState 不触发 hashchange，App 内的 hashchange 监听
+        // 只负责浏览器返回/前进键）：页签可深链接，返回键在页签间回退而非退出应用
+        const want = `#/${tab}`;
+        if (typeof window !== 'undefined' && window.location.hash !== want) {
+          window.history.pushState(null, '', want);
+        }
+      },
 
       isRecording: false,
 
@@ -98,7 +106,7 @@ export const useStore = create<AppState>()(
         void maybeAutoBackup('record');
         set({ currentAnalysis: record });
         if (get().settings.autoEnterAnalysis) {
-          set({ currentTab: 'analysis' });
+          get().setTab('analysis');
         }
         toast.success(t('toast.recordDone'));
       },

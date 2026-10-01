@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { AnalysisRecord } from '@/types';
 import { MAX_HISTORY } from '@/constants';
+import { t } from '@/i18n';
 import {
   idbGetAllRecords, idbPutRecord, idbPutRecords, idbDeleteRecord, idbClearRecords,
   idbGetAudio, idbPutAudio, idbDeleteAudio, idbClearAudio,
@@ -22,7 +23,7 @@ let storageWarned = false;
 function warnStorage() {
   if (storageWarned) return;
   storageWarned = true;
-  toast.warning('浏览器本地存储不可用，本次数据仅保存在内存中');
+  toast.warning(t('toast.storageUnavailable'));
 }
 
 /** 将内存记录写库（尽力而为，失败不阻断 UI） */

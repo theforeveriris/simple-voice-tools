@@ -407,4 +407,28 @@ export const zhTW = {
   'toast.autoBackupDone': '已自動備份到本機資料夾',
   'toast.autoBackupFail': '本機自動備份失敗',
   'toast.autoBackupNeedAuth': '備份資料夾授權已過期，請到 實驗性功能 中重新授權',
+
+  /* ---------- 備份格式校驗 / GitHub 雲端備份錯誤 ---------- */
+  'backup.errJsonParse': '備份檔案不是有效的 JSON',
+  'backup.errBadPayload': '備份內容格式不正確：缺少 records 記錄陣列',
+  'backup.errVersionTooNew': '備份格式版本過新（v{version}），請先將應用更新到最新版本',
+  'backup.errNoJson': '備份中缺少 records.json',
+  'gh.errDeviceCode': '請求裝置碼失敗（HTTP {status}）',
+  'gh.errToken': '取得權杖失敗',
+  'gh.errCancelled': '已取消',
+  'gh.errTimeout': '授權逾時，請重新開始',
+  'gh.errRefresh': 'GitHub 權杖續期失敗',
+  'gh.errNotConnected': '尚未連線 GitHub',
+  'gh.errExpired': 'GitHub 授權已過期，請重新連線',
+  'gh.errApi': 'GitHub API 錯誤（HTTP {status}）',
+  'gh.errNotPrivate': '儲存庫 {repo} 不是私有庫，為保護隱私請先在 GitHub 上將其設為 Private',
+  'gh.errCreateRepo': '自動建立儲存庫失敗（{detail}）。請在 GitHub 上手動建立名為 {repo} 的私有庫，並將你的 GitHub App 安裝到該儲存庫。',
+  'gh.errNoRecords': '本機沒有記錄可備份',
+  'gh.errNoBackup': '雲端儲存庫 {repo} 中還沒有備份',
+
+  /* ---------- 歷史頁無障礙 ---------- */
+  'history.viewAria': '{name}檢視',
+
+  /* ---------- PWA 安裝 ---------- */
+  'toast.installSuccess': '安裝成功，可從桌面或主畫面開啟',
 } as const;

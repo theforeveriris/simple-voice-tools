@@ -60,4 +60,6 @@ function Button({
   )
 }
 
+// variants 常量随组件导出为 shadcn 惯例，豁免 fast-refresh 规则
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants }

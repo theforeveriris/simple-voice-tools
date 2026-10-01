@@ -8,14 +8,15 @@
 
 import { detectPitchYin, rmsDb } from './pitch';
 import { extractFormants } from './formants';
-import { computeVoiceQuality } from './voiceQuality';
-import { computeCpps } from './cpp';
+import { runVqMetrics } from './analysisClient';
 import { spectrumRowToBands, base64FromBytes } from './spectrogram';
 import { SPEC_BANDS, SPEC_MAX_ROWS, getBandRanges } from '@/constants';
 import type { AnalysisRecord, RecordSeries, TestMode, VoiceStats } from '@/types';
 
 /** 序列降采样倍率：60fps 采集 → 约 30Hz 存储 */
 const STORAGE_DECIMATE = 2;
+/** 分析目标帧率（Hz）：与显示刷新率解耦的帧间隔基准 */
+const ANALYSIS_FPS = 60;
 /** 共振峰计算节流：每 N 帧计算一次（LPC 开销较大） */
 const FORMANT_EVERY = 2;
 /** 发声帧能量门限（dB）：响度统计只计该值以上的帧，与 voiceQuality/CPPS 门限一致 */
@@ -203,6 +204,8 @@ class VoiceRecorder {
 
   private startTime = 0;
   private frameCount = 0;
+  /** 上一次处理帧的时间戳（performance.now，ms）：帧率与显示刷新率解耦用 */
+  private lastFrameAt = 0;
   private bufT: number[] = [];
   private bufF0: number[] = [];
   private bufDb: number[] = [];
@@ -371,6 +374,7 @@ class VoiceRecorder {
 
       this.startTime = performance.now();
       this.frameCount = 0;
+      this.lastFrameAt = 0;
       this.clearBuffers();
       this.lastPitch = null;
       this.maxDurationSec = opts.maxDurationSec ?? 0;
@@ -407,6 +411,7 @@ class VoiceRecorder {
 
       this.startTime = performance.now();
       this.frameCount = 0;
+      this.lastFrameAt = 0;
       this.clearBuffers();
       this.lastPitch = null;
       this.monitoring = true;
@@ -498,7 +503,7 @@ class VoiceRecorder {
   }
 
   /**
-   * 录音收尾：等待音频数据冲刷，解码 PCM 计算嗓音质量指标。
+   * 录音收尾：等待音频数据冲刷，解码 PCM，嗓音质量指标派发到 Worker 计算。
    * 解码失败时保留曲线统计继续落库，仅嗓音质量为空。
    */
   async finishRecord(record: AnalysisRecord): Promise<{ record: AnalysisRecord; audio: Blob | null }> {
@@ -519,10 +524,9 @@ class VoiceRecorder {
       const audioBuffer = await ctx.decodeAudioData(buf);
       void ctx.close();
       const pcm = audioBuffer.getChannelData(0);
-      const vq = computeVoiceQuality(pcm, audioBuffer.sampleRate);
-      const cppsDb = computeCpps(pcm, audioBuffer.sampleRate);
+      const metrics = await runVqMetrics(pcm, audioBuffer.sampleRate);
       return {
-        record: { ...record, stats: { ...record.stats, ...vq, cppsDb } },
+        record: { ...record, stats: { ...record.stats, ...metrics } },
         audio: blob,
       };
     } catch (err) {
@@ -531,12 +535,23 @@ class VoiceRecorder {
     }
   }
 
-  /**
-     * 采集与分析主循环（requestAnimationFrame 驱动，约 60fps）
+    /**
+     * 采集与分析主循环（requestAnimationFrame 驱动 + 固定帧间隔节流）
+     *
+     * 帧率与显示刷新率解耦：rAF 回调按 ANALYSIS_FPS 节流。采用「累进节流」——
+     * 通过后 lastFrameAt 前进一个帧间隔而非直接取当前时间：
+     * - 60Hz 屏：rAF 间隔 ≈ 帧间隔，几乎每帧都处理（偶发抖动不丢帧）；
+     * - 120/144Hz 屏：隔帧处理，计算量与缓冲内存不再随刷新率成倍增长；
+     * - clamp 保证切后台等长时间暂停后不追帧。
      */
   private loop = (): void => {
     if (!this.analyser || !this.audioContext || !this.freqBuf) return;
     this.rafId = requestAnimationFrame(this.loop);
+
+    const at = performance.now();
+    const frameIntervalMs = 1000 / ANALYSIS_FPS;
+    if (at - this.lastFrameAt < frameIntervalMs) return;
+    this.lastFrameAt = Math.max(this.lastFrameAt + frameIntervalMs, at - frameIntervalMs);
 
     // 最长时长自动停止
     if (this.maxDurationSec > 0 && !this.autoStopFired) {

@@ -20,6 +20,23 @@ import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/im
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
+import type { ViewType } from '@/types';
+
+const TABS: ViewType[] = ['test', 'analysis', 'history', 'settings'];
+
+/** 由 location.hash 解析页签（#/history 形式），未知或缺失时回退测试页 */
+function tabFromHash(): ViewType {
+  const h = window.location.hash.replace(/^#\/?/, '');
+  return (TABS as string[]).includes(h) ? (h as ViewType) : 'test';
+}
+
+// 首帧前同步一次：深链接（#/history 等）直接落到对应页签，不闪测试页
+{
+  const initial = tabFromHash();
+  if (useStore.getState().currentTab !== initial) {
+    useStore.setState({ currentTab: initial });
+  }
+}
 
 function App() {
   const currentTab = useStore((s) => s.currentTab);
@@ -31,6 +48,18 @@ function App() {
 
   // 语言切换（同步 <html lang> 与词典）
   useI18n();
+
+  // 浏览器返回/前进键在页签间导航（页签切换的写入方向在 useStore.setTab 里同步 hash）
+  useEffect(() => {
+    const onHashChange = () => {
+      const tab = tabFromHash();
+      if (useStore.getState().currentTab !== tab) {
+        useStore.getState().setTab(tab);
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   const isDark = theme === 'dark'
     || (theme === 'system'

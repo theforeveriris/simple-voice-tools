@@ -19,7 +19,9 @@
 import { strToU8 } from 'fflate';
 import { idbGetKV, idbPutKV, idbDeleteKV, idbPutAudio } from '@/lib/storage/idb';
 import { useHistoryStore } from '@/store/useHistoryStore';
-import { extFor } from '@/lib/export/backup';
+import { extFor, buildRecordsPayload, parseRecordsPayload } from '@/lib/export/backup';
+import { audioMimeOf } from '@/lib/file';
+import { t } from '@/i18n';
 
 const DEVICE_CODE_URL = 'https://github.com/login/device/code';
 const TOKEN_URL = 'https://github.com/login/oauth/access_token';
@@ -75,7 +77,7 @@ export async function requestDeviceCode(clientId: string): Promise<DeviceCodeInf
   });
   const data = (await res.json().catch(() => ({}))) as Record<string, string>;
   if (!res.ok || data.error) {
-    throw new Error(data.error_description ?? data.error ?? `请求设备码失败（HTTP ${res.status}）`);
+    throw new Error(data.error_description ?? data.error ?? t('gh.errDeviceCode', { status: res.status }));
   }
   return {
     deviceCode: data.device_code,
@@ -117,7 +119,7 @@ async function pollOnce(clientId: string, deviceCode: string): Promise<PollOutco
     return { status: 'pending', slowDown: data.error === 'slow_down' };
   }
   // expired_token / access_denied / unsupported_grant_type 等不可恢复错误
-  return { status: 'fatal', message: data.error_description ?? data.error ?? '获取令牌失败' };
+  return { status: 'fatal', message: data.error_description ?? data.error ?? t('gh.errToken') };
 }
 
 /**
@@ -132,9 +134,9 @@ export async function waitForToken(
   let intervalMs = Math.max(2, info.intervalSec) * 1000;
   const deadline = Date.now() + info.expiresSec * 1000;
   while (Date.now() < deadline) {
-    if (isCancelled()) throw new Error('已取消');
+    if (isCancelled()) throw new Error(t('gh.errCancelled'));
     await sleep(intervalMs); // 遵守服务端间隔，快于要求会触发持续 slow_down
-    if (isCancelled()) throw new Error('已取消');
+    if (isCancelled()) throw new Error(t('gh.errCancelled'));
     let outcome: PollOutcome;
     try {
       outcome = await pollOnce(clientId, info.deviceCode);
@@ -145,7 +147,7 @@ export async function waitForToken(
     if (outcome.status === 'fatal') throw new Error(outcome.message);
     if (outcome.slowDown) intervalMs += 5000; // RFC 8628：slow_down 需拉长间隔
   }
-  throw new Error('授权超时，请重新开始');
+  throw new Error(t('gh.errTimeout'));
 }
 
 /** GitHub App 用户令牌续期 */
@@ -156,7 +158,7 @@ async function refreshAccessToken(clientId: string, refreshToken: string): Promi
     body: JSON.stringify({ client_id: clientId, grant_type: 'refresh_token', refresh_token: refreshToken }),
   });
   const data = (await res.json().catch(() => ({}))) as Record<string, string>;
-  if (!data.access_token) throw new Error(data.error_description ?? 'GitHub 令牌续期失败');
+  if (!data.access_token) throw new Error(data.error_description ?? t('gh.errRefresh'));
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || refreshToken,
@@ -196,10 +198,10 @@ export async function disconnectGithub(): Promise<void> {
 /** 取可用令牌：过期前自动用 refresh_token 续期 */
 export async function getValidToken(clientId: string): Promise<string> {
   const tok = await idbGetKV<GhToken>(KV_TOKEN);
-  if (!tok) throw new Error('尚未连接 GitHub');
+  if (!tok) throw new Error(t('gh.errNotConnected'));
   const marginMs = 60_000;
   if (!tok.expiresAt || tok.expiresAt - marginMs > Date.now()) return tok.accessToken;
-  if (!tok.refreshToken) throw new Error('GitHub 授权已过期，请重新连接');
+  if (!tok.refreshToken) throw new Error(t('gh.errExpired'));
   const fresh = await refreshAccessToken(clientId, tok.refreshToken);
   await idbPutKV(KV_TOKEN, fresh);
   return fresh.accessToken;
@@ -219,7 +221,7 @@ async function gh<T>(path: string, token: string, init?: RequestInit): Promise<T
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { message?: string };
-    throw new GhError(res.status, body.message ?? `GitHub API 错误（HTTP ${res.status}）`);
+    throw new GhError(res.status, body.message ?? t('gh.errApi', { status: res.status }));
   }
   return (await res.json()) as T;
 }
@@ -232,7 +234,7 @@ async function ghRaw(path: string, token: string): Promise<ArrayBuffer> {
       'X-GitHub-Api-Version': '2022-11-28',
     },
   });
-  if (!res.ok) throw new GhError(res.status, `GitHub API 错误（HTTP ${res.status}）`);
+  if (!res.ok) throw new GhError(res.status, t('gh.errApi', { status: res.status }));
   return res.arrayBuffer();
 }
 
@@ -269,7 +271,7 @@ async function ensureRepo(token: string, repoName: string): Promise<string> {
   const { login } = await gh<{ login: string }>('/user', token);
   try {
     const repo = await gh<{ private: boolean }>(`/repos/${encodeURIComponent(login)}/${encodeURIComponent(repoName)}`, token);
-    if (!repo.private) throw new Error(`仓库 ${login}/${repoName} 不是私有库，为保护隐私请先在 GitHub 上将其设为 Private`);
+    if (!repo.private) throw new Error(t('gh.errNotPrivate', { repo: `${login}/${repoName}` }));
     return login;
   } catch (err) {
     if (!(err instanceof GhError) || err.status !== 404) throw err;
@@ -281,8 +283,10 @@ async function ensureRepo(token: string, repoName: string): Promise<string> {
     });
   } catch (err) {
     throw new Error(
-      `自动创建仓库失败（${err instanceof Error ? err.message : err}）。` +
-      `请在 GitHub 上手动创建名为 ${repoName} 的私有库，并将你的 GitHub App 安装到该仓库。`,
+      t('gh.errCreateRepo', {
+        detail: err instanceof Error ? err.message : String(err),
+        repo: repoName,
+      }),
     );
   }
   return login;
@@ -336,11 +340,11 @@ export async function pushBackup(
   const store = useHistoryStore.getState();
   // 全量记录：界面列表有截断，备份必须读 IndexedDB 全量，否则会静默漏掉更早的记录
   const records = await store.getAllRecords();
-  if (records.length === 0) throw new Error('本地没有记录可备份');
+  if (records.length === 0) throw new Error(t('gh.errNoRecords'));
 
   onProgress?.(0, 1, '读取录音音频');
   const entries: { path: string; data: Uint8Array }[] = [];
-  const payload = { app: 'simple-voice-tools', version: 2, exportedAt: new Date().toISOString(), records };
+  const payload = buildRecordsPayload(records);
   entries.push({ path: BACKUP_JSON_PATH, data: strToU8(JSON.stringify(payload)) });
   for (const rec of records) {
     const blob = await store.getAudio(rec.id);
@@ -396,14 +400,13 @@ export async function pullBackup(
   const owner = login;
 
   const remoteShas = await fetchRemoteShas(token, owner, repoName);
-  if (!remoteShas.has(BACKUP_JSON_PATH)) throw new Error(`云端 ${repoName} 中还没有备份`);
+  if (!remoteShas.has(BACKUP_JSON_PATH)) throw new Error(t('gh.errNoBackup', { repo: repoName }));
 
   onProgress?.(0, 1, '下载记录清单');
   const jsonBytes = await ghRaw(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/contents/${encodePath(BACKUP_JSON_PATH)}`, token);
-  const parsed = JSON.parse(new TextDecoder().decode(jsonBytes)) as { records?: unknown };
-  const incoming = Array.isArray(parsed) ? parsed : parsed.records;
-  if (!Array.isArray(incoming)) throw new Error('云端 records.json 格式不正确');
-  const added = useHistoryStore.getState().importRecords(incoming as never);
+  // 与 ZIP 恢复同一套格式/版本校验（v1/v2 可读，更新版本拒绝）
+  const { records: incoming } = parseRecordsPayload(new TextDecoder().decode(jsonBytes));
+  const added = useHistoryStore.getState().importRecords(incoming);
 
   // 云端音频中，本地缺失的部分
   const store = useHistoryStore.getState();
@@ -422,18 +425,10 @@ export async function pullBackup(
   let done = 0;
   await runPool(audioPaths, 4, async ({ path, id }) => {
     const buf = await ghRaw(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/contents/${encodePath(path)}`, token);
-    await idbPutAudio(id, new Blob([buf], { type: extMimeOf(path) }));
+    await idbPutAudio(id, new Blob([buf], { type: audioMimeOf(path) }));
     done++;
     onProgress?.(done, audioPaths.length, '下载音频');
   });
 
   return { records: added, audio: audioPaths.length };
-}
-
-function extMimeOf(name: string): string {
-  if (name.endsWith('.webm')) return 'audio/webm';
-  if (name.endsWith('.m4a')) return 'audio/mp4';
-  if (name.endsWith('.ogg')) return 'audio/ogg';
-  if (name.endsWith('.wav')) return 'audio/wav';
-  return 'application/octet-stream';
 }

@@ -388,7 +388,7 @@ export function HistoryPage() {
                 exitSelection();
               }}
               className="relative flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium"
-              aria-label={`${tab.label}视图`}
+              aria-label={t('history.viewAria', { name: tab.label })}
             >
               {active && (
                 <motion.span layoutId="history-view-pill" className="absolute inset-0 rounded-full bg-accent-soft" />

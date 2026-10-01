@@ -408,4 +408,28 @@ export const ja = {
   'toast.autoBackupDone': 'ローカルフォルダに自動バックアップしました',
   'toast.autoBackupFail': 'ローカル自動バックアップに失敗しました',
   'toast.autoBackupNeedAuth': 'バックアップフォルダの権限が期限切れです。実験的機能で再承認してください',
+
+  /* ---------- バックアップ形式検証 / GitHub クラウドバックアップエラー ---------- */
+  'backup.errJsonParse': 'バックアップファイルは有効な JSON ではありません',
+  'backup.errBadPayload': 'バックアップの内容が不正です：records 配列がありません',
+  'backup.errVersionTooNew': 'バックアップの形式バージョンが新しすぎます（v{version}）。先にアプリを最新版に更新してください',
+  'backup.errNoJson': 'バックアップに records.json がありません',
+  'gh.errDeviceCode': 'デバイスコードの要求に失敗しました（HTTP {status}）',
+  'gh.errToken': 'トークンの取得に失敗しました',
+  'gh.errCancelled': 'キャンセルされました',
+  'gh.errTimeout': '認証がタイムアウトしました。もう一度やり直してください',
+  'gh.errRefresh': 'GitHub トークンの更新に失敗しました',
+  'gh.errNotConnected': 'まだ GitHub に接続していません',
+  'gh.errExpired': 'GitHub の認証の有効期限が切れています。再接続してください',
+  'gh.errApi': 'GitHub API エラー（HTTP {status}）',
+  'gh.errNotPrivate': 'リポジトリ {repo} は非公開ではありません。プライバシー保護のため、GitHub で Private に設定してください',
+  'gh.errCreateRepo': 'リポジトリの自動作成に失敗しました（{detail}）。GitHub で {repo} という非公開リポジトリを手動で作成し、GitHub App をそのリポジトリにインストールしてください。',
+  'gh.errNoRecords': 'バックアップするローカル記録がありません',
+  'gh.errNoBackup': 'クラウドリポジトリ {repo} にはまだバックアップがありません',
+
+  /* ---------- 履歴ページのアクセシビリティ ---------- */
+  'history.viewAria': '{name}ビュー',
+
+  /* ---------- PWA インストール ---------- */
+  'toast.installSuccess': 'インストールしました。デスクトップまたはホーム画面から開けます',
 } as const;

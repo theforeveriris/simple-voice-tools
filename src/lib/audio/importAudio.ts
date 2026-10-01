@@ -5,35 +5,24 @@
  *
  * 与实时管线的对应关系：
  *   解码任意容器（decodeAudioData）→ 统一重采样到 32kHz 单声道
- *   → 逐帧（30fps、64ms 窗）rmsDb / YIN / 隔帧共振峰（同款指数平滑）
- *   → 逐帧 Blackman 加窗 FFT → 语谱频带量化
- *   → computeStats / 靶标达成率 / Jitter / Shimmer / HNR / CPPS
+ *   → 逐帧分析派发到 Worker（analysisPipeline：YIN / 隔帧共振峰 / Blackman FFT 语谱
+ *     / Jitter / Shimmer / HNR / CPPS；Worker 不可用时主线程回退）
+ *   → computeStats / 靶标达成率 → 落库结构
  *
  * 32k 折中点：fs/4 = 8k 抽取率下 F2 覆盖到 3.4k，且 YIN 开销约为 48k 的 1/3，
  * 长音频也能在秒级出结果。分析上限 5 分钟（与实时最长档一致），超出截断。
  */
 
 import { computeStats, computeInTargetPct, toRecordSeries, toRecordSpec } from './recorder';
-import { detectPitchYin, rmsDb } from './pitch';
-import { extractFormants } from './formants';
-import { computeVoiceQuality } from './voiceQuality';
-import { computeCpps, fft } from './cpp';
-import { spectrumRowToBands } from './spectrogram';
+import { runFrameAnalysis } from './analysisClient';
+import { PIPELINE_HZ, FRAME_HZ, FRAME_SAMPLES } from './analysisPipeline';
 import { SPEC_BANDS } from '@/constants';
 import type { AnalysisRecord } from '@/types';
 
-/** 分析管线统一采样率（Hz）：兼顾 F2 覆盖与 YIN 计算量 */
-const PIPELINE_HZ = 32000;
-/** 分析帧率（帧/秒）：与实时录音存储口径一致 */
-const FRAME_HZ = 30;
-/** 分析窗长（样本）：64ms @32k，2 的幂便于 FFT */
-const FRAME_SAMPLES = 2048;
 /** 单次导入的最长分析时长（秒）：超出部分截断 */
 export const IMPORT_MAX_SEC = 300;
 /** 时长预检上限（秒）：超过直接拒绝，避免超长文件解码爆内存 */
 const PROBE_MAX_SEC = 600;
-/** 进度回调节流（帧）：约每 100ms 让出主线程一次 */
-const YIELD_EVERY_FRAMES = 150;
 
 /** 导入失败原因（调用方据此映射提示文案） */
 export type ImportFailReason = 'decode' | 'probe' | 'tooShort' | 'tooLong';
@@ -115,20 +104,6 @@ async function resample(pcm: Float32Array<ArrayBuffer>, fromHz: number): Promise
   return (await off.startRendering()).getChannelData(0);
 }
 
-/** Blackman 窗（与 AnalyserNode 默认窗一致）+ 相干增益 */
-function blackmanWindow(n: number): { win: Float32Array; cg: number } {
-  const win = new Float32Array(n);
-  let sum = 0;
-  for (let i = 0; i < n; i++) {
-    win[i] = 0.42 - 0.5 * Math.cos((2 * Math.PI * i) / n) + 0.08 * Math.cos((4 * Math.PI * i) / n);
-    sum += win[i];
-  }
-  return { win, cg: sum / n };
-}
-
-/** 让出主线程（长音频逐帧分析时保持 UI 可响应） */
-const yieldToUi = () => new Promise<void>((r) => setTimeout(r, 0));
-
 /**
  * 分析一个外部音频文件，产出与录音完全同构的分析记录
  * @throws AudioImportError（decode / probe / tooShort / tooLong）
@@ -165,70 +140,15 @@ export async function analyzeAudioFile(
     pcm = await resample(pcm, decoded.sampleRate);
   }
 
-  // 4. 逐帧分析（与实时管线同款节流与平滑）
+  // 4. 逐帧分析：派发到 Worker（或主线程回退），进度经回调上抛
   const hop = Math.round(PIPELINE_HZ / FRAME_HZ);
   const frames = Math.max(0, Math.floor((pcm.length - FRAME_SAMPLES) / hop) + 1);
   if (frames < 4) throw new AudioImportError('tooShort');
 
-  const bufT: number[] = [];
-  const bufF0: number[] = [];
-  const bufDb: number[] = [];
-  const bufF1: number[] = [];
-  const bufF2: number[] = [];
-  const bufSpec: Uint8Array[] = [];
-  const { win: blackman, cg } = blackmanWindow(FRAME_SAMPLES);
-  const fftRe = new Float32Array(FRAME_SAMPLES);
-  const fftIm = new Float32Array(FRAME_SAMPLES);
-  const specDb = new Float32Array(FRAME_SAMPLES / 2);
-  const norm = 2 / (FRAME_SAMPLES * cg);
-  const binHz = PIPELINE_HZ / FRAME_SAMPLES;
-  let smoothF1: number | null = null;
-  let smoothF2: number | null = null;
-
-  for (let k = 0; k < frames; k++) {
-    const start = k * hop;
-    const frame = pcm.subarray(start, start + FRAME_SAMPLES);
-    const now = (start + FRAME_SAMPLES) / PIPELINE_HZ;
-
-    const db = rmsDb(frame);
-    const pitch = db > -55 ? detectPitchYin(frame, PIPELINE_HZ) : null;
-
-    // 共振峰每 2 帧一次（LPC 开销较大），指数平滑系数与实时管线一致
-    if (k % 2 === 0 && pitch) {
-      const raw = extractFormants(frame, PIPELINE_HZ, db);
-      smoothF1 = raw.f1 != null ? (smoothF1 ?? raw.f1) * 0.45 + raw.f1 * 0.55 : null;
-      smoothF2 = raw.f2 != null ? (smoothF2 ?? raw.f2) * 0.45 + raw.f2 * 0.55 : null;
-    } else if (!pitch) {
-      smoothF1 = null;
-      smoothF2 = null;
-    }
-
-    // 语谱频带：Blackman 加窗 FFT → dB → 对数量化（与 AnalyserNode 口径对齐）
-    for (let i = 0; i < FRAME_SAMPLES; i++) {
-      fftRe[i] = frame[i] * blackman[i];
-      fftIm[i] = 0;
-    }
-    fft(fftRe, fftIm);
-    for (let bin = 0; bin < specDb.length; bin++) {
-      const mag = Math.hypot(fftRe[bin], fftIm[bin]) * norm;
-      specDb[bin] = 20 * Math.log10(mag + 1e-12);
-    }
-    const row = new Uint8Array(SPEC_BANDS);
-    spectrumRowToBands(specDb, binHz, row);
-
-    bufT.push(Math.round(now * 1000) / 1000);
-    bufF0.push(pitch ? pitch.freq : NaN);
-    bufDb.push(db);
-    bufF1.push(smoothF1 ?? NaN);
-    bufF2.push(smoothF2 ?? NaN);
-    bufSpec.push(row);
-
-    if (k % YIELD_EVERY_FRAMES === YIELD_EVERY_FRAMES - 1) {
-      opts.onProgress?.((k + 1) / frames);
-      await yieldToUi();
-    }
-  }
-  opts.onProgress?.(1);
+  const {
+    t: bufT, f0: bufF0, db: bufDb, f1: bufF1, f2: bufF2,
+    specFlat, specRows, metrics,
+  } = await runFrameAnalysis(pcm, opts.onProgress);
 
   // 5. 聚合落库结构（复用实时管线的序列化与统计）
   const series = toRecordSeries(bufT, bufF0, bufDb, bufF1, bufF2, 1);
@@ -239,19 +159,15 @@ export async function analyzeAudioFile(
   const inTargetPct = computeInTargetPct(series, opts.targetRange ?? null);
   if (inTargetPct != null) stats.inTargetPct = inTargetPct;
 
-  // 嗓音质量四项直接用管线 PCM（与实时管线口径一致，32k 足够）
-  const vq = computeVoiceQuality(pcm, PIPELINE_HZ);
-  const cppsDb = computeCpps(pcm, PIPELINE_HZ);
-
   const note = file.name.replace(/\.[^.]+$/, '').trim().slice(0, 60);
-  const spec = specData(bufSpec);
+  const spec = specData(specFlat, specRows);
   const record: AnalysisRecord = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
     createdAt: Date.now(),
     durationSec,
     sampleHz,
     series,
-    stats: { ...stats, ...vq, cppsDb },
+    stats: { ...stats, ...metrics },
     ...(note ? { note } : {}),
     ...(spec ? { spec } : {}),
   };
@@ -259,9 +175,14 @@ export async function analyzeAudioFile(
   return { record, audio: opts.saveAudio === false ? null : file, truncated };
 }
 
-/** 语谱行编码（降采样率 1：导入序列本身就按 30fps 存储） */
-function specData(rows: Uint8Array[]): { bands: number; data: string } | undefined {
-  const data = toRecordSpec(rows, 1);
+/** 语谱行解码：把 Worker 返回的扁平量化行切成行视图并编码 base64（行率 1，导入序列本身按 30fps 存储） */
+function specData(flat: Uint8Array, rows: number): { bands: number; data: string } | undefined {
+  if (rows <= 0 || flat.length < rows * SPEC_BANDS) return undefined;
+  const arr: Uint8Array[] = [];
+  for (let r = 0; r < rows; r++) {
+    arr.push(flat.subarray(r * SPEC_BANDS, (r + 1) * SPEC_BANDS));
+  }
+  const data = toRecordSpec(arr, 1);
   return data ? { bands: SPEC_BANDS, data } : undefined;
 }
 

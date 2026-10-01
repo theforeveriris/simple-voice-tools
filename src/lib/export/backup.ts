@@ -9,8 +9,57 @@
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { idbPutAudio } from '@/lib/storage/idb';
 import { useHistoryStore } from '@/store/useHistoryStore';
+import { audioMimeOf, downloadBlob } from '@/lib/file';
+import { t } from '@/i18n';
+import type { AnalysisRecord } from '@/types';
 
 const JSON_NAME = 'records.json';
+
+/** 备份/导出 JSON 的当前格式版本 */
+export const BACKUP_FORMAT_VERSION = 2;
+
+export interface RecordsPayload {
+  app: string;
+  version: number;
+  exportedAt: string;
+  records: AnalysisRecord[];
+}
+
+/** 组装备份/导出 JSON（手动导出、ZIP 备份、GitHub 备份共用，版本号单一来源） */
+export function buildRecordsPayload(records: AnalysisRecord[]): RecordsPayload {
+  return {
+    app: 'simple-voice-tools',
+    version: BACKUP_FORMAT_VERSION,
+    exportedAt: new Date().toISOString(),
+    records,
+  };
+}
+
+/**
+ * 解析并校验备份/导出 JSON 中的记录数组。
+ * 接受当前版本（2）与历史版本（1、裸数组）；显式拒绝更新的版本，
+ * 避免旧应用在格式变更后静默错读新备份。
+ * @throws JSON 非法、缺少 records 数组或版本过新时抛出带本地化文案的 Error
+ */
+export function parseRecordsPayload(json: string): { records: AnalysisRecord[]; version: number | null } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error(t('backup.errJsonParse'));
+  }
+  // 最早期的导出是裸 records 数组，继续接受
+  if (Array.isArray(parsed)) return { records: parsed as AnalysisRecord[], version: null };
+  const obj = parsed as { version?: unknown; records?: unknown } | null;
+  if (!obj || typeof obj !== 'object' || !Array.isArray(obj.records)) {
+    throw new Error(t('backup.errBadPayload'));
+  }
+  const version = typeof obj.version === 'number' ? obj.version : null;
+  if (version != null && version > BACKUP_FORMAT_VERSION) {
+    throw new Error(t('backup.errVersionTooNew', { version }));
+  }
+  return { records: obj.records as AnalysisRecord[], version };
+}
 
 /** 音频 Blob 类型 → 备份文件扩展名 */
 export function extFor(blob: Blob): string {
@@ -20,24 +69,6 @@ export function extFor(blob: Blob): string {
   if (t.includes('ogg')) return '.ogg';
   if (t.includes('wav')) return '.wav';
   return '.bin';
-}
-
-function extMime(name: string): string {
-  if (name.endsWith('.webm')) return 'audio/webm';
-  if (name.endsWith('.m4a')) return 'audio/mp4';
-  if (name.endsWith('.ogg')) return 'audio/ogg';
-  if (name.endsWith('.wav')) return 'audio/wav';
-  return 'application/octet-stream';
-}
-
-/** 下载任意 Blob（复用与 CSV 导出一致的触发方式） */
-export function downloadBlob(filename: string, blob: Blob): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export interface FullBackupZip {
@@ -60,12 +91,7 @@ export async function buildFullBackupZip(): Promise<FullBackupZip | null> {
   const records = await store.getAllRecords();
   if (records.length === 0) return null;
 
-  const payload = {
-    app: 'simple-voice-tools',
-    version: 2,
-    exportedAt: new Date().toISOString(),
-    records,
-  };
+  const payload = buildRecordsPayload(records);
   // 音频已是压缩编码（Opus/AAC），只对 JSON 做压缩，音频用 store 直存省 CPU
   const files: Record<string, [Uint8Array, { level: 0 | 6 }]> = {
     [JSON_NAME]: [strToU8(JSON.stringify(payload)), { level: 6 }],
@@ -113,14 +139,13 @@ export interface BackupImportResult {
 export async function importFullBackup(file: File): Promise<BackupImportResult> {
   const files = unzipSync(new Uint8Array(await file.arrayBuffer()));
   const jsonEntry = files[JSON_NAME] ?? files[`data/${JSON_NAME}`];
-  if (!jsonEntry) throw new Error('备份中缺少 records.json');
+  if (!jsonEntry) throw new Error(t('backup.errNoJson'));
 
-  const parsed = JSON.parse(strFromU8(jsonEntry)) as { records?: unknown };
-  const incoming = Array.isArray(parsed) ? parsed : parsed.records;
-  if (!Array.isArray(incoming)) throw new Error('records.json 格式不正确');
+  // 显式校验格式与版本（v1/v2 可读，更新版本拒绝并提示先升级应用）
+  const { records: incoming } = parseRecordsPayload(strFromU8(jsonEntry));
 
   const store = useHistoryStore.getState();
-  const added = store.importRecords(incoming as never);
+  const added = store.importRecords(incoming);
 
   // 音频：文件名（去扩展名）即记录 id，只挂载到本地存在的记录
   const validIds = new Set(useHistoryStore.getState().records.map((r) => r.id));
@@ -131,7 +156,7 @@ export async function importFullBackup(file: File): Promise<BackupImportResult> 
     const dot = base.lastIndexOf('.');
     const id = dot > 0 ? base.slice(0, dot) : base;
     if (!validIds.has(id)) continue;
-    await idbPutAudio(id, new Blob([data], { type: extMime(name) }));
+    await idbPutAudio(id, new Blob([data], { type: audioMimeOf(name) }));
     audio++;
   }
   return { records: added, audio };

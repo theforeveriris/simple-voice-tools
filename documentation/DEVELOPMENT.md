@@ -17,7 +17,7 @@ Simple Voice Tool 的开发指南：架构、数据流、主题系统、动效�
                                                │
                         ┌──────────────────────┤
                         ▼                      ▼
-                   历史记录(localStorage)   分析页(统计+区间缩放)
+                   历史记录(IndexedDB)      分析页(统计+区间缩放)
 ```
 
 ## 技术栈
@@ -46,7 +46,7 @@ src/
 │   │   └── MiniSpark.tsx         # 历史卡片迷你波形
 │   ├── layout/
 │   │   ├── BottomBar.tsx         # 悬浮底栏 + 录音圆球（transform 运动模型）
-│   │   └── DocViewer.tsx         # 应用内 Markdown 文档阅读器
+│   │   └── ErrorBoundary.tsx     # 页面级错误边界
 │   ├── pages/
 │   │   ├── TestPage.tsx          # 测试页（三张实时图表）
 │   │   ├── AnalysisPage.tsx      # 分析页（概览卡/统计表/区间缩放图表）
@@ -61,10 +61,15 @@ src/
 │   │   ├── formants.ts           # LPC 共振峰提取
 │   │   ├── voiceQuality.ts       # Jitter/Shimmer/HNR（峰检测周期序列）
 │   │   ├── cpp.ts                # CPPS（自写 FFT → 实倒谱 → 回归线基线）
+│   │   ├── analysisPipeline.ts   # 离线分析管线（纯函数：逐帧 DSP + 嗓音质量，主/Worker 共用）
+│   │   ├── analysisWorker.ts     # Web Worker 入口：离线 DSP 在子线程执行
+│   │   ├── analysisClient.ts     # Worker 调度：请求关联/进度上报/失败回退主线程
+│   │   ├── importAudio.ts        # 外部音频导入：解码/重采样 → Worker 分析 → 落库结构
 │   │   ├── spectrogram.ts        # 语谱频带量化 + base64 编解码 + magma 伪彩色
 │   │   ├── sustained.ts          # 长音指标：MPT / 音高稳定度 CV / 响度衰减斜率
 │   │   └── demo.ts               # 示例数据生成（?demo=1 / 载入示例按钮）
 │   ├── advice.ts                 # 训练建议（实验性，本地规则引擎，纯函数）
+│   ├── file.ts                   # 通用文件辅助：下载触发、音频扩展名→MIME
 │   ├── storage/
 │   │   └── idb.ts                # IndexedDB：records / audio / kv 三仓库（DB v2）
 │   ├── export/
@@ -82,7 +87,7 @@ src/
 ├── i18n/
 │   ├── index.ts                  # 核心 t()/setLocale()/LOCALES（缺译回退 zh-CN）
 │   ├── hook.ts                   # useI18n：订阅 settings.language，渲染期同步 locale
-│   ├── zh-CN.ts                  # 简体中文词典（基准，300 键）
+│   ├── zh-CN.ts                  # 简体中文词典（基准；四语言键完整性由 src/i18n/i18n.test.ts 校验）
 │   ├── zh-TW.ts                  # 繁体中文词典
 │   ├── en.ts                     # 英语词典（机翻）
 │   └── ja.ts                     # 日语词典（机翻）
@@ -194,7 +199,8 @@ npm run preview   # 本地预览构建产物
 - **加一种图表**：`chartPainters.ts` 加画笔函数 + `paintChart` 分支 → `SeriesChart`
   的 `ChartKind` 联合类型加值 → 页面直接用 `<SeriesChart kind="xxx" />`；
 - **调主题预设**：`constants/THEME_PRESETS`；
-- **调音高区间**：`constants/BAND_RANGES`（曲线着色、色带、统计占比共用同一来源）；
+- **调音高区间**：`constants/index.ts` 的音区边界（`DEFAULT_BAND_BOUNDS` +
+  `getBandRanges()` / `setBandBounds()`，曲线着色、色带、统计占比共用同一来源）；
 - **改录音参数**：`recorder.ts` 顶部常量（降采样率、LPC 节流）与 `constants/PITCH_AXIS` 等。
 
 ## 文档索引

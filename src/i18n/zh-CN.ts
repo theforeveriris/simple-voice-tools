@@ -408,6 +408,30 @@ export const zhCN = {
   'toast.autoBackupDone': '已自动备份到本地文件夹',
   'toast.autoBackupFail': '本地自动备份失败',
   'toast.autoBackupNeedAuth': '备份文件夹授权已过期，请到 实验性功能 中重新授权',
+
+  /* ---------- 备份格式校验 / GitHub 云备份错误 ---------- */
+  'backup.errJsonParse': '备份文件不是有效的 JSON',
+  'backup.errBadPayload': '备份内容格式不正确：缺少 records 记录数组',
+  'backup.errVersionTooNew': '备份格式版本过新（v{version}），请先将应用更新到最新版本',
+  'backup.errNoJson': '备份中缺少 records.json',
+  'gh.errDeviceCode': '请求设备码失败（HTTP {status}）',
+  'gh.errToken': '获取令牌失败',
+  'gh.errCancelled': '已取消',
+  'gh.errTimeout': '授权超时，请重新开始',
+  'gh.errRefresh': 'GitHub 令牌续期失败',
+  'gh.errNotConnected': '尚未连接 GitHub',
+  'gh.errExpired': 'GitHub 授权已过期，请重新连接',
+  'gh.errApi': 'GitHub API 错误（HTTP {status}）',
+  'gh.errNotPrivate': '仓库 {repo} 不是私有库，为保护隐私请先在 GitHub 上将其设为 Private',
+  'gh.errCreateRepo': '自动创建仓库失败（{detail}）。请在 GitHub 上手动创建名为 {repo} 的私有库，并将你的 GitHub App 安装到该仓库。',
+  'gh.errNoRecords': '本地没有记录可备份',
+  'gh.errNoBackup': '云端仓库 {repo} 中还没有备份',
+
+  /* ---------- 历史页无障碍 ---------- */
+  'history.viewAria': '{name}视图',
+
+  /* ---------- PWA 安装 ---------- */
+  'toast.installSuccess': '安装成功，可从桌面或主屏幕打开',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

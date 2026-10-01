@@ -6,21 +6,16 @@
  */
 
 import type { AnalysisRecord } from '@/types';
+import { downloadBlob } from '@/lib/file';
 
 function csvEscape(v: unknown): string {
   const s = v == null ? '' : String(v);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** 下载文本文件 */
+/** 下载文本文件（带 UTF-8 BOM，Excel 直接打开不乱码） */
 export function downloadText(filename: string, text: string, mime = 'text/csv'): void {
-  const blob = new Blob(['\uFEFF', text], { type: `${mime};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, new Blob(['\uFEFF', text], { type: `${mime};charset=utf-8` }));
 }
 
 const cell = (v: number | null | undefined, digits = 1): string =>

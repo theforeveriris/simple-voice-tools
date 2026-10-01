@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { t } from '@/i18n';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -48,7 +49,7 @@ export async function promptInstall(): Promise<InstallOutcome> {
 
 function toastInstallAccepted(): void {
   // 延迟动态 import，避免 pwa.ts 在应用启动路径上引入 sonner 副作用
-  import('sonner').then(({ toast }) => toast.success('安装成功，可从桌面或主屏幕打开'));
+  import('sonner').then(({ toast }) => toast.success(t('toast.installSuccess')));
 }
 
 /** 初始化事件监听（main.tsx 调用一次） */
