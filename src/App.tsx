@@ -14,7 +14,7 @@ import { HistoryPage } from '@/components/pages/HistoryPage';
 import { SettingsPage } from '@/components/pages/SettingsPage';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
-import { applyTheme } from '@/lib/theme/monet';
+import { applyTheme, presetSpec } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
@@ -30,17 +30,26 @@ function tabFromHash(): ViewType {
   return (TABS as string[]).includes(h) ? (h as ViewType) : 'test';
 }
 
-// 首帧前同步一次：深链接（#/history 等）直接落到对应页签，不闪测试页
+// 首帧前同步一次：深链接（#/history 等）直接落到对应页签，不闪测试页；
+// 无 hash 时按设置里的启动默认页签落位
 {
   const initial = tabFromHash();
-  if (useStore.getState().currentTab !== initial) {
-    useStore.setState({ currentTab: initial });
+  if (window.location.hash) {
+    if (useStore.getState().currentTab !== initial) {
+      useStore.setState({ currentTab: initial });
+    }
+  } else {
+    const start = useStore.getState().settings.startTab;
+    if (start && useStore.getState().currentTab !== start) {
+      useStore.setState({ currentTab: start });
+    }
   }
 }
 
 function App() {
   const currentTab = useStore((s) => s.currentTab);
   const hue = useStore((s) => s.settings.hue);
+  const huePreset = useStore((s) => s.settings.huePreset);
   const theme = useStore((s) => s.settings.theme);
   const addRecord = useHistoryStore((s) => s.addRecord);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
@@ -66,16 +75,19 @@ function App() {
       && typeof window !== 'undefined'
       && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-  // 应用莫奈主题色（含深浅模式；system 下监听系统切换）
+  // 应用莫奈主题色（含深浅模式；system 下监听系统切换；预设配色改写色相来源）
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => applyTheme(hue, theme === 'dark' || (theme === 'system' && mq.matches));
+    const apply = () => {
+      const preset = presetSpec(huePreset, hue);
+      applyTheme(preset.hue, theme === 'dark' || (theme === 'system' && mq.matches), preset.accentHue, preset.spec);
+    };
     apply();
     if (theme === 'system') {
       mq.addEventListener('change', apply);
       return () => mq.removeEventListener('change', apply);
     }
-  }, [hue, theme]);
+  }, [hue, huePreset, theme]);
 
   // 开发辅助：?demo=1 生成一条示例记录，便于无麦克风环境体验
   useEffect(() => {

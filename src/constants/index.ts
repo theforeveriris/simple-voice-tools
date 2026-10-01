@@ -135,6 +135,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   hue: 15,
   theme: 'system',
   language: 'zh-CN',
+  huePreset: 'monet',
   showGrid: true,
   maxDurationSec: 120,
   autoEnterAnalysis: true,
@@ -150,6 +151,20 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showSpectrogram: true,
   liveSpectrum: false,
   adviceEnabled: true,
+  // 配置子页面扩展
+  playbackRate: 1,
+  silenceStopSec: 1,
+  pitchAxisMin: 50,
+  pitchAxisMax: 520,
+  liveWindowSec: 12,
+  specColormap: 'magma',
+  audioBitrateKbps: 128,
+  micEnhance: false,
+  haptics: true,
+  autoReplay: false,
+  analysisCards: { pitch: true, formant: true, energy: true, spec: true, vrp: true },
+  startTab: 'test',
+  diaryWeekStart: 1,
 };
 
 /**
@@ -166,7 +181,7 @@ export const MODE_META: Record<TestMode, {
   glide: { autoStopSec: 20, silenceStopSec: 0 },
 };
 
-/** 音高曲线纵轴范围（Hz） */
+/** 音高曲线纵轴范围（Hz，默认值；运行时由设置同步，图表经 getPitchAxis 读取） */
 export const PITCH_AXIS: [number, number] = [50, 520];
 
 /** 共振峰曲线纵轴范围（Hz） */
@@ -175,8 +190,38 @@ export const FORMANT_AXIS: [number, number] = [0, 3500];
 /** 能量曲线纵轴范围（dB） */
 export const ENERGY_AXIS: [number, number] = [-90, 0];
 
-/** 实时曲线滚动窗口长度（秒） */
+/** 实时曲线滚动窗口长度（秒，默认值；运行时由设置同步） */
 export const LIVE_WINDOW_SEC = 12;
+
+/** 运行时音高轴（useStore 订阅设置同步；音区边界同一模式） */
+let currentPitchAxis: [number, number] = [...PITCH_AXIS];
+export function getPitchAxis(): [number, number] {
+  return currentPitchAxis;
+}
+export function setPitchAxis(min: number, max: number): void {
+  const lo = Math.max(30, Math.min(200, Math.round(min) || PITCH_AXIS[0]));
+  const hi = Math.max(300, Math.min(2000, Math.round(max) || PITCH_AXIS[1]));
+  if (lo >= hi - 50) return;
+  currentPitchAxis = [lo, hi];
+}
+
+/** 运行时实时窗口（秒） */
+let currentLiveWindowSec = LIVE_WINDOW_SEC;
+export function getLiveWindowSec(): number {
+  return currentLiveWindowSec;
+}
+export function setLiveWindowSec(sec: number): void {
+  currentLiveWindowSec = [6, 12, 20].includes(sec) ? sec : LIVE_WINDOW_SEC;
+}
+
+/** 运行时语谱图配色（导入 settings 时同步） */
+let currentSpecColormap: 'magma' | 'gray' | 'accent' = 'magma';
+export function getSpecColormap() {
+  return currentSpecColormap;
+}
+export function setSpecColormap(c: 'magma' | 'gray' | 'accent'): void {
+  currentSpecColormap = c;
+}
 
 /* ------------------------------ 元音空间散点图 ------------------------------ */
 

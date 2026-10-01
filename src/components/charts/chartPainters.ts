@@ -4,7 +4,7 @@
  * 曲线按音高区间分段着色，网格为淡灰虚线，整体遵循 M3 莫奈色板。
  */
 
-import { BAND_COLORS, bandOf, getBandRanges, PITCH_AXIS, ENERGY_AXIS, FORMANT_AXIS, VOWEL_AXIS_F1, VOWEL_AXIS_F2, VOWEL_REFS, VRP_NOTE_MIN, VRP_NOTE_MAX, freqToNote } from '@/constants';
+import { BAND_COLORS, bandOf, getBandRanges, getPitchAxis, ENERGY_AXIS, FORMANT_AXIS, VOWEL_AXIS_F1, VOWEL_AXIS_F2, VOWEL_REFS, VRP_NOTE_MIN, VRP_NOTE_MAX, freqToNote } from '@/constants';
 import { t } from '@/i18n';
 import type { PitchBand } from '@/types';
 
@@ -825,7 +825,7 @@ export function paintChart(
   const xOf = (t: number) => ((t - t0) / (t1 - t0)) * w;
 
   if (kind === 'pitch') {
-    const [fMin, fMax] = PITCH_AXIS;
+    const [fMin, fMax] = getPitchAxis();
     const yFor = (f: number) => h - ((f - fMin) / (fMax - fMin)) * h;
     drawPitchBands(ctx, w, h, fMin, fMax, yFor);
     if (target) drawTargetBand(ctx, w, h, target, yFor);

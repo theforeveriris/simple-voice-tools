@@ -5,34 +5,29 @@
  * - 实时元音落点
  * - 导入音频离线分析
  * - GitHub 云备份（Device Flow）
- * - 本地自动备份（File System Access API）
+ * （本地自动备份已移至 数据管理 子页面）
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, SlidersHorizontal, Ruler, RotateCcw, LocateFixed, FileAudio,
-  FolderOpen, ShieldCheck, CloudUpload, HardDriveDownload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { DEFAULT_BAND_BOUNDS } from '@/constants';
 import { analyzeAudioFile, importErrorKey } from '@/lib/audio/importAudio';
-import {
-  pickAutoBackupFolder, getAutoBackupState,
-  requestAutoBackupPermission, runAutoBackupNow, maybeAutoBackup,
-  type AutoBackupState,
-} from '@/lib/backup/local';
+import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { localeTag } from '@/i18n';
 import type { AppSettings } from '@/types';
 import { VowelLiveSheet } from '@/components/pages/VowelLiveSheet';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui';
 import { SettingsSection, SettingRow } from './rows';
 import { GithubBackupSection } from './GithubBackupSection';
+import { InfoTip } from './InfoTip';
 
 export function LabsPage({
   settings,
@@ -55,16 +50,6 @@ export function LabsPage({
   const [importPct, setImportPct] = useState(0);
   const [importDragOver, setImportDragOver] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
-  // 本地自动备份（实验性）
-  const [autoBackup, setAutoBackup] = useState<AutoBackupState | null>(null);
-
-  const refreshAutoBackup = useCallback(() => {
-    void getAutoBackupState().then(setAutoBackup);
-  }, []);
-
-  useEffect(() => {
-    refreshAutoBackup();
-  }, [refreshAutoBackup]);
 
   /* ------------------------------ 自定义音区边界（实验性） ------------------------------ */
 
@@ -158,7 +143,7 @@ export function LabsPage({
 
         {/* 自定义音区边界 */}
         <SettingsSection icon={Ruler} title={t('settings.bandCustom')}>
-          <SettingRow stacked label={t('settings.bandBounds')} desc={t('settings.bandCustomDesc')}>
+          <SettingRow stacked label={<InfoTip label={t('settings.bandBounds')} text={t('settings.bandCustomDesc')} />}>
             <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
               {([0, 1, 2, 3] as const).map((idx) => (
                 <label key={idx} className="flex flex-col gap-1">
@@ -180,7 +165,7 @@ export function LabsPage({
               ))}
             </div>
           </SettingRow>
-          <SettingRow label={t('settings.bandReset')} desc={t('settings.bandResetDesc')}>
+          <SettingRow label={<InfoTip label={t('settings.bandReset')} text={t('settings.bandResetDesc')} />}>
             <button
               onClick={resetBandBounds}
               disabled={!settings.bandBounds}
@@ -197,7 +182,7 @@ export function LabsPage({
 
         {/* 实时元音落点 */}
         <SettingsSection icon={LocateFixed} title={t('vowelLive.title')}>
-          <SettingRow stacked label={t('vowelLive.title')} desc={t('vowelLive.labsDesc')}>
+          <SettingRow label={<InfoTip label={t('vowelLive.title')} text={t('vowelLive.labsDesc')} />}>
             <button
               onClick={() => setVowelLiveOpen(true)}
               className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
@@ -210,7 +195,7 @@ export function LabsPage({
 
         {/* 导入音频离线分析 */}
         <SettingsSection icon={FileAudio} title={t('settings.importAudio')}>
-          <SettingRow stacked label={t('settings.importAudio')} desc={t('settings.importAudioDesc')}>
+          <SettingRow stacked label={<InfoTip label={t('settings.importAudio')} text={t('settings.importAudioDesc')} />}>
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -255,75 +240,6 @@ export function LabsPage({
 
         {/* GitHub 云备份 */}
         <GithubBackupSection settings={settings} update={update} />
-
-        {/* 本地自动备份（File System Access API） */}
-        <SettingsSection icon={HardDriveDownload} title={t('settings.autoBackup')}>
-          {!autoBackup?.supported ? (
-            <SettingRow label={t('settings.autoBackup')} desc={t('settings.autoBackupUnsupported')} />
-          ) : (
-            <>
-              <SettingRow
-                label={t('settings.autoBackupFolder')}
-                desc={t('settings.autoBackupDesc')}
-                stacked
-              >
-                <button
-                  onClick={() => {
-                    void pickAutoBackupFolder().then((ok) => {
-                      if (ok) refreshAutoBackup();
-                    });
-                  }}
-                  className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
-                >
-                  <FolderOpen size={14} />
-                  {autoBackup.hasHandle ? t('settings.autoBackupRepick') : t('settings.autoBackupPick')}
-                </button>
-              </SettingRow>
-              {autoBackup.hasHandle && (
-                <>
-                  <SettingRow
-                    label={t('settings.autoBackupStatus')}
-                    desc={autoBackup.permission === 'granted' ? t('settings.autoBackupOn') : t('settings.autoBackupNeedAuth')}
-                  >
-                    {autoBackup.permission !== 'granted' ? (
-                      <button
-                        onClick={() => {
-                          void requestAutoBackupPermission().then((ok) => {
-                            if (ok) refreshAutoBackup();
-                          });
-                        }}
-                        className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
-                      >
-                        <ShieldCheck size={14} />
-                        {t('settings.autoBackupReauth')}
-                      </button>
-                    ) : undefined}
-                  </SettingRow>
-                  <SettingRow
-                    label={t('settings.autoBackupNow')}
-                    desc={autoBackup.lastTs
-                      ? t('settings.autoBackupLast', { time: new Date(autoBackup.lastTs).toLocaleString(localeTag(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
-                      : undefined}
-                  >
-                    <button
-                      onClick={() => {
-                        void runAutoBackupNow().then(refreshAutoBackup);
-                      }}
-                      disabled={autoBackup.permission !== 'granted'}
-                      className={cn(
-                        'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
-                        autoBackup.permission === 'granted' ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
-                      )}
-                    >
-                      <CloudUpload size={14} />
-                      {t('common.export')}
-                    </button>
-                  </SettingRow>
-                </>
-              )}
-            </>
-          )}
-        </SettingsSection>
       </motion.div>
 
       {/* 实时元音落点（全屏子页面，从 Labs 或测试页打开） */}

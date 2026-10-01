@@ -1,6 +1,7 @@
 /**
  * 用声日记（GitHub 风格日历热力图）
- * 每天一格（列 = 周，行 = 周一..周日），展示近半年（26 周）的练习打卡情况：
+ * 每天一格（列 = 周，行 = 周起始日起的七天，周起始日跟随设置：默认周一，可选周日），
+ * 展示近半年（26 周）的练习打卡情况：
  *   次数 / 总时长：格子深浅 = 活跃程度
  *   平均基频：格子颜色 = 当日平均基频所属音区色（观察音区漂移）
  * 数据全部来自 records 的 durationSec / createdAt / stats.avgF0，纯聚合展示。
@@ -12,6 +13,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { BAND_COLORS, bandOf } from '@/constants';
 import { chartPalette } from './chartPainters';
 import { t, localeTag } from '@/i18n';
+import { useStore } from '@/store/useStore';
 import type { AnalysisRecord } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -45,9 +47,10 @@ function startOfDay(ts: number): number {
   return d.getTime();
 }
 
-/** 周一为一周起点（本地日历习惯）的列对齐偏移 */
-function mondayOffset(day: number): number {
-  return (new Date(day).getDay() + 6) % 7;
+/** 列对齐偏移：weekStart=1（默认）按周一对齐，0 按周日对齐 */
+function weekOffset(day: number, weekStart: 0 | 1): number {
+  const d = new Date(day).getDay();
+  return weekStart === 1 ? (d + 6) % 7 : d;
 }
 
 /** 聚合记录到「天」（平均基频只对有声记录求均值，避免静音记录稀释） */
@@ -111,6 +114,7 @@ function drawHeatmap(
   days: Map<number, DayStat>,
   metric: DiaryMetric,
   selectedDay: number | null,
+  weekStart: 0 | 1,
 ): PaintLayout | null {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
@@ -131,10 +135,10 @@ function drawHeatmap(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
 
-  // 起点对齐到周一（含今天在内的最后 weeks 周）
+  // 起点对齐到周起始日（含今天在内的最后 weeks 周）
   const today = startOfDay(Date.now());
   const gridStart = today - (weeks * 7 - 1) * DAY_MS;
-  const firstCol = gridStart - mondayOffset(gridStart) * DAY_MS;
+  const firstCol = gridStart - weekOffset(gridStart, weekStart) * DAY_MS;
 
   const cells: CellLayout[] = [];
 
@@ -155,11 +159,11 @@ function drawHeatmap(
       lastLabelCol = col;
     }
   }
-  // 周一 / 周三 / 周五 行标签
+  // 行标签：第 0 / 2 / 4 行 = 周起始日 +0/+2/+4 天
+  // （周一起始：一/三/五；周日起始：日/二/四），沿用本地化窄格式的星期名
   ctx.textBaseline = 'middle';
-  const monday = firstCol + DAY_MS; // 该周周一
   for (const row of [0, 2, 4]) {
-    const label = new Date(monday + row * DAY_MS).toLocaleDateString(localeTag(), { weekday: 'narrow' });
+    const label = new Date(firstCol + row * DAY_MS).toLocaleDateString(localeTag(), { weekday: 'narrow' });
     ctx.fillText(label, 2, padT + row * (cell + gap) + cell / 2);
   }
   ctx.restore();
@@ -226,6 +230,8 @@ export function DiaryHeatmap({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const layoutRef = useRef<PaintLayout | null>(null);
   const [selected, setSelected] = useState<DayStat | null>(null);
+  // 周起始日：1 = 周一（默认），0 = 周日
+  const weekStart = useStore((s) => s.settings.diaryWeekStart);
 
   const days = useMemo(() => aggregate(records), [records]);
 
@@ -241,13 +247,13 @@ export function DiaryHeatmap({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const paint = () => {
-      layoutRef.current = drawHeatmap(canvas, days, metric, selected?.day ?? null);
+      layoutRef.current = drawHeatmap(canvas, days, metric, selected?.day ?? null, weekStart);
     };
     paint();
     const ro = new ResizeObserver(paint);
     ro.observe(canvas);
     return () => ro.disconnect();
-  }, [days, metric, selected?.day]);
+  }, [days, metric, selected?.day, weekStart]);
 
   // 指标或数据变化后的选中清理由上方渲染期派生逻辑处理
   const pick = (e: ReactPointerEvent<HTMLCanvasElement>) => {

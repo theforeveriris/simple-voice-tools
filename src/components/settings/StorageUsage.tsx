@@ -58,11 +58,11 @@ export function StorageUsage() {
 
   return (
     <div className="py-2.5">
-      <p className="text-sm font-medium text-ink">{t('settings.storageUsage')}</p>
+      {/* 区块标题由外层 SettingsSection 提供，这里只渲染卡片内容 */}
       {!info ? (
-        <p className="mt-2 text-xs text-ink-2">{t('settings.storageCounting')}</p>
+        <p className="text-xs text-ink-2">{t('settings.storageCounting')}</p>
       ) : (
-        <div className="mt-2.5 rounded-2xl bg-surface-hi/60 px-3.5 py-3">
+        <div className="rounded-2xl bg-surface-hi/60 px-3.5 py-3">
           <div className="flex items-baseline justify-between text-xs">
             <span className="text-ink-2">{t('settings.storageTotal')}</span>
             <span className="font-semibold tabular-nums text-ink">

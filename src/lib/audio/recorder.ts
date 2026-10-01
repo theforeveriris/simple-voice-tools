@@ -162,6 +162,10 @@ export interface RecorderOptions {
   silenceStopSec?: number;
   /** 训练靶标：目标音高区间（启用时统计达成率写入 stats） */
   targetRange?: [number, number] | null;
+  /** 麦克风增益与降噪（默认关闭以采集原始音质） */
+  micEnhance?: boolean;
+  /** 录音码率（kbps；MediaRecorder audioBitsPerSecond） */
+  audioBitrateKbps?: number;
 }
 
 /**
@@ -289,12 +293,13 @@ class VoiceRecorder {
    * 建立分析链路：getUserMedia → MediaStreamSource → AnalyserNode。
    * 等待权限期间被取消时释放资源并返回 false；失败向上抛由调用方提示。
    */
-  private async setupGraph(ctx: AudioContext, deviceId?: string): Promise<boolean> {
+  private async setupGraph(ctx: AudioContext, deviceId?: string, micEnhance = false): Promise<boolean> {
     const constraints: MediaStreamConstraints = {
       audio: {
         echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
+        // 增益/降噪默认关闭以采集原始音质；开启后由系统处理，适合灵敏度低的麦克风
+        noiseSuppression: micEnhance,
+        autoGainControl: micEnhance,
         ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
       },
     };
@@ -349,7 +354,7 @@ class VoiceRecorder {
 
     const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     try {
-      if (!(await this.setupGraph(ctx, opts.deviceId))) return;
+      if (!(await this.setupGraph(ctx, opts.deviceId, opts.micEnhance))) return;
 
       // 音频抓取（可选）：失败不影响分析主链路
       this.mediaRecorder = null;
@@ -357,8 +362,16 @@ class VoiceRecorder {
       this.mediaStopped = null;
       if (opts.saveAudio !== false) {
         const mimeType = pickAudioMime();
+        const track = this.stream?.getAudioTracks()[0];
+        const trackSettings = track?.getSettings?.();
+        // 码率按设置档位；不适用（如部分浏览器忽略）时由浏览器自行决定
+        const bitrate = (opts.audioBitrateKbps ?? 128) * 1000;
         try {
-          const mr = new MediaRecorder(this.stream!, mimeType ? { mimeType } : undefined);
+          const mr = new MediaRecorder(this.stream!, {
+            ...(mimeType ? { mimeType } : {}),
+            // 双声道麦克风实际带宽有限，声道数取 1 省一半体积（混音由解码端单声道取用）
+            audioBitsPerSecond: (trackSettings?.channelCount ?? 1) > 1 ? bitrate * 2 : bitrate,
+          });
           mr.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) this.mediaChunks.push(e.data);
           };

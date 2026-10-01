@@ -15,6 +15,7 @@ import {
   Switch,
 } from '@/components/ui';
 import { SettingsSection, SettingRow } from './rows';
+import { InfoTip } from './InfoTip';
 
 export function TrainingSection({
   settings,
@@ -49,15 +50,15 @@ export function TrainingSection({
   return (
     /* 训练 */
     <SettingsSection icon={Target} title={t('settings.training')}>
-      <SettingRow label={t('settings.targetEnable')} desc={t('settings.targetDesc')}>
+      <SettingRow label={<InfoTip label={t('settings.targetEnable')} text={t('settings.targetDesc')} />}>
         <Switch
           checked={settings.targetEnabled}
           onCheckedChange={(v) => update({ targetEnabled: v })}
         />
       </SettingRow>
       {settings.targetEnabled && (
-        <SettingRow stacked label={t('settings.targetRange')}>
-          <div className="flex items-center gap-2">
+        <SettingRow label={t('settings.targetRange')}>
+          <div className="flex items-center gap-1.5">
             <input
               type="number"
               inputMode="numeric"
@@ -65,7 +66,7 @@ export function TrainingSection({
               max={500}
               value={settings.targetF0Min}
               onChange={(e) => setTargetMin(e.target.value)}
-              className="w-24 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+              className="w-14 rounded-xl border border-black/10 bg-surface-hi px-2 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
               aria-label={t('settings.targetRange')}
             />
             <span className="text-ink-2">–</span>
@@ -76,30 +77,27 @@ export function TrainingSection({
               max={500}
               value={settings.targetF0Max}
               onChange={(e) => setTargetMax(e.target.value)}
-              className="w-24 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+              className="w-14 rounded-xl border border-black/10 bg-surface-hi px-2 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
               aria-label={t('settings.targetRange')}
             />
-            <span className="text-xs text-ink-2">Hz</span>
           </div>
         </SettingRow>
       )}
       <SettingRow
-        label={t('settings.baseline')}
-        desc={t('settings.baselineDesc')}
-        stacked
+        label={<InfoTip label={t('settings.baseline')} text={t('settings.baselineDesc')} />}
       >
         <Select
           value={settings.baselineRecordId ?? 'none'}
           onValueChange={(v) => update({ baselineRecordId: v === 'none' ? undefined : v })}
         >
-          <SelectTrigger className="w-full border border-black/10 bg-surface-hi px-3 text-sm shadow-none">
+          <SelectTrigger className="w-44 border border-black/10 bg-surface-hi px-3 text-sm shadow-none">
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
             <SelectItem value="none">{t('settings.baselineNone')}</SelectItem>
             {baselineOptions.map((r) => (
               <SelectItem key={r.id} value={r.id}>
-                <span className="max-w-64 truncate">
+                <span className="max-w-52 truncate">
                   {new Date(r.createdAt).toLocaleString(localeTag(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   {' · '}
                   {r.stats.avgF0.toFixed(1)} Hz

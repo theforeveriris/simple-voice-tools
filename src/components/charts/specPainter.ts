@@ -1,11 +1,11 @@
 /**
  * 语谱图绘制
- * 将量化频带位图（行 × 频带，magma 伪彩色）绘制到画布，
+ * 将量化频带位图（行 × 频带，伪彩色按设置切换）绘制到画布，
  * 叠加时间刻度 / 频率刻度网格与 F1 / F2 共振峰轨迹点。
  */
 
 import { SPEC_FMIN, SPEC_FMAX } from '@/constants';
-import { specColorRgb } from '@/lib/audio/spectrogram';
+import { specColormapRgb } from '@/lib/audio/spectrogram';
 import { formatClock } from './chartPainters';
 
 const DASH: [number, number] = [4, 5];
@@ -59,7 +59,7 @@ export function drawSpectrogram(o: SpecPaintOptions): void {
   const img = offCtx.createImageData(rows, bands);
   for (let r = 0; r < rows; r++) {
     for (let b = 0; b < bands; b++) {
-      const [cr, cg, cb] = specColorRgb(pixels[r * bands + b] / 255);
+      const [cr, cg, cb] = specColormapRgb(pixels[r * bands + b] / 255);
       const p = (r * bands + b) * 4;
       img.data[p] = cr;
       img.data[p + 1] = cg;

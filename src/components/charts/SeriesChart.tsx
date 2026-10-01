@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import { recorder } from '@/lib/audio/recorder';
-import { LIVE_WINDOW_SEC } from '@/constants';
+import { getLiveWindowSec } from '@/constants';
 import { useStore } from '@/store/useStore';
 import type { RecordSeries } from '@/types';
 import { paintChart, drawCrosshair } from './chartPainters';
@@ -64,8 +64,9 @@ export function SeriesChart({ kind, live = false, series, range, playhead, class
 
     if (cur.live) {
       const snap = recorder.getLive();
-      const t1 = Math.max(LIVE_WINDOW_SEC, snap.elapsedSec);
-      const t0 = t1 - LIVE_WINDOW_SEC;
+      const winSec = getLiveWindowSec();
+      const t1 = Math.max(winSec, snap.elapsedSec);
+      const t0 = t1 - winSec;
       paintChart(
         cur.kind, ctx, w, h,
         { t: snap.t, f0: snap.f0.map((v) => (isFinite(v) ? v : null)), rmsDb: snap.rmsDb, f1: snap.f1.map((v) => (isFinite(v) ? v : null)), f2: snap.f2.map((v) => (isFinite(v) ? v : null)) },

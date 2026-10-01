@@ -31,7 +31,8 @@ export function SettingRow({
   children,
   stacked,
 }: {
-  label: string;
+  /** 通常为字符串；也可传节点（如「备份文件夹」标签 + 信息图标） */
+  label: ReactNode;
   desc?: string;
   children?: ReactNode;
   stacked?: boolean;

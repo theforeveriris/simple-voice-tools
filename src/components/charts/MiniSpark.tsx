@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { PITCH_AXIS } from '@/constants';
+import { getPitchAxis } from '@/constants';
 import type { RecordSeries } from '@/types';
 import { BAND_COLORS } from '@/constants';
 import { cn } from '@/lib/utils';
@@ -53,7 +53,7 @@ export function MiniSpark({ series, width = 110, height = 30, full = false, clas
     const { t, f0 } = series;
     if (t.length < 2) return;
     const tMax = t[t.length - 1];
-    const [fMin, fMax] = PITCH_AXIS;
+    const [fMin, fMax] = getPitchAxis();
     const xOf = (tv: number) => (tv / tMax) * w;
     const yOf = (f: number) => height - ((f - fMin) / (fMax - fMin)) * height;
 

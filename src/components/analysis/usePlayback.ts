@@ -2,12 +2,14 @@
  * 录音回放引擎（页面级 hook）
  * 音频元素挂在页面层：audioProps 展开到 <audio> 上；
  * 播放头位置由 rAF 循环同步，驱动全部分析图表；
- * 支持区间限定播放——选中时间区间时在其末尾自动停住。
+ * 支持区间限定播放——选中时间区间时在其末尾自动停住；
+ * 回放倍速跟随设置（settings.playbackRate）。
  */
 
 import { useEffect, useRef, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { toast } from 'sonner';
+import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
@@ -19,6 +21,7 @@ import type { AnalysisRecord } from '@/types';
  */
 export function usePlayback(record: AnalysisRecord | null, pitchRange: [number, number]) {
   const getAudio = useHistoryStore((s) => s.getAudio);
+  const playbackRate = useStore((s) => s.settings.playbackRate);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioFor, setAudioFor] = useState<{ id: string; url: string } | null>(null);
   const [audioDur, setAudioDur] = useState(0);
@@ -49,6 +52,12 @@ export function usePlayback(record: AnalysisRecord | null, pitchRange: [number, 
     };
   }, [record?.id, getAudio]); // eslint-disable-line react-hooks/exhaustive-deps
   const audioUrl = audioFor && record && audioFor.id === record.id ? audioFor.url : null;
+
+  // 回放倍速：设置变化或换源后同步到音频元素（元素跨源复用，显式重设以确保新源生效）
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = playbackRate;
+  }, [playbackRate, audioUrl]);
 
   // 播放终点：选中区间时在其末尾停住，全段交给 ended 事件。
   // 渲染期同步到 ref（有意为之）：rAF 循环每帧读取最新值，

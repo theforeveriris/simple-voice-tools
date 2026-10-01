@@ -89,11 +89,60 @@ const SCALE = {
 
 type ScaleKey = keyof typeof SCALE;
 
+/** 预设配色规格：固定色相 + 令牌级明度/彩度覆盖（省略的令牌沿用莫奈标度） */
+export interface ThemePresetSpec {
+  hue: number;
+  accentHue: number;
+  overrides?: Partial<Record<string, { light: [number, number]; dark: [number, number] }>>;
+}
+
+/**
+ * 预设配色
+ * transPride（跨性别骄傲旗）：表面/文字铺旗上淡蓝（色相 230，比莫奈略提彩度使色感可辨），
+ * 强调色为淡粉（色相 12，明度大幅提亮至 0.70 —— 莫奈的 0.50 会读作梅红；按钮文字随之反转为深色），
+ * 次强调取两色相中点 ≈ 紫，作为蓝粉之间的过渡
+ */
+export const THEME_PRESETS: Record<'monet', null> & Record<string, ThemePresetSpec | null> = {
+  monet: null,
+  transPride: {
+    hue: 230,
+    accentHue: 12,
+    overrides: {
+      'surface': { light: [0.965, 0.030], dark: [0.170, 0.030] },
+      'card': { light: [0.995, 0.018], dark: [0.205, 0.032] },
+      'surface-hi': { light: [0.942, 0.040], dark: [0.250, 0.042] },
+      'line': { light: [0.912, 0.028], dark: [0.28, 0.030] },
+      'ink': { light: [0.28, 0.035], dark: [0.92, 0.020] },
+      'ink-2': { light: [0.52, 0.030], dark: [0.70, 0.022] },
+      'accent': { light: [0.70, 0.105], dark: [0.81, 0.085] },
+      'on-accent': { light: [0.26, 0.045], dark: [0.20, 0.045] },
+      'accent-soft': { light: [0.905, 0.075], dark: [0.32, 0.065] },
+      'on-accent-soft': { light: [0.40, 0.10], dark: [0.90, 0.05] },
+    },
+  },
+};
+
+/** 两色相之间最短弧的中点（预设配色的次强调色用，如蓝×粉 → 紫） */
+function midpointHue(a: number, b: number): number {
+  const d = (((b - a) % 360) + 360) % 360;
+  return a + d / 2;
+}
+
+const ACCENT_KEYS: ReadonlySet<string> = new Set(['accent', 'on-accent', 'accent-soft', 'on-accent-soft']);
+
 /**
  * 由种子色相生成全套色板令牌（含浅色/深色两组语义）
+ * @param accentHue 强调色色相（默认与种子一致；预设配色可单独指定）
+ * @param spec 预设规格（提供令牌级明度/彩度覆盖时使用）
  */
-export function buildTokens(hue: number, dark = false): Record<string, string> {
-  const h2 = hue + 70; // 次强调色相（类比 M3 的 tertiary）
+export function buildTokens(
+  hue: number,
+  dark = false,
+  accentHue: number = hue,
+  spec: ThemePresetSpec | null = null,
+): Record<string, string> {
+  // 次强调色相：强调色与表面色相之间的最短弧中点（单色相时即 hue+70，保持原行为）
+  const h2 = accentHue === hue ? hue + 70 : midpointHue(hue, accentHue);
   const out: Record<string, string> = {};
   const pick = (name: ScaleKey): readonly [number, number] => {
     const [light, darkV] = SCALE[name];
@@ -104,10 +153,11 @@ export function buildTokens(hue: number, dark = false): Record<string, string> {
     out[`--c-${name}-rgb`] = rgb;
   };
 
-  // 注意：列表里的每个名字必须存在于 SCALE（pick 参数为 ScaleKey，缺键会编译报错）
-  for (const name of ['surface', 'card', 'surface-hi', 'ink', 'ink-2', 'accent', 'on-accent', 'accent-soft', 'on-accent-soft', 'line'] as const) {
-    const [l, c] = pick(name);
-    set(name, token(l, c, hue));
+  // 表面 / 文字 / 线条用种子色相着色，强调色系用 accentHue；预设覆盖明度/彩度
+  for (const name of ['surface', 'card', 'surface-hi', 'ink', 'ink-2', 'line', 'accent', 'on-accent', 'accent-soft', 'on-accent-soft'] as const) {
+    const ov = spec?.overrides?.[name];
+    const [l, c] = ov ? (dark ? ov.dark : ov.light) : pick(name);
+    set(name, token(l, c, ACCENT_KEYS.has(name) ? accentHue : hue));
   }
   // 次强调色
   set('accent2', token(dark ? 0.77 : 0.55, dark ? 0.11 : 0.13, h2));
@@ -115,15 +165,16 @@ export function buildTokens(hue: number, dark = false): Record<string, string> {
   set('on-accent2-soft', token(dark ? 0.90 : 0.36, dark ? 0.04 : 0.08, h2));
 
   // 派生 shadcn/radix 传统语义变量（HSL 三元组），基础组件跟随深浅模式
-  const hsl = (name: ScaleKey) => {
-    const [l, c] = pick(name);
-    return rgbToHslTriplet(...oklchToRgb(l, c, hue));
+  const hslOf = (name: ScaleKey, useAccent = false) => {
+    const ov = spec?.overrides?.[name];
+    const [l, c] = ov ? (dark ? ov.dark : ov.light) : pick(name);
+    return rgbToHslTriplet(...oklchToRgb(l, c, useAccent ? accentHue : hue));
   };
-  const cardHsl = hsl('card');
-  const inkHsl = hsl('ink');
-  const surfaceHsl = hsl('surface');
-  const surfaceHiHsl = hsl('surface-hi');
-  const ink2Hsl = hsl('ink-2');
+  const cardHsl = hslOf('card');
+  const inkHsl = hslOf('ink');
+  const surfaceHsl = hslOf('surface');
+  const surfaceHiHsl = hslOf('surface-hi');
+  const ink2Hsl = hslOf('ink-2');
   out['--background'] = surfaceHsl;
   out['--foreground'] = inkHsl;
   out['--card'] = cardHsl;
@@ -140,8 +191,8 @@ export function buildTokens(hue: number, dark = false): Record<string, string> {
   out['--accent-foreground'] = inkHsl;
   out['--destructive'] = '0 72% 51%';
   out['--destructive-foreground'] = '0 0% 100%';
-  out['--border'] = hsl('line');
-  out['--input'] = hsl('line');
+  out['--border'] = hslOf('line');
+  out['--input'] = hslOf('line');
   out['--ring'] = inkHsl;
   return out;
 }
@@ -154,13 +205,26 @@ export function prefersDark(): boolean {
 }
 
 /**
- * 将色板应用到文档根元素
- * @param hue 种子色相 0-360
- * @param dark 深色模式
+ * 预设配色的色相与规格
+ * monet：用户主题色相（莫奈取色，无覆盖）；其余从 THEME_PRESETS 取规格
  */
-export function applyTheme(hue: number, dark = false): void {
+export function presetSpec(preset: string | undefined | null, userHue: number): { hue: number; accentHue: number; spec: ThemePresetSpec | null } {
+  const spec = (preset && THEME_PRESETS[preset]) || null;
+  return spec
+    ? { hue: spec.hue, accentHue: spec.accentHue, spec }
+    : { hue: userHue, accentHue: userHue, spec: null };
+}
+
+/**
+ * 将色板应用到文档根元素
+ * @param hue 种子色相 0-360（表面 / 文字着色）
+ * @param dark 深色模式
+ * @param accentHue 强调色色相（缺省与 hue 相同；预设配色可单独指定）
+ * @param spec 预设规格（令牌级明度/彩度覆盖）
+ */
+export function applyTheme(hue: number, dark = false, accentHue: number = hue, spec: ThemePresetSpec | null = null): void {
   const style = document.documentElement.style;
-  const tokens = buildTokens(hue, dark);
+  const tokens = buildTokens(hue, dark, accentHue, spec);
   for (const [key, value] of Object.entries(tokens)) {
     style.setProperty(key, value);
   }

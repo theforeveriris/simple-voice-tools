@@ -1,12 +1,13 @@
 /**
  * 语谱图工具
  * 录音时将 AnalyserNode 的 FFT 频谱（dB）逐帧映射到对数频带并量化为 Uint8，
- * 以 base64 随记录持久化；绘制时解码回位图并套用 magma 系伪彩色。
+ * 以 base64 随记录持久化；绘制时解码回位图并按设置套用伪彩色板（magma / 灰度 / 主题强调色）。
  */
 
 import {
-  SPEC_BANDS, SPEC_FMIN, SPEC_FMAX, SPEC_DB_MIN, SPEC_DB_MAX,
+  SPEC_BANDS, SPEC_FMIN, SPEC_FMAX, SPEC_DB_MIN, SPEC_DB_MAX, getSpecColormap,
 } from '@/constants';
+import type { SpecColormap } from '@/types';
 
 /**
  * 一帧频谱（dB 数组）→ 对数频带量化行
@@ -81,6 +82,97 @@ export function specColorRgb(t: number): [number, number, number] {
 
 /** 量化值 0-255 → CSS 颜色 */
 export function specColor(v: number): string {
-  const [r, g, b] = specColorRgb(v / 255);
+  const [r, g, b] = specColormapRgb(v / 255);
   return `rgb(${r},${g},${b})`;
+}
+
+/* ------------------------------ 配色切换 ------------------------------ */
+
+/** 灰度色带：暗 → 白，线性渐变（感知近匀的简化版） */
+function grayRamp(x: number): [number, number, number] {
+  const v = Math.round(Math.max(0, Math.min(1, x)) * 255);
+  return [v, v, v];
+}
+
+/** 强调色 RGB 三元组（CSS 变量 --c-accent-rgb，"r g b"；app:themechange 时失效重建） */
+let accentRgb: [number, number, number] | null = null;
+
+function accentTriplet(): [number, number, number] {
+  if (accentRgb) return accentRgb;
+  // 解析失败回退 index.css 中的默认强调色
+  let rgb: [number, number, number] = [169, 49, 70];
+  if (typeof document !== 'undefined') {
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue('--c-accent-rgb')
+      .trim();
+    const parts = raw.split(/\s+/).map(Number);
+    if (parts.length >= 3 && parts.every((n) => Number.isFinite(n))) {
+      rgb = [parts[0], parts[1], parts[2]];
+    }
+  }
+  accentRgb = rgb;
+  return rgb;
+}
+
+/** 强调色色带：暗部（约 15% 亮度）→ 强调色 → 白色 */
+function accentRamp(x: number): [number, number, number] {
+  const [ar, ag, ab] = accentTriplet();
+  const lo = 38;
+  if (x <= 0.5) {
+    const k = Math.max(0, Math.min(1, x / 0.5));
+    return [
+      Math.round(lo + (ar - lo) * k),
+      Math.round(lo + (ag - lo) * k),
+      Math.round(lo + (ab - lo) * k),
+    ];
+  }
+  const k = Math.max(0, Math.min(1, (x - 0.5) / 0.5));
+  return [
+    Math.round(ar + (255 - ar) * k),
+    Math.round(ag + (255 - ag) * k),
+    Math.round(ab + (255 - ab) * k),
+  ];
+}
+
+/** 色带函数 → 256 级 RGB 查找表（绘制逐像素调用，预计算避免每帧插值） */
+function toLut(ramp: (x: number) => [number, number, number]): Uint8Array {
+  const lut = new Uint8Array(256 * 3);
+  for (let v = 0; v < 256; v++) {
+    const [r, g, b] = ramp(v / 255);
+    lut[v * 3] = r;
+    lut[v * 3 + 1] = g;
+    lut[v * 3 + 2] = b;
+  }
+  return lut;
+}
+
+/** 查找表缓存（按配色名惰性构建） */
+const lutCache = new Map<SpecColormap, Uint8Array>();
+
+function specLut(name: SpecColormap): Uint8Array {
+  let lut = lutCache.get(name);
+  if (!lut) {
+    // 无 DOM（测试环境）时 accent 回退灰度
+    const ramp = name === 'magma' ? specColorRgb
+      : name === 'accent' && typeof document !== 'undefined' ? accentRamp
+        : grayRamp;
+    lut = toLut(ramp);
+    lutCache.set(name, lut);
+  }
+  return lut;
+}
+
+// 主题切换时重建强调色色带（与 chartPainters 的调色板缓存同一机制）
+if (typeof window !== 'undefined') {
+  window.addEventListener('app:themechange', () => {
+    accentRgb = null;
+    lutCache.delete('accent');
+  });
+}
+
+/** 当前设置配色 t ∈ [0,1] → RGB 三元组（实时绘制逐像素调用，仅查表 + 切换） */
+export function specColormapRgb(t: number): [number, number, number] {
+  const lut = specLut(getSpecColormap());
+  const i = Math.max(0, Math.min(255, Math.round(t * 255))) * 3;
+  return [lut[i], lut[i + 1], lut[i + 2]];
 }

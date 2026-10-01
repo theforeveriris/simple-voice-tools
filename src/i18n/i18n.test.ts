@@ -3,6 +3,7 @@ import { zhCN } from './zh-CN';
 import { zhTW } from './zh-TW';
 import { en } from './en';
 import { ja } from './ja';
+import { lzh } from './lzh';
 import { t, setLocale } from './index';
 
 /** zh-CN 为基准词典，其余语言直接与它对齐 */
@@ -11,6 +12,7 @@ const others: Record<string, Record<string, string>> = {
   'zh-TW': zhTW as unknown as Record<string, string>,
   en: en as unknown as Record<string, string>,
   ja: ja as unknown as Record<string, string>,
+  lzh: lzh as unknown as Record<string, string>,
 };
 const baseKeys = Object.keys(base).sort();
 

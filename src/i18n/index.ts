@@ -8,6 +8,7 @@ import { zhCN } from './zh-CN';
 import { zhTW } from './zh-TW';
 import { en } from './en';
 import { ja } from './ja';
+import { lzh } from './lzh';
 
 export type DictKey = keyof typeof zhCN;
 type Dict = Partial<Record<DictKey, string>>;
@@ -17,6 +18,7 @@ const DICTS: Record<Locale, Dict> = {
   'zh-TW': zhTW,
   en,
   ja,
+  lzh,
 };
 
 /** 语言选择项：英语 / 日语为机器翻译，选择器中注明 */
@@ -25,6 +27,7 @@ export const LOCALES: { id: Locale; label: string; machine?: boolean }[] = [
   { id: 'zh-TW', label: '繁體中文' },
   { id: 'en', label: 'English', machine: true },
   { id: 'ja', label: '日本語', machine: true },
+  { id: 'lzh', label: '文言（華夏）' },
 ];
 
 let current: Locale = 'zh-CN';

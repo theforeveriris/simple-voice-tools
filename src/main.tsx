@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { applyTheme, prefersDark } from '@/lib/theme/monet'
+import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
 import { initPwaInstall } from '@/lib/pwa'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { setLocale } from '@/i18n'
@@ -12,16 +12,16 @@ import type { Locale, ThemeMode } from '@/types'
 const saved = (() => {
   try {
     const raw = localStorage.getItem('svt:settings:v1');
-    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; theme?: ThemeMode; language?: Locale } } }) : null;
+    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; theme?: ThemeMode; language?: Locale; huePreset?: string } } }) : null;
     return parsed?.state?.settings ?? {};
   } catch {
     return {};
   }
 })();
-const savedHue = saved.hue ?? 15;
 const dark = saved.theme === 'dark'
   || ((saved.theme ?? 'system') === 'system' && prefersDark());
-applyTheme(savedHue, dark)
+const savedPreset = presetSpec(saved.huePreset, saved.hue ?? 15);
+applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec)
 if (saved.language) setLocale(saved.language)
 
 // PWA：捕获安装事件（Service Worker 由 vite-plugin-pwa 注入注册）

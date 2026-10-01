@@ -10,15 +10,37 @@ export type ViewType = 'test' | 'analysis' | 'history' | 'settings';
 
 /**
  * 界面语言
- * zh-CN 为原始文案；zh-TW/en/ja 为翻译（en/ja 为机器翻译）
+ * zh-CN 为原始文案；zh-TW/en/ja/lzh 为翻译（en/ja 为机器翻译）
  */
-export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja';
+export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh';
+
+/**
+ * 主题预设配色
+ * monet：莫奈取色（跟随主题色相滑条）；transPride：跨性别骄傲旗（粉白蓝固定配色）
+ */
+export type HuePreset = 'monet' | 'transPride';
 
 /**
  * 主题模式
  * system 跟随系统深浅色偏好
  */
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+/**
+ * 语谱图伪彩色方案
+ */
+export type SpecColormap = 'magma' | 'gray' | 'accent';
+
+/**
+ * 分析页图表卡显隐
+ */
+export interface AnalysisCards {
+  pitch: boolean;
+  formant: boolean;
+  energy: boolean;
+  spec: boolean;
+  vrp: boolean;
+}
 
 /**
  * 测试模式
@@ -150,6 +172,8 @@ export interface AppSettings {
   theme: ThemeMode;
   /** 界面语言 */
   language: Locale;
+  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），transPride 跨性别骄傲旗 */
+  huePreset: HuePreset;
   /** 是否显示图表网格辅助线 */
   showGrid: boolean;
   /** 单次录音最长时长（秒），0 = 不限制 */
@@ -166,6 +190,33 @@ export interface AppSettings {
   syncChartRange: boolean;
   /** 移动端历史卡片底部的整行迷你基频曲线（桌面端内联曲线不受影响） */
   mobileSpark: boolean;
+  /* ---------- 配置子页面扩展 ---------- */
+  /** 回放倍速（0.5 / 0.75 / 1 / 1.5） */
+  playbackRate: number;
+  /** 长音模式：发声后持续静音达到该秒数自动结束 */
+  silenceStopSec: number;
+  /** 音高轴下限（Hz），影响图表纵轴与迷你曲线 */
+  pitchAxisMin: number;
+  /** 音高轴上限（Hz） */
+  pitchAxisMax: number;
+  /** 测试页实时图表滚动窗口（秒） */
+  liveWindowSec: number;
+  /** 语谱图伪彩色方案 */
+  specColormap: SpecColormap;
+  /** 录音码率（kbps，MediaRecorder audioBitsPerSecond） */
+  audioBitrateKbps: number;
+  /** 麦克风增益与降噪（默认关闭以采集原始音质） */
+  micEnhance: boolean;
+  /** 录音开始/结束震动反馈（移动端） */
+  haptics: boolean;
+  /** 录音落库后自动回放刚录的音频 */
+  autoReplay: boolean;
+  /** 分析页图表卡显隐 */
+  analysisCards: AnalysisCards;
+  /** 启动时默认进入的页签 */
+  startTab: ViewType;
+  /** 用声日记热力图周起始日：1 = 周一（默认），0 = 周日 */
+  diaryWeekStart: 0 | 1;
   /** GitHub 云备份：用户自己的 OAuth App / GitHub App Client ID（仅存本地） */
   githubClientId?: string;
   /** GitHub 云备份：目标私有仓库名 */

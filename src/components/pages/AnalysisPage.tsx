@@ -8,7 +8,8 @@
  *   5. 长音分析卡（长音模式记录专属：MPT / 稳定度 / 衰减）
  *   6. 统计表格：音高 / 共振峰 / 能量 / 嗓音质量四组（跟随区间）
  *   7. 四个图表（音高、共振峰、能量、语谱图），共享同一个
- *      时间轴区间选择（任一图表下方拖动，全部同步 + 统计联动）。
+ *      时间轴区间选择（任一图表下方拖动，全部同步 + 统计联动），
+ *      各卡显隐跟随设置的图表卡开关（analysisCards）。
  *
  * 未经过录音直接进入时显示空态提示。
  *
@@ -16,7 +17,7 @@
  * 各卡片子组件位于 src/components/analysis/，回放引擎见 usePlayback.ts。
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FileSpreadsheet, Pencil, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
@@ -64,7 +65,9 @@ export function AnalysisPage() {
   const record = useStore((s) => s.currentAnalysis);
   const syncChartRange = useStore((s) => s.settings.syncChartRange);
   const baselineId = useStore((s) => s.settings.baselineRecordId);
-  const showSpectrogram = useStore((s) => s.settings.showSpectrogram);
+  const settings = useStore((s) => s.settings);
+  const pendingAutoReplay = useStore((s) => s.pendingAutoReplay);
+  const clearPendingAutoReplay = useStore((s) => s.clearPendingAutoReplay);
   const baselineRecord = useHistoryStore((s) =>
     baselineId ? s.records.find((r) => r.id === baselineId) ?? null : null,
   );
@@ -92,6 +95,16 @@ export function AnalysisPage() {
   // 回放：音频元素挂在页面层，播放头位置驱动全部图表
   const pitchRange = getRange('pitch');
   const playback = usePlayback(record, pitchRange);
+
+  // 录完自动回放：标记置位且音频源就绪后播放一次并消费。
+  // store 侧仅在记录带音频时置位标记；无音频场景标记不会被置位，
+  // 播放失败等边缘情况至多残留到下一条音频就绪的记录，可接受
+  const { audioUrl, togglePlay } = playback;
+  useEffect(() => {
+    if (!pendingAutoReplay || !audioUrl) return;
+    clearPendingAutoReplay();
+    void togglePlay();
+  }, [pendingAutoReplay, audioUrl, clearPendingAutoReplay, togglePlay]);
 
   // 区间联动统计：跟随音高曲线的区间（联动模式下即共享区间）。
   // 统一由序列重算（含全段）：保证与区间统计口径一致（如响度只计发声帧）；
@@ -184,32 +197,39 @@ export function AnalysisPage() {
       <StatsTable record={recordWithStats} />
       <AdviceCard record={record} />
 
-      <AnalysisChart
-        kind="pitch"
-        title={t('analysis.titlePitch')}
-        record={recordWithStats}
-        heightClass="h-[210px] sm:h-[280px]"
-        range={pitchRange}
-        onRangeChange={(r) => setRangeFor('pitch', r)}
-        playhead={playback.playTime}
-      />
+      {/* 图表卡显隐跟随设置（analysisCards）；语谱图另需实验性开关，声域图仅滑音记录 */}
+      {settings.analysisCards.pitch && (
+        <AnalysisChart
+          kind="pitch"
+          title={t('analysis.titlePitch')}
+          record={recordWithStats}
+          heightClass="h-[210px] sm:h-[280px]"
+          range={pitchRange}
+          onRangeChange={(r) => setRangeFor('pitch', r)}
+          playhead={playback.playTime}
+        />
+      )}
       {/* 共振峰卡片：曲线 / 元音空间散点双视图 */}
-      <FormantCard
-        record={record}
-        range={getRange('formant')}
-        onRangeChange={(r) => setRangeFor('formant', r)}
-        playhead={playback.playTime}
-      />
-      <AnalysisChart
-        kind="energy"
-        title={t('analysis.titleEnergy')}
-        record={record}
-        heightClass="h-[130px] sm:h-[180px]"
-        range={getRange('energy')}
-        onRangeChange={(r) => setRangeFor('energy', r)}
-        playhead={playback.playTime}
-      />
-      {record.spec && showSpectrogram && (
+      {settings.analysisCards.formant && (
+        <FormantCard
+          record={record}
+          range={getRange('formant')}
+          onRangeChange={(r) => setRangeFor('formant', r)}
+          playhead={playback.playTime}
+        />
+      )}
+      {settings.analysisCards.energy && (
+        <AnalysisChart
+          kind="energy"
+          title={t('analysis.titleEnergy')}
+          record={record}
+          heightClass="h-[130px] sm:h-[180px]"
+          range={getRange('energy')}
+          onRangeChange={(r) => setRangeFor('energy', r)}
+          playhead={playback.playTime}
+        />
+      )}
+      {record.spec && settings.showSpectrogram && settings.analysisCards.spec && (
         <SpecCard
           record={record}
           range={getRange('spec')}
@@ -218,7 +238,7 @@ export function AnalysisPage() {
         />
       )}
       {/* 声域图（VRP）：仅滑音模式记录显示 */}
-      {record.mode === 'glide' && (
+      {record.mode === 'glide' && settings.analysisCards.vrp && (
         <VrpCard
           record={record}
           range={getRange('vrp')}

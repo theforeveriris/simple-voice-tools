@@ -7,7 +7,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
 import type { AnalysisRecord, AppSettings, ViewType } from '@/types';
-import { DEFAULT_SETTINGS, MODE_META, setBandBounds } from '@/constants';
+import {
+  DEFAULT_SETTINGS, MODE_META, setBandBounds,
+  setPitchAxis, setLiveWindowSec, setSpecColormap,
+} from '@/constants';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
@@ -23,6 +26,9 @@ interface AppState {
   /** 当前展示的分析记录（录音完成后或从历史打开） */
   currentAnalysis: AnalysisRecord | null;
   setCurrentAnalysis: (record: AnalysisRecord | null) => void;
+  /** 录完自动回放：分析页挂载音频后消费并清除 */
+  pendingAutoReplay: boolean;
+  clearPendingAutoReplay: () => void;
 
   /** 应用设置（持久化） */
   settings: AppSettings;
@@ -52,6 +58,8 @@ export const useStore = create<AppState>()(
 
       currentAnalysis: null,
       setCurrentAnalysis: (record) => set({ currentAnalysis: record }),
+      pendingAutoReplay: false,
+      clearPendingAutoReplay: () => set({ pendingAutoReplay: false }),
 
       settings: DEFAULT_SETTINGS,
       updateSettings: (settings) =>
@@ -69,14 +77,18 @@ export const useStore = create<AppState>()(
           await recorder.start({
             deviceId: settings.micDeviceId || undefined,
             maxDurationSec: meta.autoStopSec || settings.maxDurationSec || undefined,
-            silenceStopSec: meta.silenceStopSec,
+            // 长音模式的静音判停时长可配置；其余模式沿用模式元信息（0 = 不启用）
+            silenceStopSec: meta.silenceStopSec > 0 ? (settings.silenceStopSec || meta.silenceStopSec) : 0,
             targetRange: settings.targetEnabled
               ? [settings.targetF0Min, settings.targetF0Max]
               : null,
             mode: settings.testMode,
             saveAudio: settings.audioSave,
+            micEnhance: settings.micEnhance,
+            audioBitrateKbps: settings.audioBitrateKbps,
             onAutoStop: () => void get().stopRecording(),
           });
+          if (settings.haptics) navigator.vibrate?.(30);
         } catch (error) {
           console.error('录音启动失败:', error);
           set({ isRecording: false });
@@ -99,12 +111,13 @@ export const useStore = create<AppState>()(
           toast.error(t('toast.tooShort'));
           return;
         }
+        if (get().settings.haptics) navigator.vibrate?.(20);
         // 音频解码 + 嗓音质量计算（失败时自动降级为无音频记录）
         const { record, audio } = await recorder.finishRecord(raw);
         useHistoryStore.getState().addRecord(record, audio ?? undefined);
         // 实验性：本地自动备份（选择了文件夹时按天写入，内部自行节流）
         void maybeAutoBackup('record');
-        set({ currentAnalysis: record });
+        set({ currentAnalysis: record, pendingAutoReplay: get().settings.autoReplay && audio != null });
         if (get().settings.autoEnterAnalysis) {
           get().setTab('analysis');
         }
@@ -122,12 +135,16 @@ export const useStore = create<AppState>()(
   ),
 );
 
-// 音区边界：设置 → 模块级单例同步（bandOf / 曲线着色 / 音区色带 / 占比统计共用）。
+// 音区边界 / 音高轴 / 实时窗口 / 语谱图配色：设置 → 模块级单例同步（bandOf / 画笔共用）。
 // 初始化一次（persist 从 localStorage 同步恢复后 merge 会触发订阅），
 // 之后仅在实际变化时刷新
-setBandBounds(useStore.getState().settings.bandBounds);
+function syncModuleSettings(s: AppSettings): void {
+  setBandBounds(s.bandBounds);
+  setPitchAxis(s.pitchAxisMin, s.pitchAxisMax);
+  setLiveWindowSec(s.liveWindowSec);
+  setSpecColormap(s.specColormap);
+}
+syncModuleSettings(useStore.getState().settings);
 useStore.subscribe((state, prev) => {
-  if (state.settings.bandBounds !== prev.settings.bandBounds) {
-    setBandBounds(state.settings.bandBounds);
-  }
+  if (state.settings !== prev.settings) syncModuleSettings(state.settings);
 });
