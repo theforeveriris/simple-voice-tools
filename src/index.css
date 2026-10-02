@@ -175,39 +175,39 @@ html.theme-pride[data-pride-flag='genderfluid'] body::before {
 /* 深色 = 微光：同款光斑大幅降不透明度，底色随 surface 变量沉入近黑 */
 html.theme-pride.dark[data-pride-flag='transPride'] body::before {
   background:
-    radial-gradient(40% 36% at 14% 18%, rgb(246 178 202 / 0.16), transparent 70%),
-    radial-gradient(38% 34% at 86% 14%, rgb(173 205 240 / 0.15), transparent 70%),
-    radial-gradient(44% 40% at 80% 90%, rgb(246 178 202 / 0.10), transparent 72%),
-    radial-gradient(40% 36% at 14% 92%, rgb(173 205 240 / 0.10), transparent 72%),
-    radial-gradient(26% 24% at 62% 30%, rgb(214 182 230 / 0.08), transparent 75%);
+    radial-gradient(40% 36% at 14% 18%, rgb(246 178 202 / 0.26), transparent 70%),
+    radial-gradient(38% 34% at 86% 14%, rgb(173 205 240 / 0.24), transparent 70%),
+    radial-gradient(44% 40% at 80% 90%, rgb(246 178 202 / 0.17), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(173 205 240 / 0.16), transparent 72%),
+    radial-gradient(26% 24% at 62% 30%, rgb(214 182 230 / 0.14), transparent 75%);
   filter: blur(64px) saturate(var(--pride-saturation, 1.12));
 }
 
 /* 非二元深色：紫光略强于黄光（黄在近黑易发闷） */
 html.theme-pride.dark[data-pride-flag='nonbinary'] body::before {
   background:
-    radial-gradient(40% 36% at 15% 18%, rgb(250 224 138 / 0.10), transparent 70%),
-    radial-gradient(38% 34% at 85% 14%, rgb(198 162 226 / 0.17), transparent 70%),
-    radial-gradient(44% 40% at 80% 90%, rgb(198 162 226 / 0.12), transparent 72%),
-    radial-gradient(40% 36% at 14% 92%, rgb(250 224 138 / 0.08), transparent 72%),
-    radial-gradient(26% 24% at 38% 30%, rgb(214 190 236 / 0.09), transparent 75%);
+    radial-gradient(40% 36% at 15% 18%, rgb(250 224 138 / 0.18), transparent 70%),
+    radial-gradient(38% 34% at 85% 14%, rgb(198 162 226 / 0.26), transparent 70%),
+    radial-gradient(44% 40% at 80% 90%, rgb(198 162 226 / 0.19), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(250 224 138 / 0.14), transparent 72%),
+    radial-gradient(26% 24% at 38% 30%, rgb(214 190 236 / 0.15), transparent 75%);
   filter: blur(64px) saturate(var(--pride-saturation, 1.12));
 }
 
 /* 性别流体深色：紫斑略强，呼应旗的中央条 */
 html.theme-pride.dark[data-pride-flag='genderfluid'] body::before {
   background:
-    radial-gradient(40% 36% at 14% 18%, rgb(248 176 206 / 0.12), transparent 70%),
-    radial-gradient(38% 34% at 86% 14%, rgb(168 188 240 / 0.13), transparent 70%),
-    radial-gradient(34% 30% at 56% 78%, rgb(206 158 226 / 0.14), transparent 74%),
-    radial-gradient(42% 38% at 82% 92%, rgb(168 188 240 / 0.10), transparent 72%),
-    radial-gradient(40% 36% at 14% 92%, rgb(248 176 206 / 0.09), transparent 72%);
+    radial-gradient(40% 36% at 14% 18%, rgb(248 176 206 / 0.20), transparent 70%),
+    radial-gradient(38% 34% at 86% 14%, rgb(168 188 240 / 0.21), transparent 70%),
+    radial-gradient(34% 30% at 56% 78%, rgb(206 158 226 / 0.22), transparent 74%),
+    radial-gradient(42% 38% at 82% 92%, rgb(168 188 240 / 0.16), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(248 176 206 / 0.15), transparent 72%);
   filter: blur(64px) saturate(var(--pride-saturation, 1.12));
 }
 
 @keyframes pride-drift {
-  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
-  to { transform: translate3d(1.5%, 1.5%, 0) scale(1.05); }
+  from { transform: translate3d(-3.2%, -2.2%, 0) scale(1); }
+  to { transform: translate3d(3.2%, 3.2%, 0) scale(1.09); }
 }
 
 html.theme-pride.theme-pride-static body::before { animation: none; }

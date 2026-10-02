@@ -72,8 +72,8 @@ const NUMBER_RANGE: Partial<Record<keyof AppSettings, [number, number]>> = {
   formantTargetF1: [200, 1100],
   formantTargetF2: [500, 3400],
   formantTargetRadius: [50, 800],
-  prideGlow: [0.3, 1.3],
-  prideSaturation: [0.5, 1.8],
+  prideGlow: [0.2, 1.6],
+  prideSaturation: [0.3, 2],
   prideGlassBlur: [0, 32],
 };
 

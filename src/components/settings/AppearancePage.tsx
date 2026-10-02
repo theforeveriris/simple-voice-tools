@@ -6,7 +6,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Palette, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, Palette, SlidersHorizontal } from 'lucide-react';
 import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
 import { PRIDE_FLAGS } from '@/constants';
 import { t } from '@/i18n';
@@ -168,42 +168,32 @@ export function AppearancePage({
           )}
           {preset === 'pride' && (
             <>
-              {/* 旗帜单选（复选框样式，互斥） */}
-              <SettingRow stacked label={t('settings.prideFlag')}>
-                <div className="flex flex-col gap-1 pt-0.5">
-                  {PRIDE_FLAGS.map((f) => {
-                    const active = settings.prideFlag === f.id;
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => setPrideFlag(f.id)}
-                        role="radio"
-                        aria-checked={active}
-                        className={cn(
-                          'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors',
-                          active ? 'bg-accent-soft text-on-accent-soft' : 'text-ink hover:bg-surface-hi',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'grid size-4.5 shrink-0 place-items-center rounded-full border-2',
-                            active ? 'border-accent bg-accent text-on-accent' : 'border-black/25',
-                          )}
-                        >
-                          {active && <Check size={10} strokeWidth={3.5} />}
+              {/* 旗帜下拉（各选项带条纹色条） */}
+              <SettingRow label={t('settings.prideFlag')}>
+                <Select
+                  value={settings.prideFlag}
+                  onValueChange={(v) => setPrideFlag(v as PrideFlag)}
+                >
+                  <SelectTrigger className="w-44 border-0 bg-transparent px-0 text-sm shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                    {PRIDE_FLAGS.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        <span className="flex items-center gap-2">
+                          <FlagStripe stripes={f.stripes} active={settings.prideFlag === f.id} />
+                          {t(f.labelKey as Parameters<typeof t>[0])}
                         </span>
-                        <FlagStripe stripes={f.stripes} active={active} />
-                        {t(f.labelKey as Parameters<typeof t>[0])}
-                      </button>
-                    );
-                  })}
-                </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </SettingRow>
               {/* 渐变与毛玻璃参数 */}
               <PrideSlider
                 label={t('settings.prideGlow')}
-                min={0.4}
-                max={1.2}
+                min={0.2}
+                max={1.6}
                 step={0.05}
                 value={settings.prideGlow}
                 onChange={(v) => applyPreset({ prideGlow: v })}
@@ -211,8 +201,8 @@ export function AppearancePage({
               />
               <PrideSlider
                 label={t('settings.prideSaturation')}
-                min={0.6}
-                max={1.6}
+                min={0.3}
+                max={2}
                 step={0.05}
                 value={settings.prideSaturation}
                 onChange={(v) => applyPreset({ prideSaturation: v })}
