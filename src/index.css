@@ -216,9 +216,16 @@ html.theme-pride.theme-pride-static body::before { animation: none; }
   html.theme-pride body::before { animation: none; }
 }
 
-/* 页面与全屏浮层（对比 / 实时练习 / 说明）让出背景，让渐变透出 */
-html.theme-pride .bg-surface {
+/* 主视图（App 根容器）让出背景，让渐变直接透出；
+   全屏浮层（对比 / 实时练习 / 说明）不能透明——透明会透出下层页面内容
+   （渐变层在堆叠最底，浮层与渐变之间还隔着页面），改为磨砂底 */
+html.theme-pride .app-root {
   background-color: transparent;
+}
+html.theme-pride .bg-surface:not(.app-root) {
+  background-color: rgb(var(--c-surface-rgb) / 0.78);
+  backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 6px)) saturate(1.1);
+  -webkit-backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 6px)) saturate(1.1);
 }
 
 /* 卡片毛玻璃：半透明 + 背景模糊，隐隐透出底层渐变（强度可调） */

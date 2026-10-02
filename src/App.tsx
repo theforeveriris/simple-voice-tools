@@ -285,7 +285,7 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-surface text-ink">
+      <div className="app-root min-h-dvh bg-surface text-ink">
       <Toaster
         position="top-center"
         richColors
