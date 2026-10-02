@@ -4,7 +4,7 @@
  * 曲线按音高区间分段着色，网格为淡灰虚线，整体遵循 M3 莫奈色板。
  */
 
-import { BAND_COLORS, bandOf, getBandRanges, getPitchAxis, ENERGY_AXIS, FORMANT_AXIS, VOWEL_AXIS_F1, VOWEL_AXIS_F2, VOWEL_REFS, VRP_NOTE_MIN, VRP_NOTE_MAX, freqToNote } from '@/constants';
+import { BAND_COLORS, bandOf, getBandRanges, getPitchAxis, ENERGY_AXIS, FORMANT_AXIS, VOWEL_AXIS_F1, VOWEL_AXIS_F2, VOWEL_REFS, VRP_NOTE_MIN, VRP_NOTE_MAX, freqToNote, getFormantTarget } from '@/constants';
 import { t } from '@/i18n';
 import type { PitchBand } from '@/types';
 
@@ -532,6 +532,64 @@ export function drawVowelRefs(
 }
 
 /**
+ * 共振峰目标区：训练设置启用时叠加 (F1±r, F2±r) 虚线矩形 + 中心 ×，
+ * 用第二强调色与散点/参考元音区分（分析页散点与实时落点视图共用）
+ */
+export function drawFormantTarget(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  pal: ChartPalette,
+): void {
+  const target = getFormantTarget();
+  if (!target) return;
+  const { f1, f2, radius } = target;
+  const [x1] = vowelXY(f1, Math.min(VOWEL_AXIS_F2[1], f2 + radius), w, h);
+  const [x2] = vowelXY(f1, Math.max(VOWEL_AXIS_F2[0], f2 - radius), w, h);
+  const [, y1] = vowelXY(Math.min(VOWEL_AXIS_F1[1], f1 + radius), f2, w, h);
+  const [, y2] = vowelXY(Math.max(VOWEL_AXIS_F1[0], f1 - radius), f2, w, h);
+  const left = Math.min(x1, x2);
+  const right = Math.max(x1, x2);
+  const top = Math.min(y1, y2);
+  const bottom = Math.max(y1, y2);
+  ctx.save();
+  ctx.strokeStyle = pal.accent2;
+  ctx.globalAlpha = 0.75;
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([5, 4]);
+  roundRectPathOn(ctx, left, top, right - left, bottom - top, 8);
+  ctx.stroke();
+  // 中心 × 标记
+  const [cx, cy] = vowelXY(f1, f2, w, h);
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, cy - 4);
+  ctx.lineTo(cx + 4, cy + 4);
+  ctx.moveTo(cx + 4, cy - 4);
+  ctx.lineTo(cx - 4, cy + 4);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** 局部 roundRect（与 drawVowelSpace 系列同款兜底，避免依赖外部工具） */
+function roundRectPathOn(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    return;
+  }
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+/**
  * 实时元音落点视图（vowelSpace 画笔的 live 模式）
  * 窗口内落点按新旧渐隐（越新越亮越大），叠加窗口质心 × 与当前帧呼吸光点，
  * 供实时元音落点练习页逐帧调用（调用方负责清屏与尺寸）。
@@ -548,6 +606,7 @@ export function paintVowelSpaceLive(
   const pal = chartPalette();
   drawVowelSpaceFrame(ctx, w, h, pal, showLabels);
   drawVowelRefs(ctx, w, h, pal, showLabels);
+  drawFormantTarget(ctx, w, h, pal);
 
   // 渐隐落点：age 0（旧）→ 1（新），亮度/尺寸随之增长，密度形成残影轨迹
   const span = Math.max(1e-3, t1 - t0);
@@ -849,6 +908,7 @@ export function paintChart(
     drawVowelSpaceFrame(ctx, w, h, pal, showLabels);
     drawVowelPoints(ctx, w, h, collectVowelPoints(series, t0, t1), pal.accent);
     drawVowelRefs(ctx, w, h, pal, showLabels);
+    drawFormantTarget(ctx, w, h, pal);
   } else if (kind === 'vrp') {
     drawVrpHeatmap(p, series);
   }

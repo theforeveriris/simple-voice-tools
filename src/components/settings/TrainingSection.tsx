@@ -1,4 +1,4 @@
-/** 训练设置：训练靶标（目标音高区间 + 达成率）、基线记录 */
+/** 训练设置：训练靶标（目标音高区间 + 达成率）、共振峰目标区（元音散点）、基线记录 */
 
 import { Target } from 'lucide-react';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -44,6 +44,26 @@ export function TrainingSection({
     update({ targetF0Max: Math.max(max, settings.targetF0Min + 5) });
   };
 
+  /* ------------------------------ 共振峰目标区 ------------------------------ */
+
+  const clampF1 = (v: string): number => {
+    const n = Number(v);
+    if (!isFinite(n)) return settings.formantTargetF1;
+    return Math.max(200, Math.min(1100, Math.round(n)));
+  };
+  const clampF2 = (v: string): number => {
+    const n = Number(v);
+    if (!isFinite(n)) return settings.formantTargetF2;
+    return Math.max(500, Math.min(3400, Math.round(n)));
+  };
+  const clampRadius = (v: string): number => {
+    const n = Number(v);
+    if (!isFinite(n)) return settings.formantTargetRadius;
+    return Math.max(50, Math.min(800, Math.round(n)));
+  };
+  const numCls =
+    'w-16 rounded-xl border border-black/10 bg-surface-hi px-2 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent';
+
   /** 基线选择器可选项（最近 50 条） */
   const baselineOptions = records.slice(0, 50);
 
@@ -82,6 +102,60 @@ export function TrainingSection({
             />
           </div>
         </SettingRow>
+      )}
+      {/* 共振峰目标区：元音散点叠加目标矩形 + 命中率 */}
+      <SettingRow label={<InfoTip label={t('settings.formantTargetEnable')} text={t('settings.formantTargetDesc')} />}>
+        <Switch
+          checked={settings.formantTargetEnabled}
+          onCheckedChange={(v) => update({ formantTargetEnabled: v })}
+        />
+      </SettingRow>
+      {settings.formantTargetEnabled && (
+        <>
+          <SettingRow label={t('settings.formantTargetCenter')}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-ink-2">F1</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={200}
+                max={1100}
+                value={settings.formantTargetF1}
+                onChange={(e) => update({ formantTargetF1: clampF1(e.target.value) })}
+                className={numCls}
+                aria-label="F1"
+              />
+              <span className="text-[10px] text-ink-2">F2</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={500}
+                max={3400}
+                value={settings.formantTargetF2}
+                onChange={(e) => update({ formantTargetF2: clampF2(e.target.value) })}
+                className={numCls}
+                aria-label="F2"
+              />
+            </div>
+          </SettingRow>
+          <SettingRow label={t('settings.formantTargetRadius')}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-ink-2">±</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={50}
+                max={800}
+                step={10}
+                value={settings.formantTargetRadius}
+                onChange={(e) => update({ formantTargetRadius: clampRadius(e.target.value) })}
+                className={numCls}
+                aria-label={t('settings.formantTargetRadius')}
+              />
+              <span className="text-[10px] text-ink-2">Hz</span>
+            </div>
+          </SettingRow>
+        </>
       )}
       <SettingRow
         label={<InfoTip label={t('settings.baseline')} text={t('settings.baselineDesc')} />}

@@ -15,7 +15,8 @@ import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { Switch } from '@/components/ui';
-import { LiveSheetFrame, useLiveCanvas } from './LiveSheetFrame';
+import { LiveSheetFrame } from './LiveSheetFrame';
+import { useLiveCanvas } from '@/hooks/useLiveCanvas';
 
 /** 可视时间窗（秒）：滚动热力图的宽度 */
 const WIN_SEC = 8;

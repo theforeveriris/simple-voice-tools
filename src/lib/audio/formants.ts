@@ -16,10 +16,55 @@ const DECIMATION = 4;
 /** LPC 阶数基准：约 2 + fs/1000 */
 const lpcOrder = (fs: number) => 2 + Math.round(fs / 1000);
 
+/* ------------------------------ 复用缓冲 ------------------------------ */
 /**
- * RBJ 双二阶低通滤波器（用于抽取前抗混叠）
+ * 实时循环每 2 帧（30Hz）调用一次，工作数组按需增长 + 模块级复用。
+ * 同一线程内调用严格串行（实时循环 / 离线管线 / Worker 各自独占本线程），复用安全。
  */
-function lowPassBiquad(samples: Float32Array, sampleRate: number, cutoff: number): Float32Array {
+let preBuf = new Float32Array(0);
+let lpBuf = new Float32Array(0);
+let decBuf = new Float32Array(0);
+let winBuf = new Float64Array(0);
+let acfBuf = new Float64Array(0);
+let lpcBuf = new Float64Array(0);
+let reBuf = new Float64Array(0);
+let imBuf = new Float64Array(0);
+let pReBuf = new Float64Array(0);
+let pImBuf = new Float64Array(0);
+let candFreq = new Float64Array(0);
+let candBw = new Float64Array(0);
+
+function ensureFormantScratch(nSamples: number, order: number): number {
+  const n2 = Math.floor(nSamples / DECIMATION);
+  if (preBuf.length < nSamples) {
+    preBuf = new Float32Array(nSamples);
+    lpBuf = new Float32Array(nSamples);
+  }
+  if (decBuf.length < n2) {
+    decBuf = new Float32Array(n2);
+    winBuf = new Float64Array(n2);
+  }
+  if (acfBuf.length < order + 1) acfBuf = new Float64Array(order + 1);
+  if (lpcBuf.length < order + 1) lpcBuf = new Float64Array(order + 1);
+  if (reBuf.length < order) {
+    reBuf = new Float64Array(order);
+    imBuf = new Float64Array(order);
+  }
+  if (pReBuf.length < order + 1) {
+    pReBuf = new Float64Array(order + 1);
+    pImBuf = new Float64Array(order + 1);
+  }
+  if (candFreq.length < order) {
+    candFreq = new Float64Array(order);
+    candBw = new Float64Array(order);
+  }
+  return n2;
+}
+
+/**
+ * RBJ 双二阶低通滤波器（用于抽取前抗混叠），结果写入 out（长度须 ≥ samples.length）
+ */
+function lowPassBiquad(samples: Float32Array, sampleRate: number, cutoff: number, out: Float32Array): void {
   const w0 = (2 * Math.PI * cutoff) / sampleRate;
   const cosW0 = Math.cos(w0);
   const alpha = Math.sin(w0) / (2 * Math.SQRT2); // Q = 0.707 (Butterworth)
@@ -32,7 +77,6 @@ function lowPassBiquad(samples: Float32Array, sampleRate: number, cutoff: number
   // 归一化
   const nb0 = b0 / a0, nb1 = b1 / a0, nb2 = b2 / a0, na1 = a1 / a0, na2 = a2 / a0;
 
-  const out = new Float32Array(samples.length);
   let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
   for (let i = 0; i < samples.length; i++) {
     const x0 = samples[i];
@@ -40,15 +84,15 @@ function lowPassBiquad(samples: Float32Array, sampleRate: number, cutoff: number
     x2 = x1; x1 = x0;
     y2 = y1; y1 = out[i];
   }
-  return out;
 }
 
 /**
  * Levinson-Durbin 算法：由自相关序列求 LPC 系数
- * @returns LPC 系数 a[1..order]（a[0] 恒为 1，未包含）
+ * @returns LPC 系数 a[1..order]（a[0] 恒为 1，未包含；复用模块缓冲的定长视图）
  */
 function levinsonDurbin(r: Float64Array, order: number): Float64Array | null {
-  const a = new Float64Array(order + 1);
+  const a = lpcBuf;
+  a.fill(0, 0, order + 1);
   if (r[0] <= 1e-9) return null;
 
   for (let i = 1; i <= order; i++) {
@@ -72,18 +116,20 @@ function levinsonDurbin(r: Float64Array, order: number): Float64Array | null {
     }
     a[i] = k;
   }
-  return a.subarray(1); // 去掉 a[0]
+  return a.subarray(1, order + 1); // 去掉 a[0]，且截断到 order（复用缓冲比 order 长）
 }
 
 /**
- * Durand-Kerner（Weierstrass）法求多项式全部复根
- * 多项式：z^N + c1 z^(N-1) + ... + cN（首一）
+ * Durand-Kerner（Weierstrass）法求多项式全部复根（首一）
+ * 多项式：z^N + c1 z^(N-1) + ... + cN；结果写入模块缓冲 reBuf/imBuf（N 个根）
  */
-function polyRoots(c: Float64Array | Float32Array): { re: number; im: number }[] {
+function polyRoots(c: Float64Array): void {
   const N = c.length;
+  const re = reBuf;
+  const im = imBuf;
+  const pRe = pReBuf;
+  const pIm = pImBuf;
   // 初始化根：w^i，w = 0.4 + 0.9i
-  const re = new Float64Array(N);
-  const im = new Float64Array(N);
   const wRe = 0.4, wIm = 0.9;
   re[0] = 1; im[0] = 0;
   for (let i = 1; i < N; i++) {
@@ -91,10 +137,12 @@ function polyRoots(c: Float64Array | Float32Array): { re: number; im: number }[]
     im[i] = re[i - 1] * wIm + im[i - 1] * wRe;
   }
 
-  const pRe = new Float64Array(N + 1);
-  const pIm = new Float64Array(N + 1);
   pRe[0] = 1;
-  for (let k = 1; k <= N; k++) pRe[k] = -c[k - 1]; // A(z) = 1 - a1 z - ... - aN z^N
+  pIm[0] = 0;
+  for (let k = 1; k <= N; k++) {
+    pRe[k] = -c[k - 1]; // A(z) = 1 - a1 z - ... - aN z^N
+    pIm[k] = 0;
+  }
 
   for (let iter = 0; iter < 60; iter++) {
     let maxDelta = 0;
@@ -126,10 +174,6 @@ function polyRoots(c: Float64Array | Float32Array): { re: number; im: number }[]
     }
     if (maxDelta < 1e-10) break;
   }
-
-  const roots: { re: number; im: number }[] = [];
-  for (let i = 0; i < N; i++) roots.push({ re: re[i], im: im[i] });
-  return roots;
 }
 
 /**
@@ -147,8 +191,11 @@ export function extractFormants(
   // 静音门限：能量太低时 LPC 不稳定
   if (rms < -52) return { f1: null, f2: null };
 
+  const order = Math.min(lpcOrder(sampleRate / DECIMATION), (samples.length / DECIMATION) >> 2);
+  ensureFormantScratch(samples.length, order);
+
   // 1. 预加重（提升高频，抵消声道辐射特性）
-  const pre = new Float32Array(samples.length);
+  const pre = preBuf;
   pre[0] = samples[0];
   for (let i = 1; i < samples.length; i++) {
     pre[i] = samples[i] - 0.97 * samples[i - 1];
@@ -157,9 +204,10 @@ export function extractFormants(
   // 2. 抗混叠低通 + 4x 抽取
   const fs2 = sampleRate / DECIMATION;
   const lpCut = Math.min(4500, fs2 * 0.42);
-  const filtered = lowPassBiquad(pre, sampleRate, lpCut);
+  const filtered = lpBuf;
+  lowPassBiquad(pre, sampleRate, lpCut, filtered);
   const n2 = Math.floor(filtered.length / DECIMATION);
-  const dec = new Float32Array(n2);
+  const dec = decBuf;
   for (let i = 0; i < n2; i++) dec[i] = filtered[i * DECIMATION];
   if (n2 < 128) return { f1: null, f2: null };
 
@@ -168,14 +216,13 @@ export function extractFormants(
   for (let i = 0; i < n2; i++) maxAbs = Math.max(maxAbs, Math.abs(dec[i]));
   if (maxAbs < 1e-5) return { f1: null, f2: null };
   const norm = 1 / maxAbs;
-  const win = new Float64Array(n2);
+  const win = winBuf;
   for (let i = 0; i < n2; i++) {
     win[i] = dec[i] * norm * (0.54 - 0.46 * Math.cos((2 * Math.PI * i) / (n2 - 1)));
   }
 
   // 4. 自相关
-  const order = Math.min(lpcOrder(fs2), n2 >> 2);
-  const r = new Float64Array(order + 1);
+  const r = acfBuf;
   for (let k = 0; k <= order; k++) {
     let sum = 0;
     for (let i = 0; i < n2 - k; i++) sum += win[i] * win[i + k];
@@ -187,29 +234,50 @@ export function extractFormants(
   if (!lpc) return { f1: null, f2: null };
 
   // 6. 多项式求根
-  const roots = polyRoots(lpc);
+  polyRoots(lpc);
 
-  // 7. 单位圆内根 → 共振峰候选
-  const candidates: { freq: number; bw: number }[] = [];
-  for (const root of roots) {
-    const mag = Math.hypot(root.re, root.im);
+  // 7. 单位圆内根 → 共振峰候选（按频率升序插入，与「收集后排序」等价）
+  const candF = candFreq;
+  const candB = candBw;
+  let nCand = 0;
+  for (let i = 0; i < lpc.length; i++) {
+    const mag = Math.hypot(reBuf[i], imBuf[i]);
     if (mag >= 1 || mag < 1e-6) continue;
-    const freq = (Math.atan2(root.im, root.re) * fs2) / (2 * Math.PI);
+    const freq = (Math.atan2(imBuf[i], reBuf[i]) * fs2) / (2 * Math.PI);
     const bw = (-Math.log(mag) * fs2) / Math.PI;
     if (freq >= 150 && freq <= 4800 && bw < 700) {
-      candidates.push({ freq, bw });
+      // 升序插入
+      let j = nCand;
+      while (j > 0 && candF[j - 1] > freq) {
+        candF[j] = candF[j - 1];
+        candB[j] = candB[j - 1];
+        j--;
+      }
+      candF[j] = freq;
+      candB[j] = bw;
+      nCand++;
     }
   }
-  candidates.sort((a, b) => a.freq - b.freq);
 
   // 8. 挑选 F1 / F2
   let f1: number | null = null;
   let f2: number | null = null;
-  const f1Cand = candidates.find((c) => c.freq >= 200 && c.freq <= 1100);
-  if (f1Cand) {
-    f1 = f1Cand.freq;
-    const f2Cand = candidates.find((c) => c.freq >= Math.max(f1! + 150, 700) && c.freq <= 3400);
-    f2 = f2Cand ? f2Cand.freq : null;
+  let f1Idx = -1;
+  for (let i = 0; i < nCand; i++) {
+    if (candF[i] >= 200 && candF[i] <= 1100) {
+      f1Idx = i;
+      f1 = candF[i];
+      break;
+    }
+  }
+  if (f1Idx >= 0) {
+    const f2Lower = Math.max(candF[f1Idx] + 150, 700);
+    for (let i = f1Idx + 1; i < nCand; i++) {
+      if (candF[i] >= f2Lower && candF[i] <= 3400) {
+        f2 = candF[i];
+        break;
+      }
+    }
   }
   return { f1, f2 };
 }

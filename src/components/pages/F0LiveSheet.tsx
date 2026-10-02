@@ -12,7 +12,8 @@ import { freqToNote, getLiveWindowSec } from '@/constants';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { LiveSheetFrame, useLiveCanvas } from './LiveSheetFrame';
+import { LiveSheetFrame } from './LiveSheetFrame';
+import { useLiveCanvas } from '@/hooks/useLiveCanvas';
 
 /** 读数刷新间隔（ms）：约 8Hz，避免 setState 过频 */
 const READOUT_INTERVAL_MS = 120;

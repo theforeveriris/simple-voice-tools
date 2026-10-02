@@ -12,12 +12,53 @@ import type { PitchAlgorithm } from '@/types';
 
 export type { PitchEstimate };
 
+/* ------------------------------ 复用缓冲 ------------------------------ */
+/**
+ * 实时循环 60fps 逐帧调用，工作数组按需增长 + 模块级复用，稳态零分配。
+ * 同一线程内调用严格串行（实时循环 / 离线管线 / Worker 各自独占本线程），复用安全。
+ */
+let diffBuf = new Float32Array(0);
+let cmndBuf = new Float32Array(0);
+let nsdfBuf = new Float32Array(0);
+/** 极值候选池（tau/val 平行数组 + 计数），pYIN 存谷、MPM 存峰 */
+let extTau = new Float64Array(0);
+let extVal = new Float64Array(0);
+
+function ensureScratch(len: number): void {
+  if (diffBuf.length < len) {
+    diffBuf = new Float32Array(len);
+    cmndBuf = new Float32Array(len);
+  }
+  if (extTau.length < len) {
+    extTau = new Float64Array(len);
+    extVal = new Float64Array(len);
+  }
+  if (nsdfBuf.length < len) nsdfBuf = new Float32Array(len);
+}
+
 /* ---------------------------------- pYIN ---------------------------------- */
 
 /** 阈值分布的档位数与取值范围（Beta(2,18) 权重集中在低端，覆盖 YIN 阈值 0.14 一带） */
 const PYIN_THRESHOLDS = 12;
 const PYINE_TMIN = 0.05;
 const PYINE_TMAX = 0.5;
+
+/** 阈值档位与归一化权重：纯常量，模块级一次算好 */
+const PYIN_TH = new Float64Array(PYIN_THRESHOLDS);
+const PYIN_WT = new Float64Array(PYIN_THRESHOLDS);
+{
+  let wsum = 0;
+  for (let i = 0; i < PYIN_THRESHOLDS; i++) {
+    const x = (i + 0.5) / PYIN_THRESHOLDS;
+    PYIN_TH[i] = PYINE_TMIN + (PYINE_TMAX - PYINE_TMIN) * x;
+    PYIN_WT[i] = x * Math.pow(1 - x, 17);
+    wsum += PYIN_WT[i];
+  }
+  for (let i = 0; i < PYIN_THRESHOLDS; i++) PYIN_WT[i] /= wsum;
+}
+
+/** 谷 → 票重桶：模块级复用，调用前清空 */
+const voteBucket = new Map<number, number>();
 
 /**
  * 对一帧信号做 pYIN 音高检测
@@ -33,9 +74,11 @@ export function detectPitchPyin(
   const tauMax = Math.min(half - 1, Math.floor(sampleRate / minHz));
   const tauMin = Math.max(2, Math.floor(sampleRate / maxHz));
   if (tauMax <= tauMin) return null;
+  ensureScratch(tauMax + 1);
+  const diff = diffBuf;
+  const cmnd = cmndBuf;
 
   // 1. 差分函数 + 累积均值归一化（与 YIN 相同的白色谱处理）
-  const diff = new Float32Array(tauMax + 1);
   for (let tau = tauMin; tau <= tauMax; tau++) {
     let sum = 0;
     for (let i = 0; i < half; i++) {
@@ -44,7 +87,6 @@ export function detectPitchPyin(
     }
     diff[tau] = sum;
   }
-  const cmnd = new Float32Array(tauMax + 1);
   cmnd[tauMin] = 1;
   let runningSum = 0;
   for (let tau = tauMin; tau <= tauMax; tau++) {
@@ -53,44 +95,35 @@ export function detectPitchPyin(
   }
 
   // 2. 收集 CMND 的局部极小（候选周期的谷）
-  const minima: { tau: number; val: number }[] = [];
+  let nMinima = 0;
   for (let tau = tauMin + 1; tau < tauMax; tau++) {
     if (cmnd[tau] < cmnd[tau - 1] && cmnd[tau] <= cmnd[tau + 1]) {
-      minima.push({ tau, val: cmnd[tau] });
+      extTau[nMinima] = tau;
+      extVal[nMinima] = cmnd[tau];
+      nMinima++;
     }
   }
-  if (minima.length === 0) return null;
+  if (nMinima === 0) return null;
 
   // 3. 阈值分布投票：每个阈值取「首个低于它的谷」，权重 Beta(2,18)；
   //    全部谷都高于阈值的档位计入无声概率
-  const th = new Float64Array(PYIN_THRESHOLDS);
-  const wt = new Float64Array(PYIN_THRESHOLDS);
-  let wsum = 0;
-  for (let i = 0; i < PYIN_THRESHOLDS; i++) {
-    const x = (i + 0.5) / PYIN_THRESHOLDS;
-    th[i] = PYINE_TMIN + (PYINE_TMAX - PYINE_TMIN) * x;
-    wt[i] = x * Math.pow(1 - x, 17);
-    wsum += wt[i];
-  }
-  for (let i = 0; i < PYIN_THRESHOLDS; i++) wt[i] /= wsum;
-
-  const bucket = new Map<number, number>();
+  voteBucket.clear();
   let unvoiced = 0;
   for (let i = 0; i < PYIN_THRESHOLDS; i++) {
-    let hit: { tau: number; val: number } | null = null;
-    for (const m of minima) {
-      if (m.val < th[i]) {
-        hit = m;
+    let hitTau = -1;
+    for (let m = 0; m < nMinima; m++) {
+      if (extVal[m] < PYIN_TH[i]) {
+        hitTau = extTau[m];
         break;
       }
     }
-    if (hit) bucket.set(hit.tau, (bucket.get(hit.tau) ?? 0) + wt[i]);
-    else unvoiced += wt[i];
+    if (hitTau >= 0) voteBucket.set(hitTau, (voteBucket.get(hitTau) ?? 0) + PYIN_WT[i]);
+    else unvoiced += PYIN_WT[i];
   }
 
   let bestTau = -1;
   let bestP = 0;
-  for (const [tau, p] of bucket) {
+  for (const [tau, p] of voteBucket) {
     if (p > bestP) {
       bestP = p;
       bestTau = tau;
@@ -131,9 +164,10 @@ export function detectPitchMpm(
   const tauMax = Math.min(half - 1, Math.floor(sampleRate / minHz));
   const tauMin = Math.max(2, Math.floor(sampleRate / maxHz));
   if (tauMax <= tauMin) return null;
+  ensureScratch(tauMax + 1);
+  const nsdf = nsdfBuf;
 
   // 1. 归一化平方差函数
-  const nsdf = new Float32Array(tauMax + 1);
   for (let tau = tauMin; tau <= tauMax; tau++) {
     let acf = 0;
     let m0 = 0;
@@ -148,42 +182,47 @@ export function detectPitchMpm(
   }
 
   // 2. 关键极大值（局部峰，且为正）
-  const maxima: { tau: number; val: number }[] = [];
+  let nMaxima = 0;
   for (let tau = tauMin + 1; tau < tauMax; tau++) {
     if (nsdf[tau] > nsdf[tau - 1] && nsdf[tau] >= nsdf[tau + 1] && nsdf[tau] > 0) {
-      maxima.push({ tau, val: nsdf[tau] });
+      extTau[nMaxima] = tau;
+      extVal[nMaxima] = nsdf[tau];
+      nMaxima++;
     }
   }
-  if (maxima.length === 0) return null;
+  if (nMaxima === 0) return null;
 
   let globalMax = 0;
-  for (const m of maxima) if (m.val > globalMax) globalMax = m.val;
+  for (let m = 0; m < nMaxima; m++) if (extVal[m] > globalMax) globalMax = extVal[m];
   // 清晰度不足：无声/噪声
   if (globalMax < 0.5) return null;
 
   // 3. 首个 ≥ 0.9×全局峰的极大值 = 基音周期（更低的 τ，避免落到次谐波）
-  let chosen: { tau: number; val: number } | null = null;
-  for (const m of maxima) {
-    if (m.val >= 0.9 * globalMax) {
-      chosen = m;
+  let chosenTau = -1;
+  let chosenVal = 0;
+  const gate = 0.9 * globalMax;
+  for (let m = 0; m < nMaxima; m++) {
+    if (extVal[m] >= gate) {
+      chosenTau = extTau[m];
+      chosenVal = extVal[m];
       break;
     }
   }
-  if (!chosen || chosen.val < 0.5) return null;
+  if (chosenTau < 0 || chosenVal < 0.5) return null;
 
   // 4. 抛物线插值细化
-  let betterTau = chosen.tau;
-  if (chosen.tau > tauMin && chosen.tau < tauMax) {
-    const s0 = nsdf[chosen.tau - 1];
-    const s1 = nsdf[chosen.tau];
-    const s2 = nsdf[chosen.tau + 1];
+  let betterTau = chosenTau;
+  if (chosenTau > tauMin && chosenTau < tauMax) {
+    const s0 = nsdf[chosenTau - 1];
+    const s1 = nsdf[chosenTau];
+    const s2 = nsdf[chosenTau + 1];
     const denom = 2 * (2 * s1 - s2 - s0);
-    if (Math.abs(denom) > 1e-9) betterTau = chosen.tau + (s2 - s0) / denom;
+    if (Math.abs(denom) > 1e-9) betterTau = chosenTau + (s2 - s0) / denom;
   }
 
   const freq = sampleRate / betterTau;
   if (freq < minHz || freq > maxHz) return null;
-  return { freq, prob: Math.max(0, Math.min(1, chosen.val)) };
+  return { freq, prob: Math.max(0, Math.min(1, chosenVal)) };
 }
 
 /* ---------------------------------- 调度器 ---------------------------------- */

@@ -239,6 +239,14 @@ export interface AppSettings {
   targetF0Min: number;
   /** 训练靶标：目标区间上限（Hz） */
   targetF0Max: number;
+  /** 共振峰目标区：是否启用（元音散点叠加目标矩形 + 命中率） */
+  formantTargetEnabled: boolean;
+  /** 共振峰目标区：目标 F1 中心（Hz） */
+  formantTargetF1: number;
+  /** 共振峰目标区：目标 F2 中心（Hz） */
+  formantTargetF2: number;
+  /** 共振峰目标区：容差半径（Hz），目标区为 (F1±r, F2±r) 矩形 */
+  formantTargetRadius: number;
   /** 基线记录 id：分析页自动对比新记录与基线的 Δ 指标 */
   baselineRecordId?: string;
   /* ---------- 实验性功能（设置 → 实验性功能 子页面） ---------- */
@@ -256,7 +264,7 @@ export interface AppSettings {
   adviceOnCompare: boolean;
   /** 大模型配置：OpenAI 兼容接口 Base URL（如 https://api.example.com/v1） */
   llmBaseUrl?: string;
-  /** 大模型配置：API Key（仅存本地 localStorage，不随数据导出） */
+  /** 大模型配置：API Key（仅存本地 IndexedDB kv 仓库，不随数据导出） */
   llmApiKey?: string;
   /** 大模型配置：模型 ID（如 gpt-4o-mini / deepseek-chat） */
   llmModelId?: string;

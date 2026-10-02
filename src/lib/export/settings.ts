@@ -20,14 +20,22 @@ export interface SettingsPayload {
   settings: Partial<AppSettings>;
 }
 
-/** 组装设置导出 JSON */
+/** 绝不导出的敏感字段（大模型 API Key 存 IDB kv，且内存态也不落导出文件） */
+const SECRET_KEYS = ['llmApiKey'] as const;
+
+/** 组装设置导出 JSON（敏感字段剔除：导出文件可能被分享，key 不应随文件扩散） */
 export function buildSettingsPayload(settings: AppSettings): SettingsPayload {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(settings)) {
+    if ((SECRET_KEYS as readonly string[]).includes(k)) continue;
+    out[k] = v;
+  }
   return {
     app: 'simple-voice-tools',
     kind: 'settings',
     version: SETTINGS_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
-    settings,
+    settings: out as Partial<AppSettings>,
   };
 }
 
@@ -59,6 +67,9 @@ const NUMBER_RANGE: Partial<Record<keyof AppSettings, [number, number]>> = {
   silenceStopSec: [0.5, 2],
   liveWindowSec: [6, 20],
   audioBitrateKbps: [96, 256],
+  formantTargetF1: [200, 1100],
+  formantTargetF2: [500, 3400],
+  formantTargetRadius: [50, 800],
 };
 
 /**

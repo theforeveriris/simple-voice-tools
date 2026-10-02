@@ -279,7 +279,7 @@ async function ensureRepo(token: string, repoName: string): Promise<string> {
   try {
     await gh('/user/repos', token, {
       method: 'POST',
-      body: JSON.stringify({ name: repoName, private: true, description: 'Simple Voice Tool 备份' }),
+      body: JSON.stringify({ name: repoName, private: true, description: t('gh.repoDesc') }),
     });
   } catch (err) {
     throw new Error(
@@ -342,7 +342,7 @@ export async function pushBackup(
   const records = await store.getAllRecords();
   if (records.length === 0) throw new Error(t('gh.errNoRecords'));
 
-  onProgress?.(0, 1, '读取录音音频');
+  onProgress?.(0, 1, t('gh.progressReadAudio'));
   const entries: { path: string; data: Uint8Array }[] = [];
   const payload = buildRecordsPayload(records);
   entries.push({ path: BACKUP_JSON_PATH, data: strToU8(JSON.stringify(payload)) });
@@ -374,7 +374,7 @@ export async function pushBackup(
       pushed++;
     }
     done++;
-    onProgress?.(done, entries.length, '上传');
+    onProgress?.(done, entries.length, t('gh.progressUpload'));
   });
 
   const at = Date.now();
@@ -402,7 +402,7 @@ export async function pullBackup(
   const remoteShas = await fetchRemoteShas(token, owner, repoName);
   if (!remoteShas.has(BACKUP_JSON_PATH)) throw new Error(t('gh.errNoBackup', { repo: repoName }));
 
-  onProgress?.(0, 1, '下载记录清单');
+  onProgress?.(0, 1, t('gh.progressFetchRecords'));
   const jsonBytes = await ghRaw(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/contents/${encodePath(BACKUP_JSON_PATH)}`, token);
   // 与 ZIP 恢复同一套格式/版本校验（v1/v2 可读，更新版本拒绝）
   const { records: incoming } = parseRecordsPayload(new TextDecoder().decode(jsonBytes));
@@ -427,7 +427,7 @@ export async function pullBackup(
     const buf = await ghRaw(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/contents/${encodePath(path)}`, token);
     await idbPutAudio(id, new Blob([buf], { type: audioMimeOf(path) }));
     done++;
-    onProgress?.(done, audioPaths.length, '下载音频');
+    onProgress?.(done, audioPaths.length, t('gh.progressFetchAudio'));
   });
 
   return { records: added, audio: audioPaths.length };

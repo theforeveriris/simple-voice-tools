@@ -24,6 +24,10 @@ const FORMANT_EVERY = 2;
 const ACTIVE_DB = -50;
 /** 监听模式缓冲上限（帧数，约 2 分钟 @60fps）：长时间练习不无限占用内存 */
 const MONITOR_BUFFER_FRAMES = 7200;
+/** 未设置「最长录音时长」时的硬性上限（秒）：
+ *  曲线缓冲 / 语谱行 / 音频块都随录音时长线性增长，放开会一直吃内存，
+ *  到顶自动按正常录音收尾落库（与设置的最长档行为一致） */
+const UNLIMITED_DURATION_CAP_SEC = 600;
 
 /**
  * 由数据序列聚合统计信息
@@ -116,6 +120,31 @@ export function computeInTargetPct(
     if (f == null || f <= 0) continue;
     voiced++;
     if (f >= range[0] && f <= range[1]) inside++;
+  }
+  return voiced > 0 ? Math.round((inside / voiced) * 100) : null;
+}
+
+/**
+ * 共振峰目标区命中率：F1/F2 同帧检出且落在目标矩形 (F1±r, F2±r) 内的
+ * 有声帧占比（%）。实时计算不落库（改目标后旧记录立即可重新评估）
+ */
+export function computeInFormantTargetPct(
+  series: RecordSeries,
+  target: { f1: number; f2: number; radius: number } | null,
+): number | null {
+  if (!target) return null;
+  let voiced = 0;
+  let inside = 0;
+  for (let i = 0; i < series.t.length; i++) {
+    if (series.f0[i] == null) continue;
+    const f1 = series.f1[i];
+    const f2 = series.f2[i];
+    if (f1 == null || f2 == null) continue;
+    voiced++;
+    if (
+      f1 >= target.f1 - target.radius && f1 <= target.f1 + target.radius
+      && f2 >= target.f2 - target.radius && f2 <= target.f2 + target.radius
+    ) inside++;
   }
   return voiced > 0 ? Math.round((inside / voiced) * 100) : null;
 }
@@ -217,6 +246,8 @@ class VoiceRecorder {
   private bufF1: number[] = [];
   private bufF2: number[] = [];
   private bufSpec: Uint8Array[] = [];
+  /** 语谱行回收池：帧循环每帧需要一行，用完回收复用，稳态零分配 */
+  private specPool: Uint8Array[] = [];
   private smoothF1: number | null = null;
   private smoothF2: number | null = null;
 
@@ -344,9 +375,10 @@ class VoiceRecorder {
     this.freqBuf = null;
   }
 
-  /** 清空帧缓冲与平滑链，为下一次采集做准备 */
+  /** 清空帧缓冲与平滑链，为下一次采集做准备（语谱行归还回收池） */
   private clearBuffers(): void {
     this.bufT = []; this.bufF0 = []; this.bufDb = []; this.bufF1 = []; this.bufF2 = [];
+    for (const row of this.bufSpec) this.specPool.push(row);
     this.bufSpec = [];
     this.smoothF1 = null; this.smoothF2 = null;
   }
@@ -399,7 +431,10 @@ class VoiceRecorder {
       this.lastFrameAt = 0;
       this.clearBuffers();
       this.lastPitch = null;
-      this.maxDurationSec = opts.maxDurationSec ?? 0;
+      // 0/未设置 = 不限制：仍钳制到硬性上限，防止缓冲与音频块无界增长
+      this.maxDurationSec = opts.maxDurationSec && opts.maxDurationSec > 0
+        ? opts.maxDurationSec
+        : UNLIMITED_DURATION_CAP_SEC;
       this.onAutoStop = opts.onAutoStop ?? null;
       this.autoStopFired = false;
       this.pendingMode = opts.mode;
@@ -501,6 +536,9 @@ class VoiceRecorder {
     this.clearBuffers();
     if (durationSec < 1 || series.t.length < 4) {
       this.mediaChunks = [];
+      // 不落记录时同步清掉引用，避免残留到下一次 start
+      this.mediaRecorder = null;
+      this.mediaStopped = null;
       return null;
     }
 
@@ -534,7 +572,9 @@ class VoiceRecorder {
     this.mediaChunks = [];
     this.mediaRecorder = null;
     if (this.mediaStopped) {
-      await Promise.race([this.mediaStopped, new Promise<void>((r) => setTimeout(r, 2000))]);
+      // 给 MediaRecorder 冲刷留足时间：超时强 Proceed 可能读到不完整音频，
+      // 导致嗓音质量指标（尤其 CPPS）失真，宁多等几秒也不算错数
+      await Promise.race([this.mediaStopped, new Promise<void>((r) => setTimeout(r, 5000))]);
       this.mediaStopped = null;
     }
     if (chunks.length === 0) return { record, audio: null };
@@ -620,9 +660,9 @@ class VoiceRecorder {
       this.smoothF2 = null;
     }
 
-    // 语谱频带（每帧）
+    // 语谱频带（每帧）：行从回收池取，避免每帧分配
     this.analyser.getFloatFrequencyData(this.freqBuf);
-    const row = new Uint8Array(SPEC_BANDS);
+    const row = this.specPool.pop() ?? new Uint8Array(SPEC_BANDS);
     const binHz = this.audioContext.sampleRate / (this.freqBuf.length * 2);
     spectrumRowToBands(this.freqBuf, binHz, row);
 
@@ -642,7 +682,7 @@ class VoiceRecorder {
       this.bufDb.splice(0, drop);
       this.bufF1.splice(0, drop);
       this.bufF2.splice(0, drop);
-      this.bufSpec.splice(0, drop);
+      for (const dropped of this.bufSpec.splice(0, drop)) this.specPool.push(dropped);
     }
   };
 }

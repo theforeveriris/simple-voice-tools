@@ -81,12 +81,23 @@ function ModeFanSelector({
   onChoose: (mode: TestMode) => void;
 }) {
   useEffect(() => {
+    // 捕获阶段监听：数字键直选模式并阻断全局快捷键（1–4 切页签）的同键冲突；
+    // Escape 关闭（长按手势的键盘等价操作）
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      const idx = ['1', '2', '3'].indexOf(e.key);
+      if (idx >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        onChoose(MODE_OPTIONS[idx].id);
+      }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose, onChoose]);
 
   return createPortal(
     <div className="fixed inset-0 z-[70]">
@@ -442,6 +453,8 @@ export function BottomBar() {
   const currentTab = useStore((s) => s.currentTab);
   const updateSettings = useStore((s) => s.updateSettings);
   const startRecording = useStore((s) => s.startRecording);
+  const stopRecording = useStore((s) => s.stopRecording);
+  const isRecording = useStore((s) => s.isRecording);
   const isTest = currentTab === 'test';
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -518,6 +531,38 @@ export function BottomBar() {
     },
     [updateSettings, startRecording],
   );
+
+  // 键盘等价操作（仅测试页；输入框/按钮聚焦或对话框打开时不接管）：
+  // Space = 短按圆球（开始/停止录音），M = 长按圆球（唤出模式扇形）
+  useEffect(() => {
+    if (!isTest) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target
+        && (target.tagName === 'INPUT'
+          || target.tagName === 'TEXTAREA'
+          || target.tagName === 'SELECT'
+          || target.tagName === 'BUTTON'
+          || target.isContentEditable)
+      ) return;
+      // Radix 对话框 / 浮层打开时交还给其内部焦点管理
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (menuOpen) return;
+        if (isRecording) void stopRecording();
+        else void startRecording().catch(() => toast.error(t('toast.micError')));
+      } else if (e.key === 'm' || e.key === 'M') {
+        if (menuOpen || isRecording) return;
+        e.preventDefault();
+        openMenu();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isTest, menuOpen, isRecording, openMenu, startRecording, stopRecording]);
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-5">

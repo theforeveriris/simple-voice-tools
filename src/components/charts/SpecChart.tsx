@@ -9,6 +9,7 @@ import { bytesFromBase64 } from '@/lib/audio/spectrogram';
 import { useStore } from '@/store/useStore';
 import { chartPalette } from './chartPainters';
 import { drawSpectrogram } from './specPainter';
+import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -99,7 +100,7 @@ export function SpecChart({ record, range, playhead, className }: SpecChartProps
     <canvas
       ref={canvasRef}
       className={cn('block h-full w-full rounded-lg', className)}
-      aria-label="语谱图"
+      aria-label={t('analysis.specAria')}
     />
   );
 }

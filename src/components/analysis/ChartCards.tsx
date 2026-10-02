@@ -8,11 +8,14 @@
  * 时间轴区间状态由页面层持有（共享 / 独立两种模式），经 props 传入。
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { SeriesChart } from '@/components/charts/SeriesChart';
 import { SpecChart } from '@/components/charts/SpecChart';
 import { TimeRangeSelector } from '@/components/charts/TimeRangeSelector';
+import { computeInFormantTargetPct } from '@/lib/audio/recorder';
+import { getFormantTarget } from '@/constants';
+import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 import { cn } from '@/lib/utils';
@@ -53,7 +56,7 @@ export function AnalysisChart({
         {right}
       </div>
       <div className={cn('relative', heightClass)}>
-        <SeriesChart kind={kind} series={record.series} range={range} playhead={playhead} />
+        <SeriesChart kind={kind} series={record.series} range={range} playhead={playhead} ariaLabel={title} />
       </div>
       <TimeRangeSelector
         series={record.series}
@@ -71,6 +74,12 @@ export function AnalysisChart({
 export function FormantCard({ record, range, onRangeChange, playhead }: RangedCardProps) {
   // 共振峰卡片视图：时域曲线 / 元音空间散点
   const [formantView, setFormantView] = useState<'curve' | 'scatter'>('curve');
+  const formantTargetEnabled = useStore((s) => s.settings.formantTargetEnabled);
+  // 目标区命中率（整条记录实时评估，改设置立即重算）
+  const formantHitPct = useMemo(
+    () => formantTargetEnabled ? computeInFormantTargetPct(record.series, getFormantTarget()) : null,
+    [record, formantTargetEnabled],
+  );
   return (
     <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
       <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
@@ -112,6 +121,7 @@ export function FormantCard({ record, range, onRangeChange, playhead }: RangedCa
           series={record.series}
           range={range}
           playhead={playhead}
+          ariaLabel={t('analysis.titleFormant')}
         />
       </div>
       <TimeRangeSelector
@@ -123,7 +133,9 @@ export function FormantCard({ record, range, onRangeChange, playhead }: RangedCa
       />
       {formantView === 'scatter' && (
         <p className="mt-1.5 text-center text-[10px] text-ink-2">
-          {t('analysis.scatterExplain')}
+          {formantHitPct != null
+            ? `${t('analysis.scatterExplain')} · ${t('analysis.formantHit', { pct: formantHitPct })}`
+            : t('analysis.scatterExplain')}
         </p>
       )}
     </div>

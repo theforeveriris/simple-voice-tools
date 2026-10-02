@@ -11,7 +11,8 @@ import { recorder } from '@/lib/audio/recorder';
 import { paintVowelSpaceLive } from '@/components/charts/chartPainters';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { LiveSheetFrame, useLiveCanvas } from './LiveSheetFrame';
+import { LiveSheetFrame } from './LiveSheetFrame';
+import { useLiveCanvas } from '@/hooks/useLiveCanvas';
 
 /** 落点轨迹窗口（秒）：保留最近的移动残影 */
 const TRAIL_SEC = 10;

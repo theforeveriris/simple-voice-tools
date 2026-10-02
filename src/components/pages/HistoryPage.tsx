@@ -8,12 +8,12 @@
  * 点击任意记录进入对应分析页。
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Trash2, ChevronRight, History,
-  Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote, CalendarDays,
+  Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote, CalendarDays, ListChecks,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -21,6 +21,7 @@ import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { MiniSpark } from '@/components/charts/MiniSpark';
 import { TrendChart } from '@/components/charts/TrendChart';
+import { hasTrendMetricData, type TrendMetric } from '@/lib/trendMetric';
 import { WeeklyReportCard } from '@/components/history/WeeklyReportCard';
 import { DiaryHeatmap } from '@/components/charts/DiaryHeatmap';
 import type { DiaryMetric } from '@/components/charts/DiaryHeatmap';
@@ -125,9 +126,18 @@ function RecordCard({
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        // 键盘等价操作：Enter/Space 打开（多选模式下切换选中）
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
       onContextMenu={(e) => e.preventDefault()}
+      role="button"
+      tabIndex={0}
       className={cn(
-        'group flex cursor-pointer select-none flex-col gap-1.5 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)] sm:flex-row sm:items-center sm:gap-4',
+        'group flex cursor-pointer select-none flex-col gap-1.5 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/70 sm:flex-row sm:items-center sm:gap-4',
         selectionMode && selected && 'ring-2 ring-accent',
       )}
       {...(selectionMode ? {} : press)}
@@ -291,6 +301,13 @@ const DIARY_METRICS: { id: DiaryMetric; labelKey: 'history.diaryMetricCount' | '
   { id: 'avgF0', labelKey: 'history.diaryMetricF0' },
 ];
 
+/** 趋势图纵轴指标切换：平均基频 / 最长声时 MPT（长音）/ CPPS（需录音音频） */
+const TREND_METRICS: { id: TrendMetric; labelKey: 'history.trendMetricF0' | 'history.trendMetricMpt' | 'history.trendMetricCpps' }[] = [
+  { id: 'f0', labelKey: 'history.trendMetricF0' },
+  { id: 'mpt', labelKey: 'history.trendMetricMpt' },
+  { id: 'cpps', labelKey: 'history.trendMetricCpps' },
+];
+
 export function HistoryPage() {
   useI18n();
   const records = useHistoryStore((s) => s.records);
@@ -307,7 +324,9 @@ export function HistoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [comparePair, setComparePair] = useState<[AnalysisRecord, AnalysisRecord] | null>(null);
   const [trendFilter, setTrendFilter] = useState<'all' | TestMode>('all');
+  const [trendMetric, setTrendMetric] = useState<TrendMetric>('f0');
   const [diaryMetric, setDiaryMetric] = useState<DiaryMetric>('count');
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const open = (record: AnalysisRecord) => {
     setCurrentAnalysis(record);
@@ -371,10 +390,42 @@ export function HistoryPage() {
     setComparePair([a, b]);
   };
 
+  // 键盘操作（长按手势的等价操作 + 效率快捷键）：
+  // / 聚焦搜索；多选模式下 Esc 退出、Ctrl/⌘+A 全选、Delete 批量删除（可撤销）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing = !!target
+        && (target.tagName === 'INPUT'
+          || target.tagName === 'TEXTAREA'
+          || target.tagName === 'SELECT'
+          || target.isContentEditable);
+      if (e.key === '/' && !typing && view === 'list' && !selectionMode) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+      if (!selectionMode || typing) return;
+      if (e.key === 'Escape') {
+        exitSelection();
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        setSelectedIds(new Set(filtered.map((r) => r.id)));
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        batchRemove();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, selectionMode, filtered]);
+
   return (
     <div className="flex flex-col gap-3.5">
-      {/* 列表 / 趋势 切换 */}
-      <div className="flex w-fit items-center gap-0.5 rounded-full bg-card p-1 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+      {/* 列表 / 趋势 切换（列表视图右侧附可见的「多选」入口，桌面端长按手势的等价操作） */}
+      <div className="flex w-full items-center justify-between gap-2">
+        <div className="flex w-fit items-center gap-0.5 rounded-full bg-card p-1 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
         {(
           [
             { id: 'list', label: t('history.viewList'), icon: ListFilter },
@@ -401,6 +452,16 @@ export function HistoryPage() {
             </button>
           );
         })}
+        </div>
+        {view === 'list' && !selectionMode && records.length > 0 && (
+          <button
+            onClick={() => enterSelection()}
+            aria-label={t('history.selectAria')}
+            className="grid size-9 place-items-center rounded-full bg-card text-ink-2 shadow-[0_2px_14px_rgba(28,25,45,0.05)] transition-colors hover:text-ink"
+          >
+            <ListChecks size={16} />
+          </button>
+        )}
       </div>
 
       {view === 'trend' ? (
@@ -409,25 +470,43 @@ export function HistoryPage() {
         ) : (
           <>
           <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
-            {/* 模式过滤：长音/滑音的基频与朗读不可比 */}
-            <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-              {TREND_FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setTrendFilter(f.id)}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
-                    trendFilter === f.id
-                      ? 'bg-accent text-on-accent'
-                      : 'bg-surface-hi text-ink-2 hover:text-ink',
-                  )}
-                >
-                  {t(f.labelKey)}
-                </button>
-              ))}
+            {/* 模式过滤：长音/滑音的基频与朗读不可比；右侧纵轴指标切换 */}
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {TREND_FILTERS.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setTrendFilter(f.id)}
+                    className={cn(
+                      'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
+                      trendFilter === f.id
+                        ? 'bg-accent text-on-accent'
+                        : 'bg-surface-hi text-ink-2 hover:text-ink',
+                    )}
+                  >
+                    {t(f.labelKey)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center rounded-full bg-surface-hi p-0.5">
+                {TREND_METRICS.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setTrendMetric(m.id)}
+                    className={cn(
+                      'rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors',
+                      trendMetric === m.id ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
+                    )}
+                  >
+                    {t(m.labelKey)}
+                  </button>
+                ))}
+              </div>
             </div>
             {trendRecords.length === 0 ? (
               <p className="py-16 text-center text-sm text-ink-2">{t('history.trendEmpty')}</p>
+            ) : !hasTrendMetricData(trendRecords, trendMetric) ? (
+              <p className="py-16 text-center text-sm text-ink-2">{t('history.trendMetricEmpty')}</p>
             ) : (
               <>
                 {/* 用声日记：日历热力图（打卡概览，跟随当前模式过滤） */}
@@ -455,9 +534,9 @@ export function HistoryPage() {
                   <DiaryHeatmap records={trendRecords} metric={diaryMetric} />
                 </div>
                 <div className="mb-3 border-t border-black/[0.04]" />
-                <TrendChart records={trendRecords} connectLine={trendFilter !== 'all'} onOpen={open} />
+                <TrendChart records={trendRecords} connectLine={trendFilter !== 'all'} metric={trendMetric} onOpen={open} />
                 <p className="mt-1 text-center text-[10px] text-ink-2">
-                  {t('history.trendHint')}
+                  {t(trendMetric === 'f0' ? 'history.trendHint' : 'history.trendHintMetric')}
                 </p>
               </>
             )}
@@ -474,6 +553,7 @@ export function HistoryPage() {
           <div className="flex items-center gap-2 rounded-full bg-card px-4 py-2.5 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
             <Search size={14} className="shrink-0 text-ink-2" />
             <input
+              ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('history.searchPlaceholder')}

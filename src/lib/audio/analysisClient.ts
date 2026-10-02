@@ -1,7 +1,9 @@
 /**
  * 离线分析任务调度
- * 优先派发到 Worker（analysisWorker.ts）；Worker 不可用或单次请求失败时，
- * 回退到主线程执行同一纯函数管线，功能不缺失、只是可能短暂阻塞 UI。
+ * 优先派发到 Worker（analysisWorker.ts）；Worker 不可用时回退到主线程执行
+ * 同一纯函数管线。PCM 一律以 transfer 交付（请求发起即移交所有权），
+ * 因此「单个请求失败后回退主线程」不再可行——失败直接向上抛，
+ * 由调用方决定降级策略（如 finishRecord 保留无嗓音质量的记录）。
  */
 
 import { analyzePcmFrames, analyzePitchFrames, computeVqMetrics, type FrameAnalysisResult, type PitchSeriesResult, type VqMetrics } from './analysisPipeline';
@@ -74,7 +76,9 @@ function requestFrames(
   return new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve: resolve as (value: unknown) => void, reject, onProgress });
-    w.postMessage({ type: 'frames', id, pcm } satisfies AnalysisRequest);
+    // PCM 以 transfer 交付（几秒音频即数 MB，结构化克隆是纯浪费的整块拷贝）；
+    // 交付后主线程这份 buffer 即失效，本请求失败无法再回退主线程（见 runFrameAnalysis）
+    w.postMessage({ type: 'frames', id, pcm } satisfies AnalysisRequest, [pcm.buffer]);
   });
 }
 
@@ -83,7 +87,7 @@ function requestVq(w: Worker, pcm: Float32Array, sampleRate: number): Promise<Vq
   return new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
-    w.postMessage({ type: 'vq', id, pcm, sampleRate } satisfies AnalysisRequest);
+    w.postMessage({ type: 'vq', id, pcm, sampleRate } satisfies AnalysisRequest, [pcm.buffer]);
   });
 }
 
@@ -97,45 +101,34 @@ function requestPitch(
   return new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve: resolve as (value: unknown) => void, reject, onProgress });
-    w.postMessage({ type: 'pitch', id, pcm, algo } satisfies AnalysisRequest);
+    w.postMessage({ type: 'pitch', id, pcm, algo } satisfies AnalysisRequest, [pcm.buffer]);
   });
 }
 
 /**
  * 逐帧分析（YIN / LPC / 语谱 / 嗓音质量）。
- * @param pcm 管线采样率（32kHz）单声道 PCM
+ * @param pcm 管线采样率（32kHz）单声道 PCM。派发 Worker 时以 transfer 交付，
+ *            返回后 pcm 不可再用；Worker 不可用时直接主线程执行，pcm 保持可用
  */
 export async function runFrameAnalysis(
   pcm: Float32Array,
   onProgress?: (frac: number) => void,
 ): Promise<FrameAnalysisResult> {
   const w = ensureWorker();
-  if (w) {
-    try {
-      return await requestFrames(w, pcm, onProgress);
-    } catch (err) {
-      console.warn('Worker 分析失败，回退主线程执行:', err);
-    }
-  }
+  if (w) return requestFrames(w, pcm, onProgress);
   return analyzePcmFrames(pcm, onProgress);
 }
 
-/** 嗓音质量四项（Jitter/Shimmer/HNR/CPPS） */
+/** 嗓音质量四项（Jitter/Shimmer/HNR/CPPS）。pcm 交付语义同 runFrameAnalysis */
 export async function runVqMetrics(pcm: Float32Array, sampleRate: number): Promise<VqMetrics> {
   const w = ensureWorker();
-  if (w) {
-    try {
-      return await requestVq(w, pcm, sampleRate);
-    } catch (err) {
-      console.warn('Worker 嗓音质量计算失败，回退主线程执行:', err);
-    }
-  }
+  if (w) return requestVq(w, pcm, sampleRate);
   return computeVqMetrics(pcm, sampleRate);
 }
 
 /**
  * 单算法音高重算（音高算法对比用）
- * @param pcm 管线采样率（32kHz）单声道 PCM
+ * @param pcm 管线采样率（32kHz）单声道 PCM。pcm 交付语义同 runFrameAnalysis
  */
 export async function runPitchOnly(
   pcm: Float32Array,
@@ -143,12 +136,6 @@ export async function runPitchOnly(
   onProgress?: (frac: number) => void,
 ): Promise<PitchSeriesResult> {
   const w = ensureWorker();
-  if (w) {
-    try {
-      return await requestPitch(w, pcm, algo, onProgress);
-    } catch (err) {
-      console.warn('Worker 音高重算失败，回退主线程执行:', err);
-    }
-  }
+  if (w) return requestPitch(w, pcm, algo, onProgress);
   return analyzePitchFrames(pcm, algo, onProgress);
 }

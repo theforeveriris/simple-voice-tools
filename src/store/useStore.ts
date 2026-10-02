@@ -10,11 +10,16 @@ import type { AnalysisRecord, AppSettings, ViewType } from '@/types';
 import {
   DEFAULT_SETTINGS, MODE_META, setBandBounds,
   setPitchAxis, setLiveWindowSec, setSpecColormap, setPitchAlgorithm,
+  setFormantTarget,
 } from '@/constants';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
+import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import { t } from '@/i18n';
 import { useHistoryStore } from './useHistoryStore';
+
+/** 大模型 API Key 在 IDB kv 仓库中的键名（敏感态不进 localStorage） */
+const KV_LLM_API_KEY = 'llm-api-key';
 
 interface AppState {
   /** 当前页面 */
@@ -62,8 +67,15 @@ export const useStore = create<AppState>()(
       clearPendingAutoReplay: () => set({ pendingAutoReplay: false }),
 
       settings: DEFAULT_SETTINGS,
-      updateSettings: (settings) =>
-        set((state) => ({ settings: { ...state.settings, ...settings } })),
+      updateSettings: (settings) => {
+        // API Key 变更同步写入 IDB kv（内存态仅为解析配置用，不持久化到 localStorage）
+        if (settings.llmApiKey !== undefined) {
+          void idbPutKV(KV_LLM_API_KEY, settings.llmApiKey).catch((err) => {
+            console.warn('大模型 API Key 写入 IndexedDB 失败:', err);
+          });
+        }
+        set((state) => ({ settings: { ...state.settings, ...settings } }));
+      },
 
       startRecording: async () => {
         if (get().isRecording) return;
@@ -126,7 +138,12 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'svt:settings:v1',
-      partialize: (state) => ({ settings: state.settings }),
+      // llmApiKey 不进 localStorage（存 IDB kv）：排除在持久化对象之外
+      partialize: (state) => {
+        const { llmApiKey: _omit, ...rest } = state.settings;
+        void _omit;
+        return { settings: rest };
+      },
       merge: (persisted, current) => {
         const p = (persisted as { settings?: Partial<AppSettings> } | undefined)?.settings ?? {};
         const settings = { ...DEFAULT_SETTINGS, ...p } as AppSettings;
@@ -134,6 +151,11 @@ export const useStore = create<AppState>()(
         const legacy = (p as { adviceEnabled?: unknown }).adviceEnabled;
         if (typeof legacy === 'boolean' && p.adviceMode === undefined) {
           settings.adviceMode = legacy ? 'rules' : 'none';
+        }
+        // 旧版把 API Key 存在 localStorage：一次性迁入 IDB kv，内存态保留可用
+        const legacyKey = (p as { llmApiKey?: unknown }).llmApiKey;
+        if (typeof legacyKey === 'string' && legacyKey) {
+          void idbPutKV(KV_LLM_API_KEY, legacyKey).catch(() => undefined);
         }
         return { ...current, settings };
       },
@@ -150,8 +172,24 @@ function syncModuleSettings(s: AppSettings): void {
   setLiveWindowSec(s.liveWindowSec);
   setSpecColormap(s.specColormap);
   setPitchAlgorithm(s.pitchAlgorithm);
+  setFormantTarget(s.formantTargetEnabled
+    ? { f1: s.formantTargetF1, f2: s.formantTargetF2, radius: s.formantTargetRadius }
+    : null);
 }
 syncModuleSettings(useStore.getState().settings);
 useStore.subscribe((state, prev) => {
   if (state.settings !== prev.settings) syncModuleSettings(state.settings);
 });
+
+// 大模型 API Key 启动时从 IDB kv 恢复到内存态（设置输入框 / resolveLlmConfig 消费）；
+// 内存已有值（如迁移刚写入）时不覆盖
+void (async () => {
+  try {
+    const key = await idbGetKV<string>(KV_LLM_API_KEY);
+    if (key && !useStore.getState().settings.llmApiKey) {
+      useStore.getState().updateSettings({ llmApiKey: key });
+    }
+  } catch {
+    /* IndexedDB 不可用时保持为空，由设置页提示补全 */
+  }
+})();

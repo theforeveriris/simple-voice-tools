@@ -79,15 +79,6 @@ export const BAND_COLORS: Record<PitchBand, string> = {
   high: '#BBA7EA',
 };
 
-/** 区间中文名 */
-export const BAND_LABELS: Record<PitchBand, string> = {
-  low: '偏低',
-  male: '男声区',
-  transition: '过渡区',
-  female: '女声区',
-  high: '偏高',
-};
-
 /**
  * 判断频率所属音高区间（跟随自定义音区边界）
  */
@@ -147,6 +138,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   targetEnabled: false,
   targetF0Min: 165,
   targetF0Max: 255,
+  formantTargetEnabled: false,
+  formantTargetF1: 730,
+  formantTargetF2: 1090,
+  formantTargetRadius: 200,
   // 实验性功能
   showSpectrogram: true,
   liveSpectrum: false,
@@ -234,6 +229,23 @@ export function getPitchAlgorithm(): PitchAlgorithm {
 }
 export function setPitchAlgorithm(a: PitchAlgorithm): void {
   currentPitchAlgorithm = a;
+}
+
+/** 共振峰目标区（元音散点叠加；f1 = null 表示未启用） */
+export interface FormantTarget {
+  f1: number;
+  f2: number;
+  /** 容差半径（Hz）：目标区为 (F1±r, F2±r) 的矩形 */
+  radius: number;
+}
+
+/** 运行时共振峰目标区（useStore 订阅设置同步，画笔 / 命中率统计同一来源） */
+let currentFormantTarget: FormantTarget | null = null;
+export function getFormantTarget(): FormantTarget | null {
+  return currentFormantTarget;
+}
+export function setFormantTarget(t: FormantTarget | null): void {
+  currentFormantTarget = t;
 }
 
 /* ------------------------------ 元音空间散点图 ------------------------------ */

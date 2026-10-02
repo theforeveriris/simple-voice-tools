@@ -13,6 +13,20 @@ export interface PitchEstimate {
 }
 
 /**
+ * 差分/CMND 复用缓冲：实时循环 60fps 逐帧调用，按需增长避免每帧分配。
+ * 同一线程内调用严格串行（实时循环 / 离线管线 / Worker 各自独占本线程），复用安全。
+ */
+let diffBuf = new Float32Array(0);
+let cmndBuf = new Float32Array(0);
+
+function ensureTauScratch(len: number): void {
+  if (diffBuf.length < len) {
+    diffBuf = new Float32Array(len);
+    cmndBuf = new Float32Array(len);
+  }
+}
+
+/**
  * 对一帧时域信号做 YIN 音高检测
  * @param samples 时域采样（长度需 >= 2 * tauMax）
  * @param sampleRate 采样率
@@ -30,9 +44,11 @@ export function detectPitchYin(
   const tauMax = Math.min(half - 1, Math.floor(sampleRate / minHz));
   const tauMin = Math.max(2, Math.floor(sampleRate / maxHz));
   if (tauMax <= tauMin) return null;
+  ensureTauScratch(tauMax + 1);
+  const diff = diffBuf;
+  const cmnd = cmndBuf;
 
   // 1. 差分函数 d(tau)
-  const diff = new Float32Array(tauMax + 1);
   for (let tau = tauMin; tau <= tauMax; tau++) {
     let sum = 0;
     for (let i = 0; i < half; i++) {
@@ -43,7 +59,6 @@ export function detectPitchYin(
   }
 
   // 2. 累积均值归一化 d'(tau)
-  const cmnd = new Float32Array(tauMax + 1);
   cmnd[tauMin] = 1;
   let runningSum = 0;
   for (let tau = tauMin; tau <= tauMax; tau++) {

@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Lightbulb, Loader2, RefreshCw } from 'lucide-react';
+import { Lightbulb, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { buildAdvice, type AdviceTarget } from '@/lib/advice';
@@ -108,7 +108,8 @@ interface LlmState {
   error: string | null;
 }
 
-/** 大模型判断：异步生成（会话内缓存，失败可重试） */
+/** 大模型判断：点击触发后异步生成（会话内缓存，失败可重试）。
+ *  不在挂载时自动请求：调用是付费 API 且会上传统计到第三方，由用户显式发起 */
 function LlmAdvice({
   records,
   target,
@@ -123,6 +124,7 @@ function LlmAdvice({
   prompt: { extraRules?: string[]; promptOverride?: string };
 }) {
   const [nonce, setNonce] = useState(0);
+  const [started, setStarted] = useState(false);
   const [state, setState] = useState<LlmState>({ doneKey: null, result: null, error: null });
   // effect 按缓存键（值稳定）触发，输入经 ref 传递：键值不变则不重复请求
   const latest = useRef({ records, target, cfg, baseline, prompt });
@@ -133,7 +135,7 @@ function LlmAdvice({
   const requestKey = key ? `${key}#${nonce}` : null;
 
   useEffect(() => {
-    if (!key || !requestKey) return;
+    if (!started || !key || !requestKey) return;
     const { cfg: curCfg, records: curRecords, target: curTarget, baseline: curBaseline, prompt: curPrompt } = latest.current;
     if (!curCfg) return;
     let alive = true;
@@ -149,10 +151,21 @@ function LlmAdvice({
     return () => {
       alive = false;
     };
-  }, [key, requestKey]);
+  }, [key, requestKey, started]);
 
   if (!cfg) {
     return <p className="px-0.5 text-xs leading-relaxed text-ink-2">{t('analysis.adviceLlmNoConfig')}</p>;
+  }
+  if (!started) {
+    return (
+      <button
+        onClick={() => setStarted(true)}
+        className="flex w-fit items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+      >
+        <Sparkles size={13} />
+        {t('analysis.adviceLlmRun')}
+      </button>
+    );
   }
   const loading = state.doneKey !== requestKey;
   if (loading) {

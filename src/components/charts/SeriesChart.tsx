@@ -29,10 +29,12 @@ interface SeriesChartProps {
   range?: [number, number];
   /** 静态模式：播放头位置（秒），null = 不显示 */
   playhead?: number | null;
+  /** 无障碍标签（画布为纯视觉元素，读屏用户依赖该描述） */
+  ariaLabel?: string;
   className?: string;
 }
 
-export function SeriesChart({ kind, live = false, series, range, playhead, className }: SeriesChartProps) {
+export function SeriesChart({ kind, live = false, series, range, playhead, ariaLabel, className }: SeriesChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sizeRef = useRef({ w: 0, h: 0 });
   const dprRef = useRef(1);
@@ -159,6 +161,30 @@ export function SeriesChart({ kind, live = false, series, range, playhead, class
     drawFrame();
   };
 
+  // 键盘十字线：聚焦图表后用方向键移动读数（长按拖动的键盘等价操作）
+  const onCanvasKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (!supportsCrosshair || !propsRef.current.range) return;
+    const [t0, t1] = propsRef.current.range;
+    let t = crossTRef.current ?? (t0 + t1) / 2;
+    const step = ((t1 - t0) / 100) * (e.shiftKey ? 5 : 1);
+    switch (e.key) {
+      case 'ArrowLeft': t -= step; break;
+      case 'ArrowRight': t += step; break;
+      case 'Home': t = t0; break;
+      case 'End': t = t1; break;
+      case 'Escape':
+        crossTRef.current = null;
+        drawFrame();
+        e.preventDefault();
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+    crossTRef.current = Math.max(t0, Math.min(t1, t));
+    drawFrame();
+  };
+
   return (
     <canvas
       ref={canvasRef}
@@ -167,8 +193,22 @@ export function SeriesChart({ kind, live = false, series, range, playhead, class
       onPointerUp={supportsCrosshair ? endCrosshair : undefined}
       onPointerCancel={supportsCrosshair ? endCrosshair : undefined}
       onPointerLeave={supportsCrosshair ? endCrosshair : undefined}
+      onKeyDown={supportsCrosshair ? onCanvasKeyDown : undefined}
+      onBlur={() => {
+        // 焦点离开时收起键盘十字线
+        if (crossTRef.current != null && !crossActiveRef.current) {
+          crossTRef.current = null;
+          drawFrame();
+        }
+      }}
       style={supportsCrosshair ? { touchAction: 'pan-y' } : undefined}
-      className={cn('block h-full w-full', className)}
+      tabIndex={supportsCrosshair ? 0 : undefined}
+      role="img"
+      aria-label={ariaLabel}
+      className={cn(
+        'block h-full w-full rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/70',
+        className,
+      )}
     />
   );
 }

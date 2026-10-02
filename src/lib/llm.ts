@@ -2,7 +2,7 @@
  * 大模型训练建议（实验性）
  * 调用用户在 设置 → 实验性功能 → 大模型配置 中自填的 OpenAI 兼容接口
  * （POST {baseUrl}/chat/completions），仅上传录音统计指标生成建议，
- * 不上传任何音频数据；API Key 仅保存在本地 localStorage。
+ * 不上传任何音频数据；API Key 仅保存在本地 IndexedDB（kv 仓库）。
  *
  * 分析标准与数据口径对齐 documentation/PARAMETERS-GUIDE.md：
  * 有效性门槛 → 音高 / 语调与稳定 / 共鸣 / 嗓音质量 / 长音 / 基线趋势
@@ -523,6 +523,16 @@ export async function fetchWeeklyReport(
 
 /* ------------------------------ 会话内缓存 ------------------------------ */
 
+/** 短字符串散列（FNV-1a 变体）：缓存键中替代原始 API Key，避免明文 key 落在内存键里 */
+function hashStr(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
 const adviceCache = new Map<string, Promise<LlmAdviceResult>>();
 
 /**
@@ -548,7 +558,7 @@ export function weeklyReportKey(cfg: LlmConfig, records: AnalysisRecord[], promp
   return JSON.stringify([
     'weekly',
     cfg.baseUrl,
-    cfg.apiKey,
+    hashStr(cfg.apiKey),
     cfg.modelId,
     getLocale(),
     new Date().toDateString(),
@@ -583,7 +593,7 @@ export function llmAdviceKey(
   const { baseline = null, prompt } = opts;
   return JSON.stringify([
     cfg.baseUrl,
-    cfg.apiKey,
+    hashStr(cfg.apiKey),
     cfg.modelId,
     getLocale(),
     target.enabled,

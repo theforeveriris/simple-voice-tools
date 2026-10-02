@@ -5,13 +5,14 @@ import { VitePWA } from "vite-plugin-pwa"
 import { inspectAttr } from 'kimi-plugin-inspect-react'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: './',
   build: {
     outDir: 'docs',
   },
   plugins: [
-    inspectAttr(),
+    // 开发期 DOM 检查辅助插件，不进生产构建
+    ...(command === 'serve' ? [inspectAttr()] : []),
     react(),
     VitePWA({
       // SW 自动更新：新版本下载完成后下次加载生效
@@ -77,4 +78,4 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-});
+}));

@@ -10,7 +10,7 @@ import type { AppSettings } from '@/types';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 
-/** OpenAI 兼容接口参数 + 测试连接 + 提示词入口（Key 仅存本地 localStorage） */
+/** OpenAI 兼容接口参数 + 测试连接 + 提示词入口（Key 仅存本地 IndexedDB kv 仓库） */
 export function LlmConfigSection({
   settings,
   update,

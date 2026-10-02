@@ -3,11 +3,12 @@
  * 页面切换（带过渡动画）+ 底部悬浮导航栏
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { BottomBar } from '@/components/layout/BottomBar';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
+import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
 import { TestPage } from '@/components/pages/TestPage';
 import { AnalysisPage } from '@/components/pages/AnalysisPage';
 import { HistoryPage } from '@/components/pages/HistoryPage';
@@ -70,6 +71,39 @@ function App() {
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  // 全局快捷键：1–4 切换页签；? 呼出/关闭快捷键帮助。
+  // 输入控件聚焦时不接管；Space / M / Esc 等页面级按键由对应页面组件处理
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target
+        && (target.tagName === 'INPUT'
+          || target.tagName === 'TEXTAREA'
+          || target.tagName === 'SELECT'
+          || target.isContentEditable)
+      ) return;
+      if (e.key === '?') {
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
+        return;
+      }
+      if (shortcutsOpen) {
+        // 帮助面板打开时只允许 Esc（面板自身处理）与 ?（上方已切换），屏蔽页签跳转
+        if (/^[1-4]$/.test(e.key)) e.preventDefault();
+        return;
+      }
+      if (/^[1-4]$/.test(e.key)) {
+        e.preventDefault();
+        useStore.getState().setTab(TABS[Number(e.key) - 1]);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [shortcutsOpen]);
 
   const isDark = theme === 'dark'
     || (theme === 'system'
@@ -181,6 +215,10 @@ function App() {
       </main>
 
       <BottomBar />
+
+      {/* 快捷键帮助（? 呼出）。面板自身渲染到 body portal，因此不用 AnimatePresence 包裹：
+          关闭时直接卸载（入场动画保留），不依赖 portal 内退出动画的上报 */}
+      {shortcutsOpen && <ShortcutsHelpSheet onClose={() => setShortcutsOpen(false)} />}
     </div>
   );
 }
