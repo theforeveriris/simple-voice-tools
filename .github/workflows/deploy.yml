@@ -1,0 +1,43 @@
+name: Deploy
+
+# push 到 main 即构建并部署 GitHub Pages（构建产物 docs/ 已 gitignore，不再入库）
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages 部署所需权限（deploy-pages 用 OIDC 换取临时部署令牌）
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只保留一次部署，新推送取消进行中的旧部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      # enablement: Pages 未开启时自动以 workflow 模式创建（无需手动去 Settings 切换来源）
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

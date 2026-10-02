@@ -1,8 +1,7 @@
 name: CI
 
+# push 到 main 的测试与构建由 deploy.yml 覆盖，这里只跑 PR
 on:
-  push:
-    branches: [main]
   pull_request:
 
 jobs:

@@ -101,8 +101,9 @@ npm run build
 npm test        # vitest 单测（DSP/导出/备份/i18n 完整性，CI 同步执行）
 ```
 
-> 构建产物输出到 `docs/` 目录（GitHub Pages 约定）。注意 `docs/` 构建时会被清空，
-> 源文档位于 `documentation/` 目录。
+> 构建产物输出到 `docs/` 目录（已 gitignore，不入库）：push 到 main 后由
+> GitHub Actions 自动构建并部署 Pages（见 `.github/workflows/deploy.yml`）。
+> 源文档位于 `documentation/` 目录，与构建产物 `docs/` 无关。
 
 ### 预览构建结果
 

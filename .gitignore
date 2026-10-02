@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 dist/
+# GitHub Pages 构建产物（由 Actions 构建部署，不入库）
+docs/
 
 # Environment variables
 .env
