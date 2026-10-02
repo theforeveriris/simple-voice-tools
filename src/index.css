@@ -118,15 +118,129 @@
   background: rgb(var(--c-accent-rgb) / 0.18);
 }
 
-/* 自定义色相滑块的拖块 */
-input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 9999px;
-  background: #fff;
-  border: none;
-  box-shadow: 0 1px 6px rgba(20, 18, 35, 0.35);
-  cursor: pointer;
+/* ---------------- 骄傲旗主题（跨性别 / 非二元 / 性别流体）：氤氲渐变背景 + 毛玻璃 ----------------
+ * 类名与旗帜由 applyTheme 切换：<html class="theme-pride [dark]" data-pride-flag="...">
+ * 渐变挂在 body::before（fixed、z -1）：页面与全屏浮层让出背景后透出；
+ * 浅色为大面积低透光斑互相弥漫，深色收敛为微光。
+ * 可调参数（applyPrideParams 写入 CSS 变量）：
+ *   --pride-glow       渐变浓度（光斑层不透明度倍率）
+ *   --pride-saturation 饱和度（saturate 倍率）
+ *   --pride-glass-blur 毛玻璃模糊半径
+ * 类名 theme-pride-static 表示关闭流动动画。 */
+
+html.theme-pride body::before {
+  content: '';
+  position: fixed;
+  inset: -12%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--pride-glow, 1);
+  filter: blur(48px) saturate(var(--pride-saturation, 1.12));
+  animation: pride-drift 32s ease-in-out infinite alternate;
+}
+
+/* 跨性别旗：粉白蓝（左粉右蓝，紫斑过渡） */
+html.theme-pride[data-pride-flag='transPride'] body::before {
+  background:
+    radial-gradient(40% 36% at 14% 18%, rgb(246 178 202 / 0.62), transparent 70%),
+    radial-gradient(38% 34% at 86% 14%, rgb(173 205 240 / 0.58), transparent 70%),
+    radial-gradient(30% 28% at 50% 55%, rgb(255 255 255 / 0.50), transparent 75%),
+    radial-gradient(44% 40% at 80% 90%, rgb(246 178 202 / 0.42), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(173 205 240 / 0.40), transparent 72%),
+    radial-gradient(26% 24% at 62% 30%, rgb(214 182 230 / 0.22), transparent 75%);
+}
+
+/* 非二元旗：黄紫白（左黄右紫，黑条由深色底承担） */
+html.theme-pride[data-pride-flag='nonbinary'] body::before {
+  background:
+    radial-gradient(40% 36% at 15% 18%, rgb(250 224 138 / 0.58), transparent 70%),
+    radial-gradient(38% 34% at 85% 14%, rgb(198 162 226 / 0.52), transparent 70%),
+    radial-gradient(30% 28% at 50% 55%, rgb(255 255 255 / 0.50), transparent 75%),
+    radial-gradient(44% 40% at 80% 90%, rgb(198 162 226 / 0.40), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(250 224 138 / 0.38), transparent 72%),
+    radial-gradient(26% 24% at 38% 30%, rgb(214 190 236 / 0.22), transparent 75%);
+}
+
+/* 性别流体旗：粉白紫蓝（两端粉蓝，紫斑居中偏下） */
+html.theme-pride[data-pride-flag='genderfluid'] body::before {
+  background:
+    radial-gradient(40% 36% at 14% 18%, rgb(248 176 206 / 0.60), transparent 70%),
+    radial-gradient(38% 34% at 86% 14%, rgb(168 188 240 / 0.55), transparent 70%),
+    radial-gradient(30% 28% at 50% 52%, rgb(255 255 255 / 0.50), transparent 75%),
+    radial-gradient(34% 30% at 56% 78%, rgb(206 158 226 / 0.40), transparent 74%),
+    radial-gradient(42% 38% at 82% 92%, rgb(168 188 240 / 0.38), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(248 176 206 / 0.36), transparent 72%);
+}
+
+/* 深色 = 微光：同款光斑大幅降不透明度，底色随 surface 变量沉入近黑 */
+html.theme-pride.dark[data-pride-flag='transPride'] body::before {
+  background:
+    radial-gradient(40% 36% at 14% 18%, rgb(246 178 202 / 0.16), transparent 70%),
+    radial-gradient(38% 34% at 86% 14%, rgb(173 205 240 / 0.15), transparent 70%),
+    radial-gradient(44% 40% at 80% 90%, rgb(246 178 202 / 0.10), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(173 205 240 / 0.10), transparent 72%),
+    radial-gradient(26% 24% at 62% 30%, rgb(214 182 230 / 0.08), transparent 75%);
+  filter: blur(64px) saturate(var(--pride-saturation, 1.12));
+}
+
+/* 非二元深色：紫光略强于黄光（黄在近黑易发闷） */
+html.theme-pride.dark[data-pride-flag='nonbinary'] body::before {
+  background:
+    radial-gradient(40% 36% at 15% 18%, rgb(250 224 138 / 0.10), transparent 70%),
+    radial-gradient(38% 34% at 85% 14%, rgb(198 162 226 / 0.17), transparent 70%),
+    radial-gradient(44% 40% at 80% 90%, rgb(198 162 226 / 0.12), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(250 224 138 / 0.08), transparent 72%),
+    radial-gradient(26% 24% at 38% 30%, rgb(214 190 236 / 0.09), transparent 75%);
+  filter: blur(64px) saturate(var(--pride-saturation, 1.12));
+}
+
+/* 性别流体深色：紫斑略强，呼应旗的中央条 */
+html.theme-pride.dark[data-pride-flag='genderfluid'] body::before {
+  background:
+    radial-gradient(40% 36% at 14% 18%, rgb(248 176 206 / 0.12), transparent 70%),
+    radial-gradient(38% 34% at 86% 14%, rgb(168 188 240 / 0.13), transparent 70%),
+    radial-gradient(34% 30% at 56% 78%, rgb(206 158 226 / 0.14), transparent 74%),
+    radial-gradient(42% 38% at 82% 92%, rgb(168 188 240 / 0.10), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(248 176 206 / 0.09), transparent 72%);
+  filter: blur(64px) saturate(var(--pride-saturation, 1.12));
+}
+
+@keyframes pride-drift {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  to { transform: translate3d(1.5%, 1.5%, 0) scale(1.05); }
+}
+
+html.theme-pride.theme-pride-static body::before { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-pride body::before { animation: none; }
+}
+
+/* 页面与全屏浮层（对比 / 实时练习 / 说明）让出背景，让渐变透出 */
+html.theme-pride .bg-surface {
+  background-color: transparent;
+}
+
+/* 卡片毛玻璃：半透明 + 背景模糊，隐隐透出底层渐变（强度可调） */
+html.theme-pride .bg-card {
+  background-color: rgb(var(--c-card-rgb) / 0.55);
+  backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
+}
+html.theme-pride.dark .bg-card {
+  background-color: rgb(var(--c-card-rgb) / 0.45);
+}
+/* 卡内的输入框 / 药丸 / 分段控件：轻微透明保持同气质（不加模糊，控制模糊层数量） */
+html.theme-pride .bg-surface-hi {
+  background-color: rgb(var(--c-surface-hi-rgb) / 0.60);
+}
+
+/* shadcn 弹层（对话框 / 抽屉 / 确认框）同为毛玻璃 */
+html.theme-pride .bg-background {
+  background-color: rgb(var(--c-card-rgb) / 0.72);
+  backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 4px)) saturate(1.12);
+  -webkit-backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 4px)) saturate(1.12);
+}
+html.theme-pride.dark .bg-background {
+  background-color: rgb(var(--c-card-rgb) / 0.62);
 }

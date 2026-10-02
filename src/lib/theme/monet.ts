@@ -93,31 +93,85 @@ type ScaleKey = keyof typeof SCALE;
 export interface ThemePresetSpec {
   hue: number;
   accentHue: number;
+  /** 渐变背景 + 毛玻璃的主题类名（index.css 按 <html> 上的该类生效） */
+  themeClass?: string;
+  /** 深色模式的表面着色色相（浅黄等高明度色相在暗色下会读作土棕，可单独换） */
+  darkHue?: number;
   overrides?: Partial<Record<string, { light: [number, number]; dark: [number, number] }>>;
 }
 
 /**
  * 预设配色
- * transPride（跨性别骄傲旗）：表面/文字铺旗上淡蓝（色相 230，比莫奈略提彩度使色感可辨），
- * 强调色为淡粉（色相 12，明度大幅提亮至 0.70 —— 莫奈的 0.50 会读作梅红；按钮文字随之反转为深色），
- * 次强调取两色相中点 ≈ 紫，作为蓝粉之间的过渡
+ * pride 系列（跨性别 / 非二元 / 性别流体）：
+ * - 背景：按旗帜配色的氤氲渐变 + 组件毛玻璃（index.css 的 .theme-pride 规则，
+ *   渐变按 <html data-pride-flag> 选择，浓度/饱和度/模糊/流动为用户可调参数）；
+ * - 各自的强调色与表面铺底不同，见各 spec
  */
 export const THEME_PRESETS: Record<'monet', null> & Record<string, ThemePresetSpec | null> = {
   monet: null,
   transPride: {
     hue: 230,
     accentHue: 12,
+    themeClass: 'theme-pride',
     overrides: {
-      'surface': { light: [0.965, 0.030], dark: [0.170, 0.030] },
-      'card': { light: [0.995, 0.018], dark: [0.205, 0.032] },
-      'surface-hi': { light: [0.942, 0.040], dark: [0.250, 0.042] },
-      'line': { light: [0.912, 0.028], dark: [0.28, 0.030] },
-      'ink': { light: [0.28, 0.035], dark: [0.92, 0.020] },
-      'ink-2': { light: [0.52, 0.030], dark: [0.70, 0.022] },
-      'accent': { light: [0.70, 0.105], dark: [0.81, 0.085] },
-      'on-accent': { light: [0.26, 0.045], dark: [0.20, 0.045] },
-      'accent-soft': { light: [0.905, 0.075], dark: [0.32, 0.065] },
-      'on-accent-soft': { light: [0.40, 0.10], dark: [0.90, 0.05] },
+      'surface': { light: [0.972, 0.020], dark: [0.168, 0.022] },
+      'card': { light: [0.995, 0.012], dark: [0.205, 0.024] },
+      'surface-hi': { light: [0.948, 0.030], dark: [0.252, 0.032] },
+      'line': { light: [0.915, 0.020], dark: [0.28, 0.024] },
+      'ink': { light: [0.30, 0.030], dark: [0.92, 0.018] },
+      'ink-2': { light: [0.52, 0.026], dark: [0.70, 0.020] },
+      'accent': { light: [0.78, 0.085], dark: [0.845, 0.075] },
+      'on-accent': { light: [0.30, 0.060], dark: [0.22, 0.050] },
+      'accent-soft': { light: [0.925, 0.050], dark: [0.34, 0.055] },
+      'on-accent-soft': { light: [0.44, 0.115], dark: [0.92, 0.050] },
+    },
+  },
+  /**
+   * nonbinary（非二元骄傲旗：黄 / 白 / 紫 / 黑）：
+   * - 背景：氤氲黄紫白渐变 + 毛玻璃（黑条由深色底承担）；
+   * - 强调色：淡紫（色相 300，高明度低彩度），选中文字反转为深紫墨色；
+   * - 表面用极淡的暖黄调铺底（色相 88），深色换紫黑（黄相在近黑会读作土棕）
+   */
+  nonbinary: {
+    hue: 88,
+    accentHue: 300,
+    themeClass: 'theme-pride',
+    darkHue: 300,
+    overrides: {
+      'surface': { light: [0.972, 0.018], dark: [0.168, 0.020] },
+      'card': { light: [0.995, 0.012], dark: [0.205, 0.022] },
+      'surface-hi': { light: [0.948, 0.028], dark: [0.252, 0.030] },
+      'line': { light: [0.915, 0.018], dark: [0.28, 0.022] },
+      'ink': { light: [0.295, 0.030], dark: [0.92, 0.016] },
+      'ink-2': { light: [0.52, 0.026], dark: [0.70, 0.018] },
+      'accent': { light: [0.73, 0.105], dark: [0.82, 0.090] },
+      'on-accent': { light: [0.30, 0.070], dark: [0.22, 0.055] },
+      'accent-soft': { light: [0.928, 0.045], dark: [0.34, 0.050] },
+      'on-accent-soft': { light: [0.40, 0.105], dark: [0.92, 0.045] },
+    },
+  },
+  /**
+   * genderfluid（性别流体骄傲旗：粉 / 白 / 紫 / 黑 / 蓝）：
+   * - 背景：氤氲粉蓝渐变 + 紫色过渡斑（黑条由深色底承担）；
+   * - 强调色：兰紫（色相 310，比 nonbinary 的紫更偏品红、略提彩度），选中文字反转为深墨紫；
+   * - 表面用偏蓝的冷白铺底（色相 200，呼应蓝条），深色换靛紫黑
+   */
+  genderfluid: {
+    hue: 200,
+    accentHue: 310,
+    themeClass: 'theme-pride',
+    darkHue: 285,
+    overrides: {
+      'surface': { light: [0.972, 0.018], dark: [0.168, 0.022] },
+      'card': { light: [0.995, 0.012], dark: [0.205, 0.024] },
+      'surface-hi': { light: [0.948, 0.026], dark: [0.252, 0.030] },
+      'line': { light: [0.915, 0.018], dark: [0.28, 0.024] },
+      'ink': { light: [0.295, 0.030], dark: [0.92, 0.016] },
+      'ink-2': { light: [0.52, 0.026], dark: [0.70, 0.018] },
+      'accent': { light: [0.72, 0.115], dark: [0.82, 0.095] },
+      'on-accent': { light: [0.30, 0.075], dark: [0.22, 0.055] },
+      'accent-soft': { light: [0.925, 0.048], dark: [0.34, 0.052] },
+      'on-accent-soft': { light: [0.40, 0.110], dark: [0.92, 0.045] },
     },
   },
 };
@@ -141,8 +195,11 @@ export function buildTokens(
   accentHue: number = hue,
   spec: ThemePresetSpec | null = null,
 ): Record<string, string> {
-  // 次强调色相：强调色与表面色相之间的最短弧中点（单色相时即 hue+70，保持原行为）
+  // 次强调色相：强调色与表面色相之间的最短弧中点（单色相时即 hue+70，保持原行为）；
+  // 按浅色 hue 计算，保证次强调色在深浅两模式下色相一致（图表曲线不跨模式跳变）
   const h2 = accentHue === hue ? hue + 70 : midpointHue(hue, accentHue);
+  // 深色模式的表面着色色相（预设可用 darkHue 单独指定）
+  const baseHue = dark ? (spec?.darkHue ?? hue) : hue;
   const out: Record<string, string> = {};
   const pick = (name: ScaleKey): readonly [number, number] => {
     const [light, darkV] = SCALE[name];
@@ -153,11 +210,11 @@ export function buildTokens(
     out[`--c-${name}-rgb`] = rgb;
   };
 
-  // 表面 / 文字 / 线条用种子色相着色，强调色系用 accentHue；预设覆盖明度/彩度
+  // 表面 / 文字 / 线条用（深色可不同的）底色色相着色，强调色系用 accentHue；预设覆盖明度/彩度
   for (const name of ['surface', 'card', 'surface-hi', 'ink', 'ink-2', 'line', 'accent', 'on-accent', 'accent-soft', 'on-accent-soft'] as const) {
     const ov = spec?.overrides?.[name];
     const [l, c] = ov ? (dark ? ov.dark : ov.light) : pick(name);
-    set(name, token(l, c, ACCENT_KEYS.has(name) ? accentHue : hue));
+    set(name, token(l, c, ACCENT_KEYS.has(name) ? accentHue : baseHue));
   }
   // 次强调色
   set('accent2', token(dark ? 0.77 : 0.55, dark ? 0.11 : 0.13, h2));
@@ -168,7 +225,7 @@ export function buildTokens(
   const hslOf = (name: ScaleKey, useAccent = false) => {
     const ov = spec?.overrides?.[name];
     const [l, c] = ov ? (dark ? ov.dark : ov.light) : pick(name);
-    return rgbToHslTriplet(...oklchToRgb(l, c, useAccent ? accentHue : hue));
+    return rgbToHslTriplet(...oklchToRgb(l, c, useAccent ? accentHue : baseHue));
   };
   const cardHsl = hslOf('card');
   const inkHsl = hslOf('ink');
@@ -206,10 +263,16 @@ export function prefersDark(): boolean {
 
 /**
  * 预设配色的色相与规格
- * monet：用户主题色相（莫奈取色，无覆盖）；其余从 THEME_PRESETS 取规格
+ * monet：用户主题色相（莫奈取色，无覆盖）；pride：按所选旗帜取规格
  */
-export function presetSpec(preset: string | undefined | null, userHue: number): { hue: number; accentHue: number; spec: ThemePresetSpec | null } {
-  const spec = (preset && THEME_PRESETS[preset]) || null;
+export function presetSpec(
+  preset: string | undefined | null,
+  userHue: number,
+  prideFlag: string = 'transPride',
+): { hue: number; accentHue: number; spec: ThemePresetSpec | null } {
+  const spec = preset === 'pride'
+    ? THEME_PRESETS[prideFlag] ?? THEME_PRESETS.transPride
+    : (preset && preset !== 'pride' ? THEME_PRESETS[preset] : null) ?? null;
   return spec
     ? { hue: spec.hue, accentHue: spec.accentHue, spec }
     : { hue: userHue, accentHue: userHue, spec: null };
@@ -221,8 +284,15 @@ export function presetSpec(preset: string | undefined | null, userHue: number): 
  * @param dark 深色模式
  * @param accentHue 强调色色相（缺省与 hue 相同；预设配色可单独指定）
  * @param spec 预设规格（令牌级明度/彩度覆盖）
+ * @param prideFlag 骄傲旗旗帜（spec 为骄傲旗规格时写入 data-pride-flag 供渐变选择）
  */
-export function applyTheme(hue: number, dark = false, accentHue: number = hue, spec: ThemePresetSpec | null = null): void {
+export function applyTheme(
+  hue: number,
+  dark = false,
+  accentHue: number = hue,
+  spec: ThemePresetSpec | null = null,
+  prideFlag: string = 'transPride',
+): void {
   const style = document.documentElement.style;
   const tokens = buildTokens(hue, dark, accentHue, spec);
   for (const [key, value] of Object.entries(tokens)) {
@@ -230,6 +300,16 @@ export function applyTheme(hue: number, dark = false, accentHue: number = hue, s
   }
   // 原生控件 / 滚动条跟随深浅
   style.colorScheme = dark ? 'dark' : 'light';
+  // 深浅类：激活 shadcn 组件的 dark: 变体；
+  // 骄傲旗类：启用渐变背景 + 毛玻璃，旗帜经 data-pride-flag 交给 CSS 选渐变
+  document.documentElement.classList.toggle('dark', dark);
+  const isPride = spec?.themeClass === 'theme-pride';
+  document.documentElement.classList.toggle('theme-pride', isPride);
+  if (isPride) {
+    document.documentElement.setAttribute('data-pride-flag', prideFlag);
+  } else {
+    document.documentElement.removeAttribute('data-pride-flag');
+  }
   // 浏览器地址栏 / 状态栏颜色同步
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
@@ -238,4 +318,19 @@ export function applyTheme(hue: number, dark = false, accentHue: number = hue, s
   }
   // 通知 Canvas 图表刷新调色板缓存
   window.dispatchEvent(new CustomEvent('app:themechange'));
+}
+
+/**
+ * 同步骄傲旗主题的可调参数到 CSS 变量（设置变化时由 store 订阅调用）
+ * @param glow 渐变浓度（光斑层不透明度倍率）
+ * @param saturation 渐变饱和度（saturate 倍率）
+ * @param glassBlur 毛玻璃模糊半径 px（0 = 关闭模糊）
+ * @param drift 背景流动动画开关
+ */
+export function applyPrideParams(glow: number, saturation: number, glassBlur: number, drift: boolean): void {
+  const style = document.documentElement.style;
+  style.setProperty('--pride-glow', String(glow));
+  style.setProperty('--pride-saturation', String(saturation));
+  style.setProperty('--pride-glass-blur', `${Math.round(glassBlur)}px`);
+  document.documentElement.classList.toggle('theme-pride-static', !drift);
 }

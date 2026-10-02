@@ -3,7 +3,17 @@
  * 音高区间、莫奈主题预设、音符换算、默认设置
  */
 
-import type { AppSettings, PitchAlgorithm, PitchBand, TestMode } from '@/types';
+import type { AppSettings, PitchAlgorithm, PitchBand, PrideFlag, TestMode } from '@/types';
+
+/**
+ * 骄傲旗主题可选旗帜（设置 → 外观 的旗帜复选顺序）
+ */
+export const PRIDE_FLAGS: { id: PrideFlag; labelKey: string; stripes: string[] }[] = [
+  // 条纹色取自各旗（自上而下），用于选项前的小色条
+  { id: 'transPride', labelKey: 'settings.presetTrans', stripes: ['#5BCEFA', '#F5A9B8', '#FFFFFF', '#F5A9B8', '#5BCEFA'] },
+  { id: 'nonbinary', labelKey: 'settings.presetNonbinary', stripes: ['#FFF430', '#FFFFFF', '#9C59D1', '#141414'] },
+  { id: 'genderfluid', labelKey: 'settings.presetGenderfluid', stripes: ['#FF75A0', '#FFFFFF', '#C011D7', '#141414', '#2F3CBE'] },
+];
 
 /**
  * 音符名称列表
@@ -127,6 +137,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   language: 'zh-CN',
   huePreset: 'monet',
+  prideFlag: 'transPride',
+  prideGlow: 1,
+  prideSaturation: 1.12,
+  prideGlassBlur: 18,
+  prideDrift: true,
   showGrid: true,
   maxDurationSec: 120,
   autoEnterAnalysis: true,
@@ -146,6 +161,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showSpectrogram: true,
   liveSpectrum: false,
   pitchAlgorithm: 'yin',
+  pitchCompareEnabled: true,
   adviceMode: 'rules',
   adviceOnCompare: false,
   practiceReminderEnabled: false,

@@ -6,12 +6,13 @@
  */
 
 import { motion } from 'framer-motion';
-import { ArrowLeft, Palette, Languages, SlidersHorizontal } from 'lucide-react';
-import { applyTheme, presetSpec } from '@/lib/theme/monet';
+import { ArrowLeft, Check, Palette, Languages, SlidersHorizontal } from 'lucide-react';
+import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
+import { PRIDE_FLAGS } from '@/constants';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { LOCALES } from '@/i18n';
-import type { AppSettings, HuePreset, Locale, ThemeMode } from '@/types';
+import type { AppSettings, HuePreset, Locale, PrideFlag, ThemeMode } from '@/types';
 import {
   Select,
   SelectContent,
@@ -23,6 +24,48 @@ import {
 import { cn } from '@/lib/utils';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
+
+/** 旗帜选项前的小色条（各旗条纹，自上而下） */
+function FlagStripe({ stripes, active }: { stripes: string[]; active: boolean }) {
+  return (
+    <span
+      className={cn('h-4 w-2.5 shrink-0 overflow-hidden rounded-full', active && 'ring-1 ring-ink/20')}
+      style={{ background: `linear-gradient(to bottom, ${stripes.join(',')})` }}
+      aria-hidden
+    />
+  );
+}
+
+/** 骄傲旗参数滑条（与色相滑条同款拖块） */
+function PrideSlider({
+  label, min, max, step, value, onChange, format,
+}: {
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (v: number) => void;
+  format: (v: number) => string;
+}) {
+  return (
+    <SettingRow label={label}>
+      <div className="flex items-center gap-2.5">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
+          aria-label={label}
+        />
+        <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">{format(value)}</span>
+      </div>
+    </SettingRow>
+  );
+}
 
 export function AppearancePage({
   settings,
@@ -40,16 +83,19 @@ export function AppearancePage({
     || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const preset = settings.huePreset ?? 'monet';
 
-  /** 按当前设置立即重放色板（预设/色相变更共用） */
+  /** 按当前设置立即重放色板（预设/色相/旗帜变更共用） */
   const applyPreset = (next: Partial<AppSettings>) => {
     update(next);
     const merged = { ...settings, ...next };
-    const p = presetSpec(merged.huePreset, merged.hue);
-    applyTheme(p.hue, dark, p.accentHue, p.spec);
+    const p = presetSpec(merged.huePreset, merged.hue, merged.prideFlag);
+    applyTheme(p.hue, dark, p.accentHue, p.spec, merged.prideFlag);
+    // 骄傲旗参数可能随合并变化，同步一遍（非骄傲旗预设下写入也无副作用）
+    applyPrideParams(merged.prideGlow, merged.prideSaturation, merged.prideGlassBlur, merged.prideDrift);
   };
 
   const setHue = (hue: number) => applyPreset({ hue });
   const setPreset = (p: HuePreset) => applyPreset({ huePreset: p });
+  const setPrideFlag = (f: PrideFlag) => applyPreset({ prideFlag: f });
 
   return (
     <div className="flex flex-col gap-3.5 pb-4">
@@ -98,28 +144,108 @@ export function AppearancePage({
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
                 <SelectItem value="monet">{t('settings.presetMonet')}</SelectItem>
-                <SelectItem value="transPride">{t('settings.presetTrans')}</SelectItem>
+                <SelectItem value="pride">{t('settings.presetPride')}</SelectItem>
               </SelectContent>
             </Select>
           </SettingRow>
-          <SettingRow
-            label={t('settings.hue')}
-            /* 非莫奈预设时色板由预设决定，色相滑条停用 */
-          >
-            <div className={cn('flex items-center gap-2.5', preset !== 'monet' && 'opacity-40')}>
-              <input
-                type="range"
-                min={0}
-                max={360}
-                value={settings.hue}
-                onChange={(e) => setHue(Number(e.target.value))}
-                disabled={preset !== 'monet'}
-                className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-gradient-to-r from-red-400 via-emerald-400 to-violet-500 accent-accent disabled:cursor-default"
-                aria-label={t('settings.hue')}
+          {preset === 'monet' && (
+            <SettingRow
+              label={t('settings.hue')}
+            /* 莫奈取色：主题色相滑条（骄傲旗预设的色板由旗帜决定） */
+            >
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="range"
+                  min={0}
+                  max={360}
+                  value={settings.hue}
+                  onChange={(e) => setHue(Number(e.target.value))}
+                  className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-gradient-to-r from-red-400 via-emerald-400 to-violet-500 accent-accent"
+                  aria-label={t('settings.hue')}
+                />
+                <span className="w-9 shrink-0 text-right text-xs tabular-nums text-ink-2">{settings.hue}°</span>
+              </div>
+            </SettingRow>
+          )}
+          {preset === 'pride' && (
+            <>
+              {/* 旗帜单选（复选框样式，互斥） */}
+              <SettingRow stacked label={t('settings.prideFlag')}>
+                <div className="flex flex-col gap-1 pt-0.5">
+                  {PRIDE_FLAGS.map((f) => {
+                    const active = settings.prideFlag === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setPrideFlag(f.id)}
+                        role="radio"
+                        aria-checked={active}
+                        className={cn(
+                          'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors',
+                          active ? 'bg-accent-soft text-on-accent-soft' : 'text-ink hover:bg-surface-hi',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'grid size-4.5 shrink-0 place-items-center rounded-full border-2',
+                            active ? 'border-accent bg-accent text-on-accent' : 'border-black/25',
+                          )}
+                        >
+                          {active && <Check size={10} strokeWidth={3.5} />}
+                        </span>
+                        <FlagStripe stripes={f.stripes} active={active} />
+                        {t(f.labelKey as Parameters<typeof t>[0])}
+                      </button>
+                    );
+                  })}
+                </div>
+              </SettingRow>
+              {/* 渐变与毛玻璃参数 */}
+              <PrideSlider
+                label={t('settings.prideGlow')}
+                min={0.4}
+                max={1.2}
+                step={0.05}
+                value={settings.prideGlow}
+                onChange={(v) => applyPreset({ prideGlow: v })}
+                format={(v) => `${Math.round(v * 100)}%`}
               />
-              <span className="w-9 shrink-0 text-right text-xs tabular-nums text-ink-2">{settings.hue}°</span>
-            </div>
-          </SettingRow>
+              <PrideSlider
+                label={t('settings.prideSaturation')}
+                min={0.6}
+                max={1.6}
+                step={0.05}
+                value={settings.prideSaturation}
+                onChange={(v) => applyPreset({ prideSaturation: v })}
+                format={(v) => `${Math.round(v * 100)}%`}
+              />
+              <SettingRow
+                label={<InfoTip label={t('settings.prideGlass')} text={t('settings.prideGlassDesc')} />}
+              >
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="range"
+                    min={0}
+                    max={28}
+                    step={2}
+                    value={settings.prideGlassBlur}
+                    onChange={(e) => applyPreset({ prideGlassBlur: Number(e.target.value) })}
+                    className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
+                    aria-label={t('settings.prideGlass')}
+                  />
+                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">
+                    {settings.prideGlassBlur === 0 ? t('settings.prideGlassOff') : `${settings.prideGlassBlur}px`}
+                  </span>
+                </div>
+              </SettingRow>
+              <SettingRow label={t('settings.prideDrift')}>
+                <Switch
+                  checked={settings.prideDrift}
+                  onCheckedChange={(v) => applyPreset({ prideDrift: v })}
+                />
+              </SettingRow>
+            </>
+          )}
         </SettingsSection>
 
         {/* 语言 */}

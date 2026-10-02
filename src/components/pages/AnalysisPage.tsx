@@ -233,7 +233,7 @@ export function AnalysisPage() {
         onSeek={playback.seekPlay}
       />
       {record.mode === 'sustained' && <SustainedCard record={record} />}
-      <PitchAlgorithmCard record={record} />
+      {settings.pitchCompareEnabled && <PitchAlgorithmCard record={record} />}
       <StatsTable record={recordWithStats} />
       <AdviceCard records={[record]} />
 

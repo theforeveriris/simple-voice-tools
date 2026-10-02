@@ -12,6 +12,7 @@ import {
   setPitchAxis, setLiveWindowSec, setSpecColormap, setPitchAlgorithm,
   setFormantTarget,
 } from '@/constants';
+import { applyPrideParams } from '@/lib/theme/monet';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
@@ -152,6 +153,12 @@ export const useStore = create<AppState>()(
         if (typeof legacy === 'boolean' && p.adviceMode === undefined) {
           settings.adviceMode = legacy ? 'rules' : 'none';
         }
+        // 旧版旗帜直接作为预设存储：收敛为 pride 预设 + prideFlag 字段
+        const legacyFlags = ['transPride', 'nonbinary', 'genderfluid'] as const;
+        if (legacyFlags.includes(settings.huePreset as (typeof legacyFlags)[number])) {
+          settings.prideFlag = settings.huePreset as AppSettings['prideFlag'];
+          settings.huePreset = 'pride';
+        }
         // 旧版把 API Key 存在 localStorage：一次性迁入 IDB kv，内存态保留可用
         const legacyKey = (p as { llmApiKey?: unknown }).llmApiKey;
         if (typeof legacyKey === 'string' && legacyKey) {
@@ -175,6 +182,8 @@ function syncModuleSettings(s: AppSettings): void {
   setFormantTarget(s.formantTargetEnabled
     ? { f1: s.formantTargetF1, f2: s.formantTargetF2, radius: s.formantTargetRadius }
     : null);
+  // 骄傲旗主题可调参数（CSS 变量；非骄傲旗预设下写入无副作用）
+  applyPrideParams(s.prideGlow, s.prideSaturation, s.prideGlassBlur, s.prideDrift);
 }
 syncModuleSettings(useStore.getState().settings);
 useStore.subscribe((state, prev) => {

@@ -12,7 +12,7 @@ import type { Locale, ThemeMode } from '@/types'
 const saved = (() => {
   try {
     const raw = localStorage.getItem('svt:settings:v1');
-    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; theme?: ThemeMode; language?: Locale; huePreset?: string } } }) : null;
+    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; theme?: ThemeMode; language?: Locale; huePreset?: string; prideFlag?: string } } }) : null;
     return parsed?.state?.settings ?? {};
   } catch {
     return {};
@@ -20,8 +20,20 @@ const saved = (() => {
 })();
 const dark = saved.theme === 'dark'
   || ((saved.theme ?? 'system') === 'system' && prefersDark());
-const savedPreset = presetSpec(saved.huePreset, saved.hue ?? 15);
-applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec)
+// 旧版旗帜直接作为预设存储：收敛为 pride 预设（与 useStore 的迁移同一规则）
+const LEGACY_FLAGS = ['transPride', 'nonbinary', 'genderfluid'];
+const isLegacyFlag = LEGACY_FLAGS.includes(saved.huePreset ?? '');
+const savedPreset = presetSpec(
+  isLegacyFlag ? 'pride' : saved.huePreset,
+  saved.hue ?? 15,
+  isLegacyFlag ? saved.huePreset : saved.prideFlag,
+);
+applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, savedPrideFlagOf(saved, isLegacyFlag))
+
+/** 迁移后的旗帜：旧预设值优先，其次已存的 prideFlag */
+function savedPrideFlagOf(saved: { huePreset?: string; prideFlag?: string }, isLegacyFlag: boolean): string {
+  return (isLegacyFlag ? saved.huePreset : saved.prideFlag) ?? 'transPride';
+}
 if (saved.language) setLocale(saved.language)
 
 // PWA：捕获安装事件（Service Worker 由 vite-plugin-pwa 注入注册）

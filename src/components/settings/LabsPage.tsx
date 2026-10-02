@@ -174,6 +174,12 @@ export function LabsPage({
               onCheckedChange={(v) => update({ adviceOnCompare: v })}
             />
           </SettingRow>
+          <SettingRow label={<InfoTip label={t('labs.pitchCompare')} text={t('labs.pitchCompareDesc')} />}>
+            <Switch
+              checked={settings.pitchCompareEnabled}
+              onCheckedChange={(v) => update({ pitchCompareEnabled: v })}
+            />
+          </SettingRow>
         </SettingsSection>
 
         {/* 大模型配置（训练建议选「基于大模型判断」时使用） */}

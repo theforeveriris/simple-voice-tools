@@ -52,6 +52,7 @@ function App() {
   const currentTab = useStore((s) => s.currentTab);
   const hue = useStore((s) => s.settings.hue);
   const huePreset = useStore((s) => s.settings.huePreset);
+  const prideFlag = useStore((s) => s.settings.prideFlag);
   const theme = useStore((s) => s.settings.theme);
   const addRecord = useHistoryStore((s) => s.addRecord);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
@@ -114,15 +115,15 @@ function App() {
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
-      const preset = presetSpec(huePreset, hue);
-      applyTheme(preset.hue, theme === 'dark' || (theme === 'system' && mq.matches), preset.accentHue, preset.spec);
+      const preset = presetSpec(huePreset, hue, prideFlag);
+      applyTheme(preset.hue, theme === 'dark' || (theme === 'system' && mq.matches), preset.accentHue, preset.spec, prideFlag);
     };
     apply();
     if (theme === 'system') {
       mq.addEventListener('change', apply);
       return () => mq.removeEventListener('change', apply);
     }
-  }, [hue, huePreset, theme]);
+  }, [hue, huePreset, prideFlag, theme]);
 
   // 每日练习提醒：每分钟 + 回到前台时检查（到点且当天无录音 → 本地通知）
   const reminderEnabled = useStore((s) => s.settings.practiceReminderEnabled);

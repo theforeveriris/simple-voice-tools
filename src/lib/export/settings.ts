@@ -44,7 +44,8 @@ const OPTIONAL_STRING_KEYS = ['githubClientId', 'githubRepo', 'baselineRecordId'
 
 /** 枚举字符串字段：导入时校验取值，非法值忽略（保持当前设置） */
 const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
-  huePreset: ['monet', 'transPride'],
+  huePreset: ['monet', 'pride'],
+  prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
   specColormap: ['magma', 'gray', 'accent'],
   startTab: ['test', 'analysis', 'history', 'settings'],
 };
@@ -70,6 +71,9 @@ const NUMBER_RANGE: Partial<Record<keyof AppSettings, [number, number]>> = {
   formantTargetF1: [200, 1100],
   formantTargetF2: [500, 3400],
   formantTargetRadius: [50, 800],
+  prideGlow: [0.3, 1.3],
+  prideSaturation: [0.5, 1.8],
+  prideGlassBlur: [0, 32],
 };
 
 /**

@@ -16,9 +16,16 @@ export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh';
 
 /**
  * 主题预设配色
- * monet：莫奈取色（跟随主题色相滑条）；transPride：跨性别骄傲旗（粉白蓝固定配色）
+ * monet：莫奈取色（跟随主题色相滑条）；
+ * pride：骄傲旗主题（旗帜由 prideFlag 选择，氤氲渐变 + 毛玻璃，参数可调）
  */
-export type HuePreset = 'monet' | 'transPride';
+export type HuePreset = 'monet' | 'pride';
+
+/**
+ * 骄傲旗主题的旗帜
+ * transPride 跨性别（粉白蓝）；nonbinary 非二元（黄紫白黑）；genderfluid 性别流体（粉白紫黑蓝）
+ */
+export type PrideFlag = 'transPride' | 'nonbinary' | 'genderfluid';
 
 /**
  * 主题模式
@@ -184,8 +191,19 @@ export interface AppSettings {
   theme: ThemeMode;
   /** 界面语言 */
   language: Locale;
-  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），transPride 跨性别骄傲旗 */
+  /** 预设配色：monet 莫奈取色（默认，跟随主题色相），pride 骄傲旗（旗帜见 prideFlag） */
   huePreset: HuePreset;
+  /* ---------- 骄傲旗主题（huePreset = pride 时生效） ---------- */
+  /** 骄傲旗旗帜 */
+  prideFlag: PrideFlag;
+  /** 渐变浓度：渐变光斑层的不透明度倍率（0.4–1.2，1 = 标准） */
+  prideGlow: number;
+  /** 渐变饱和度：光斑层的 saturate 滤镜倍率（0.6–1.6，1.12 = 标准） */
+  prideSaturation: number;
+  /** 毛玻璃强度：卡片背景模糊半径 px（0 = 关闭，标准 18） */
+  prideGlassBlur: number;
+  /** 背景流动动画：渐变光斑缓慢漂移 */
+  prideDrift: boolean;
   /** 是否显示图表网格辅助线 */
   showGrid: boolean;
   /** 单次录音最长时长（秒），0 = 不限制 */
@@ -254,6 +272,8 @@ export interface AppSettings {
   bandBounds?: [number, number, number, number];
   /** 实时音高检测算法（实验性）：影响实时曲线与录音分析所用的音高检测器 */
   pitchAlgorithm: PitchAlgorithm;
+  /** 音高算法对比卡（实验性）：分析页用 pYIN / MPM 重算录音并与当前算法对比 */
+  pitchCompareEnabled: boolean;
   /** 分析页是否显示语谱图卡片 */
   showSpectrogram: boolean;
   /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */
