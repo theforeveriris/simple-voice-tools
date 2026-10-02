@@ -3,7 +3,7 @@
  * 页面切换（带过渡动画）+ 底部悬浮导航栏
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { BottomBar } from '@/components/layout/BottomBar';
@@ -61,6 +61,14 @@ function App() {
 
   // 语言切换（同步 <html lang> 与词典）
   useI18n();
+
+  // 切页瞬间瞬时回顶：滚动位置若被保留，新页高度与旧页不同会被浏览器
+  // 钳制跳变（新页入场动画还发生在视口外），看起来像闪动刷新。
+  // layoutEffect 在首帧绘制前执行；instant 覆盖 CSS 的 scroll-behavior:smooth，
+  // 避免 smooth 滚动与入场动画叠加出二次位移
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [currentTab]);
 
   // 浏览器返回/前进键在页签间导航（页签切换的写入方向在 useStore.setTab 里同步 hash）
   useEffect(() => {

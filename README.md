@@ -74,6 +74,11 @@
 | 文档 | 内容 |
 | --- | --- |
 | [documentation/DEVELOPMENT.md](documentation/DEVELOPMENT.md) | 开发者文档：架构、数据流、主题系统、动效模型、性能设计 |
+| [documentation/ARCHITECTURE-I18N.md](documentation/ARCHITECTURE-I18N.md) | 架构：i18n 查找链、自定义词条、AI 翻译管线 |
+| [documentation/ARCHITECTURE-THEME.md](documentation/ARCHITECTURE-THEME.md) | 架构：主题系统、骄傲旗预设与渐变参数 |
+| [documentation/ARCHITECTURE-STATE.md](documentation/ARCHITECTURE-STATE.md) | 架构：状态与持久化、存储键清单、迁移 |
+| [documentation/ARCHITECTURE-SETTINGS.md](documentation/ARCHITECTURE-SETTINGS.md) | 架构：设置子页模式与新增步骤 |
+| [documentation/GUIDE-PWA.md](documentation/GUIDE-PWA.md) | 指南：PWA 更新流、Share Target、修复工具 |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | 音高检测原理：YIN 差分函数、CMND、抛物线插值 |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | 共振峰提取原理：预加重、抽取、LPC、多项式求根 |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | 能量分析原理：RMS、分贝换算、VAD 门限体系 |

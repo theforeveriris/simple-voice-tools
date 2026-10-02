@@ -16,8 +16,10 @@ import { SettingsSection } from './rows';
 const DOC_BASE_URL = 'https://github.com/theforeveriris/simple-voice-tools/blob/main/documentation';
 
 interface DocEntry {
-  titleKey: 'settings.docGuideTitle' | 'settings.docYinTitle' | 'settings.docLpcTitle' | 'settings.docEnergyTitle' | 'settings.docCppsTitle' | 'settings.docDevTitle';
-  descKey: 'settings.docGuideDesc' | 'settings.docYinDesc' | 'settings.docLpcDesc' | 'settings.docEnergyDesc' | 'settings.docCppsDesc' | 'settings.docDevDesc';
+  titleKey: 'settings.docGuideTitle' | 'settings.docYinTitle' | 'settings.docLpcTitle' | 'settings.docEnergyTitle' | 'settings.docCppsTitle' | 'settings.docDevTitle'
+    | 'settings.docI18nTitle' | 'settings.docThemeTitle' | 'settings.docStateTitle' | 'settings.docSettingsTitle' | 'settings.docPwaTitle';
+  descKey: 'settings.docGuideDesc' | 'settings.docYinDesc' | 'settings.docLpcDesc' | 'settings.docEnergyDesc' | 'settings.docCppsDesc' | 'settings.docDevDesc'
+    | 'settings.docI18nDesc' | 'settings.docThemeDesc' | 'settings.docStateDesc' | 'settings.docSettingsDesc' | 'settings.docPwaDesc';
   file: string;
 }
 
@@ -28,11 +30,16 @@ const USER_DOC_ENTRIES: DocEntry[] = [
 
 /** 开发者文档（算法与架构） */
 const DEV_DOC_ENTRIES: DocEntry[] = [
+  { titleKey: 'settings.docDevTitle', descKey: 'settings.docDevDesc', file: 'DEVELOPMENT.md' },
+  { titleKey: 'settings.docI18nTitle', descKey: 'settings.docI18nDesc', file: 'ARCHITECTURE-I18N.md' },
+  { titleKey: 'settings.docThemeTitle', descKey: 'settings.docThemeDesc', file: 'ARCHITECTURE-THEME.md' },
+  { titleKey: 'settings.docStateTitle', descKey: 'settings.docStateDesc', file: 'ARCHITECTURE-STATE.md' },
+  { titleKey: 'settings.docSettingsTitle', descKey: 'settings.docSettingsDesc', file: 'ARCHITECTURE-SETTINGS.md' },
+  { titleKey: 'settings.docPwaTitle', descKey: 'settings.docPwaDesc', file: 'GUIDE-PWA.md' },
   { titleKey: 'settings.docYinTitle', descKey: 'settings.docYinDesc', file: 'ALGORITHM-YIN.md' },
   { titleKey: 'settings.docLpcTitle', descKey: 'settings.docLpcDesc', file: 'ALGORITHM-FORMANT-LPC.md' },
   { titleKey: 'settings.docEnergyTitle', descKey: 'settings.docEnergyDesc', file: 'ALGORITHM-ENERGY.md' },
   { titleKey: 'settings.docCppsTitle', descKey: 'settings.docCppsDesc', file: 'ALGORITHM-CPPS.md' },
-  { titleKey: 'settings.docDevTitle', descKey: 'settings.docDevDesc', file: 'DEVELOPMENT.md' },
 ];
 
 function DocList({ entries }: { entries: DocEntry[] }) {

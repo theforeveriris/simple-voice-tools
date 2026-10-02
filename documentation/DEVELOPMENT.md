@@ -1,6 +1,7 @@
 # 开发者文档
 
 Simple Voice Tool 的开发指南：架构、数据流、主题系统、动效模型与性能设计。
+专题详解见文末文档索引（i18n / 主题 / 状态与持久化 / 设置子页 / PWA 均有独立文档）。
 
 ## 项目概览
 
@@ -39,62 +40,78 @@ Simple Voice Tool 的开发指南：架构、数据流、主题系统、动效�
 src/
 ├── components/
 │   ├── charts/
-│   │   ├── chartPainters.ts      # 三种图表共用的 Canvas 画笔（网格/曲线/着色）
-│   │   ├── SeriesChart.tsx       # 画布组件：live(实时滚动) / static(区间) 双模式
-│   │   ├── LiveSpectrum.tsx      # 实时频谱图（实验性，AnalyserNode 频域直读）
-│   │   ├── TimeRangeSelector.tsx # 分析页双滑块时间轴（能量密度预览）
-│   │   └── MiniSpark.tsx         # 历史卡片迷你波形
+│   │   ├── chartPainters.ts      # 图表共用 Canvas 画笔（音高/能量/共振峰/元音/VRP/十字线/目标区）
+│   │   ├── SeriesChart.tsx       # 画布组件：live(实时滚动)/static(区间+十字线，支持键盘) 双模式
+│   │   ├── SpecChart.tsx         # 语谱图（静态，叠加 F1/F2 轨迹）
+│   │   ├── TrendChart.tsx        # 跨记录趋势图（纵轴可切 基频/MPT/CPPS）
+│   │   ├── DiaryHeatmap.tsx      # 用声日记热力图
+│   │   ├── LiveSpectrum.tsx      # 实时频谱图（实验性）
+│   │   ├── TimeRangeSelector.tsx # 双滑块时间轴（能量密度预览）
+│   │   ├── MiniSpark.tsx         # 记录卡迷你波形
+│   │   └── specPainter.ts        # 语谱绘制（offscreen 位图 + 伪彩色）
 │   ├── layout/
-│   │   ├── BottomBar.tsx         # 悬浮底栏 + 录音圆球（transform 运动模型）
-│   │   └── ErrorBoundary.tsx     # 页面级错误边界
+│   │   ├── BottomBar.tsx         # 悬浮底栏 + 录音圆球（纯 transform 运动模型 + 全局快捷键）
+│   │   ├── ErrorBoundary.tsx     # 页面级错误边界
+│   │   └── ShortcutsHelpSheet.tsx# 快捷键帮助浮层（? 呼出）
 │   ├── pages/
-│   │   ├── TestPage.tsx          # 测试页（三张实时图表）
-│   │   ├── AnalysisPage.tsx      # 分析页（概览卡/统计表/区间缩放图表）
-│   │   ├── HistoryPage.tsx       # 历史页
-│   │   └── SettingsPage.tsx      # 设置页
+│   │   ├── TestPage.tsx          # 测试页（实时图表 + 录音圆球）
+│   │   ├── AnalysisPage.tsx      # 分析页（概览/统计/图表/回放/音高算法对比）
+│   │   ├── HistoryPage.tsx       # 历史页（列表/趋势/日记热力图/多选/对比）
+│   │   ├── SettingsPage.tsx      # 设置页（外壳 + 搜索索引 + 子页面分发）
+│   │   ├── CompareSheet.tsx      # 两记录对比浮层（Δ 指标 + 曲线叠加）
+│   │   ├── F0LiveSheet.tsx 等    # 实时练习子页（元音落点/F0/频谱/VRP）
+│   │   └── VowelLiveSheet.tsx
+│   ├── analysis/                 # 分析页卡片（HeroCard/StatsTables/SustainedCard/AdviceCard/…）
+│   ├── settings/                 # 设置子页面与区块（见 ARCHITECTURE-SETTINGS.md）
+│   │   ├── AppearancePage.tsx    # 外观（深浅/预设/骄傲旗参数）
+│   │   ├── LanguagePage.tsx      # 语言（内置 + AI 翻译 + 编辑词条 + 词典分享）
+│   │   ├── AppPage.tsx           # 应用（安装/分享/版本/检查更新/运行状态/诊断）
+│   │   ├── ConfigPage.tsx        # 配置（录音/训练/提醒）
+│   │   ├── DataPage.tsx          # 数据管理（存储用量/备份/导入导出）
+│   │   ├── LabsPage.tsx          # 实验性功能（开关/大模型/音区边界/实时功能/GitHub 备份）
+│   │   ├── EditStringsSheet.tsx  # 编辑词条浮层（用户自定义译文）
+│   │   └── TrainingSection.tsx 等
 │   └── ui/                       # shadcn/radix 基础组件（按需使用）
-├── lib/
-│   ├── pwa.ts                    # PWA 安装提示（beforeinstallprompt 捕获/触发）
-│   ├── audio/
-│   │   ├── recorder.ts           # 录音引擎单例：采集/分析循环/记录生成 + computeStats
-│   │   ├── pitch.ts              # YIN 音高检测 + RMS 能量
-│   │   ├── formants.ts           # LPC 共振峰提取
-│   │   ├── voiceQuality.ts       # Jitter/Shimmer/HNR（峰检测周期序列）
-│   │   ├── cpp.ts                # CPPS（自写 FFT → 实倒谱 → 回归线基线）
-│   │   ├── analysisPipeline.ts   # 离线分析管线（纯函数：逐帧 DSP + 嗓音质量，主/Worker 共用）
-│   │   ├── analysisWorker.ts     # Web Worker 入口：离线 DSP 在子线程执行
-│   │   ├── analysisClient.ts     # Worker 调度：请求关联/进度上报/失败回退主线程
-│   │   ├── importAudio.ts        # 外部音频导入：解码/重采样 → Worker 分析 → 落库结构
-│   │   ├── spectrogram.ts        # 语谱频带量化 + base64 编解码 + magma 伪彩色
-│   │   ├── sustained.ts          # 长音指标：MPT / 音高稳定度 CV / 响度衰减斜率
-│   │   └── demo.ts               # 示例数据生成（?demo=1 / 载入示例按钮）
-│   ├── advice.ts                 # 训练建议（实验性，本地规则引擎，纯函数）
-│   ├── file.ts                   # 通用文件辅助：下载触发、音频扩展名→MIME
-│   ├── storage/
-│   │   └── idb.ts                # IndexedDB：records / audio / kv 三仓库（DB v2）
-│   ├── export/
-│   │   ├── csv.ts                # 帧级 CSV / 汇总 CSV
-│   │   ├── shareCard.ts          # PNG 分享报告卡
-│   │   └── backup.ts             # ZIP 完整备份/恢复（fflate，buildFullBackupZip 供自动备份复用）
-│   ├── backup/
-│   │   ├── github.ts             # GitHub 私有库云备份（Device Flow + Contents API）
-│   │   └── local.ts              # 本地自动备份（实验性，File System Access API，句柄存 kv 仓库）
-│   └── theme/
-│       └── monet.ts              # OKLCH 莫奈色板生成 → CSS 变量
-├── store/
-│   ├── useStore.ts               # 主状态：页面/录音/当前分析/设置（持久化）
-│   └── useHistoryStore.ts        # 历史记录（持久化，含容量保护）
+├── hooks/
+│   └── useLiveCanvas.ts          # 实时画布尺寸自适应（回调 ref + ResizeObserver）
 ├── i18n/
-│   ├── index.ts                  # 核心 t()/setLocale()/LOCALES（缺译回退 zh-CN）
-│   ├── hook.ts                   # useI18n：订阅 settings.language，渲染期同步 locale
-│   ├── zh-CN.ts                  # 简体中文词典（基准；四语言键完整性由 src/i18n/i18n.test.ts 校验）
-│   ├── zh-TW.ts                  # 繁体中文词典
-│   ├── en.ts                     # 英语词典（机翻）
-│   └── ja.ts                     # 日语词典（机翻）
-├── constants/index.ts            # 音高区间/主题预设/默认设置/轴范围
-└── types/index.ts                # 全部类型定义
+│   ├── index.ts                  # 核心 t()：覆盖层→内置→AI→zh-CN 查找链 + 版本订阅
+│   ├── hook.ts                   # useI18n：订阅 settings.language 与词典版本
+│   ├── aiLocale.ts               # AI 翻译管线（生成/增量补全/术语表/词典分享）
+│   ├── aiLocale.test.ts          # 术语表与分享格式单测
+│   ├── zh-CN.ts 等 ×5            # 五语言词典（zh-CN 为基准，漂移测试强制一致）
+│   └── i18n.test.ts              # 词典漂移防护 + 覆盖层行为
+├── lib/
+│   ├── pwa.ts                    # 安装捕获 / 检查更新 / SW 状态 / 缓存重置
+│   ├── llm.ts                    # 大模型调用（建议/周报/AI 翻译共用 llmChat）
+│   ├── advice.ts                 # 训练建议（本地规则引擎，纯函数）
+│   ├── trendMetric.ts            # 趋势图纵轴指标（f0/mpt/cpps 取值规则）
+│   ├── file.ts                   # 下载触发、音频扩展名→MIME
+│   ├── reminder.ts               # 每日练习提醒（本地通知）
+│   ├── audio/                    # 录音引擎与 DSP（见文末算法文档）
+│   │   ├── recorder.ts           # 录音引擎单例（实时循环/记录生成/统计）
+│   │   ├── pitch.ts / pitchAlt.ts# YIN / pYIN / MPM（模块级复用缓冲，零稳态分配）
+│   │   ├── formants.ts           # LPC 共振峰（同为复用缓冲）
+│   │   ├── voiceQuality.ts / cpp.ts # J/S/HNR / CPPS
+│   │   ├── analysisPipeline.ts / analysisWorker.ts / analysisClient.ts
+│   │   │                         # 离线管线（Worker，PCM transfer 交付）
+│   │   ├── importAudio.ts        # 外部音频导入（含 Share Target）
+│   │   ├── pitchCompare.ts       # 音高算法对比（实验性）
+│   │   ├── sustained.ts          # 长音指标（MPT/CV/衰减）
+│   │   └── demo.ts / spectrogram.ts / testHelpers.ts
+│   ├── backup/                   # github（设备流）/ webdav / local（目录句柄）
+│   ├── export/                   # csv / shareCard（PNG）/ backup（ZIP）/ settings / interactiveHtml
+│   ├── storage/
+│   │   └── idb.ts                # IndexedDB：records / audio / kv（键清单见状态文档）
+│   └── theme/
+│       └── monet.ts              # OKLCH 色板生成 + 预设（见 ARCHITECTURE-THEME.md）
+├── store/
+│   ├── useStore.ts               # 主状态 + settings 持久化（迁移/模块同步，见状态文档）
+│   └── useHistoryStore.ts        # 记录（IDB 持久化，200 条界面截断）
+├── types/index.ts                # 全部类型定义
+└── constants/index.ts            # 音区/预设/默认设置/轴范围/PRIDE_FLAGS
 documentation/                    # 开发者与算法文档（本目录）
-public/                           # 静态资源：favicon.svg、PWA 图标、OGP 分享图
+public/                           # 静态资源：favicon.svg、PWA 图标、sw-custom.js、OGP
 scripts/generate-pwa-assets.py    # 用 Pillow 生成 public/ 下的图片资源
 docs/                             # ⚠️ 构建产物输出目录（vite outDir），勿手放文件
 ```
@@ -211,6 +228,12 @@ npm run preview   # 本地预览构建产物
 | [ALGORITHM-FORMANT-LPC.md](./ALGORITHM-FORMANT-LPC.md) | 共振峰：预加重/抽取/LPC/求根全链路 |
 | [ALGORITHM-ENERGY.md](./ALGORITHM-ENERGY.md) | 能量：RMS、分贝、VAD 门限体系 |
 | [ALGORITHM-CPPS.md](./ALGORITHM-CPPS.md) | 倒谱峰突出度：实倒谱、回归线基线、时间平滑 |
+| [ARCHITECTURE-I18N.md](./ARCHITECTURE-I18N.md) | i18n：查找链、覆盖层、AI 翻译管线与词典分享 |
+| [ARCHITECTURE-THEME.md](./ARCHITECTURE-THEME.md) | 主题：OKLCH 令牌、骄傲旗预设、渐变参数、包含块陷阱 |
+| [ARCHITECTURE-STATE.md](./ARCHITECTURE-STATE.md) | 状态与持久化：store、IndexedDB、键清单、迁移与降级 |
+| [ARCHITECTURE-SETTINGS.md](./ARCHITECTURE-SETTINGS.md) | 设置页：子页面模式、搜索索引、新增子页步骤 |
+| [GUIDE-PWA.md](./GUIDE-PWA.md) | PWA：更新流、版本注入、Share Target、修复工具 |
+| [PARAMETERS-GUIDE.md](./PARAMETERS-GUIDE.md) | 参数说明书（面向使用者） |
 | [README.md](../README.md) | 项目介绍与使用说明 |
 
-应用内路径：**设置 → 关于 → 文档**，可离线阅读以上算法文档。
+应用内路径：**设置 → 关于 → 文档**，可离线阅读以上文档。
