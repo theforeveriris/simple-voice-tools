@@ -61,10 +61,7 @@ export function ReminderSection({
 
   return (
     <SettingsSection icon={AlarmClock} title={t('settings.reminderSection')}>
-      <SettingRow
-        label={t('settings.reminderEnable')}
-        desc={t('settings.reminderEnableDesc')}
-      >
+      <SettingRow label={<InfoTip label={t('settings.reminderEnable')} text={t('settings.reminderEnableDesc')} />}>
         <Switch checked={settings.practiceReminderEnabled} onCheckedChange={onToggle} />
       </SettingRow>
       <SettingRow label={t('settings.reminderTime')}>
