@@ -52,7 +52,17 @@ describe('t() 占位符插值', () => {
     expect(t('toast.jsonExported', { n: 5 })).toContain('5');
   });
 
-  it('默认 zh-CN 下 {n} 同样被替换', () => {
+  it('默认英文界面下 {n} 同样被替换', () => {
+    setLocale('en');
     expect(t('toast.jsonExported', { n: 5 })).toContain('5');
+  });
+
+  it('AI 词典缺键时回退 zh-CN，命中时优先 AI 译文', async () => {
+    const { registerAiDict } = await import('./index');
+    registerAiDict('TestAI', { 'common.save': 'SPEICHERN' }, 'de');
+    setLocale('ai');
+    expect(t('common.save')).toBe('SPEICHERN');
+    expect(t('common.cancel')).toBe('取消'); // 未翻译词条回退基准
+    setLocale('en');
   });
 });

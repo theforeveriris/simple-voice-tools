@@ -6,13 +6,14 @@ import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
 import { initPwaInstall } from '@/lib/pwa'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { setLocale } from '@/i18n'
+import { hydrateAiLocale } from '@/i18n/aiLocale'
 import type { Locale, ThemeMode } from '@/types'
 
 // 渲染前先应用持久化的主题色板与深浅模式，避免首帧闪烁
 const saved = (() => {
   try {
     const raw = localStorage.getItem('svt:settings:v1');
-    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; theme?: ThemeMode; language?: Locale; huePreset?: string; prideFlag?: string } } }) : null;
+    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; theme?: ThemeMode; language?: Locale; huePreset?: string; prideFlag?: string; aiLanguage?: string } } }) : null;
     return parsed?.state?.settings ?? {};
   } catch {
     return {};
@@ -34,7 +35,12 @@ applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, saved
 function savedPrideFlagOf(saved: { huePreset?: string; prideFlag?: string }, isLegacyFlag: boolean): string {
   return (isLegacyFlag ? saved.huePreset : saved.prideFlag) ?? 'transPride';
 }
-if (saved.language) setLocale(saved.language)
+// 无保存语言时用默认英文（同步 <html lang> 与词典）；AI 语言需先注册缓存词典
+if (saved.language === 'ai' && saved.aiLanguage && hydrateAiLocale(saved.aiLanguage)) {
+  setLocale('ai')
+} else {
+  setLocale(saved.language ?? 'en')
+}
 
 // PWA：捕获安装事件（Service Worker 由 vite-plugin-pwa 注入注册）
 initPwaInstall()

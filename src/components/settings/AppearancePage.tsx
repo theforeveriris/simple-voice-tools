@@ -6,13 +6,12 @@
  */
 
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Palette, Languages, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, Check, Palette, SlidersHorizontal } from 'lucide-react';
 import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
 import { PRIDE_FLAGS } from '@/constants';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { LOCALES } from '@/i18n';
-import type { AppSettings, HuePreset, Locale, PrideFlag, ThemeMode } from '@/types';
+import type { AppSettings, HuePreset, PrideFlag, ThemeMode } from '@/types';
 import {
   Select,
   SelectContent,
@@ -246,28 +245,6 @@ export function AppearancePage({
               </SettingRow>
             </>
           )}
-        </SettingsSection>
-
-        {/* 语言 */}
-        <SettingsSection icon={Languages} title={t('settings.language')}>
-          <SettingRow label={t('settings.language')}>
-            <Select
-              value={settings.language}
-              onValueChange={(v) => update({ language: v as Locale })}
-            >
-              <SelectTrigger className="w-52 border-0 bg-transparent px-0 text-sm shadow-none">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
-                {LOCALES.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.label}
-                    {l.machine && <span className="ml-1.5 text-[10px] text-ink-2">{t('settings.languageMachine')}</span>}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingRow>
         </SettingsSection>
 
         {/* 图表辅助选项 */}

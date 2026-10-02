@@ -135,7 +135,7 @@ export const THEME_PRESETS: { id: string; hue: number; label: string }[] = [
 export const DEFAULT_SETTINGS: AppSettings = {
   hue: 15,
   theme: 'system',
-  language: 'zh-CN',
+  language: 'en',
   huePreset: 'monet',
   prideFlag: 'transPride',
   prideGlow: 1,
@@ -166,6 +166,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   adviceOnCompare: false,
   practiceReminderEnabled: false,
   practiceReminderTime: '20:00',
+  // AI 翻译语言（语言子页面）
+  aiTranslateEnabled: false,
   // 配置子页面扩展
   playbackRate: 1,
   silenceStopSec: 1,

@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DatabaseBackup, FlaskConical, Info, Palette, Settings2, ChevronRight, Search, X } from 'lucide-react';
+import { DatabaseBackup, FlaskConical, Info, Languages, Palette, Settings2, ChevronRight, Search, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -16,6 +16,7 @@ import type { AppSettings } from '@/types';
 import { LabsPage } from '@/components/settings/LabsPage';
 import { DataPage } from '@/components/settings/DataPage';
 import { AppearancePage } from '@/components/settings/AppearancePage';
+import { LanguagePage } from '@/components/settings/LanguagePage';
 import { ConfigPage } from '@/components/settings/ConfigPage';
 import { AboutTab } from '@/components/settings/AboutTab';
 import { AppSection } from '@/components/settings/AppAboutSection';
@@ -23,16 +24,18 @@ import { cn } from '@/lib/utils';
 import type { DictKey } from '@/i18n';
 
 /** 设置项搜索索引：点击结果直达对应子页面 */
-type SubPage = 'appearance' | 'config' | 'data' | 'labs';
+type SubPage = 'appearance' | 'language' | 'config' | 'data' | 'labs';
 const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] = [
   // 外观
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.theme' },
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.huePreset' },
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.hue' },
-  { page: 'appearance', sectionKey: 'settings.language', labelKey: 'settings.language' },
   { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.showGrid' },
   { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.syncRange' },
   { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.mobileSpark' },
+  // 语言
+  { page: 'language', sectionKey: 'settings.language', labelKey: 'settings.language' },
+  { page: 'language', sectionKey: 'settings.aiTranslate', labelKey: 'settings.aiTranslate' },
   // 配置 · 录音
   { page: 'config', sectionKey: 'settings.recording', labelKey: 'settings.autoEnter' },
   { page: 'config', sectionKey: 'settings.recording', labelKey: 'settings.audioSave' },
@@ -79,6 +82,7 @@ export function SettingsPage() {
   const [view, setView] = useState<'settings' | 'about'>('settings');
   const [query, setQuery] = useState('');
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [labsOpen, setLabsOpen] = useState(false);
   const [dataOpen, setDataOpen] = useState(false);
@@ -88,6 +92,9 @@ export function SettingsPage() {
   // 子页面（设置标签 → 单行卡片入口）；open 状态不持久化，切换页签即回主视图
   if (appearanceOpen) {
     return <AppearancePage settings={settings} update={update} onBack={() => setAppearanceOpen(false)} />;
+  }
+  if (languageOpen) {
+    return <LanguagePage settings={settings} update={update} onBack={() => setLanguageOpen(false)} />;
   }
   if (configOpen) {
     return <ConfigPage settings={settings} update={update} onBack={() => setConfigOpen(false)} />;
@@ -193,6 +200,7 @@ export function SettingsPage() {
                     onClick={() => {
                       setQuery('');
                       if (e.page === 'appearance') setAppearanceOpen(true);
+                      else if (e.page === 'language') setLanguageOpen(true);
                       else if (e.page === 'config') setConfigOpen(true);
                       else if (e.page === 'data') setDataOpen(true);
                       else setLabsOpen(true);
@@ -211,6 +219,7 @@ export function SettingsPage() {
           ) : (
             <>
               {entry(t('settings.appearance'), Palette, () => setAppearanceOpen(true))}
+              {entry(t('settings.language'), Languages, () => setLanguageOpen(true))}
               {entry(t('settings.config'), Settings2, () => setConfigOpen(true))}
               {entry(t('settings.data'), DatabaseBackup, () => setDataOpen(true))}
               {entry(t('settings.labs'), FlaskConical, () => setLabsOpen(true))}

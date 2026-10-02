@@ -10,9 +10,10 @@ export type ViewType = 'test' | 'analysis' | 'history' | 'settings';
 
 /**
  * 界面语言
- * zh-CN 为原始文案；zh-TW/en/ja/lzh 为翻译（en/ja 为机器翻译）
+ * zh-CN 为原始文案；zh-TW/en/ja/lzh 为内置翻译（en/ja 为机器翻译）；
+ * ai 为 AI 翻译语言（由大模型生成的词典，见 i18n/aiLocale.ts，默认语言为 en）
  */
-export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh';
+export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh' | 'ai';
 
 /**
  * 主题预设配色
@@ -296,4 +297,9 @@ export interface AppSettings {
   practiceReminderEnabled: boolean;
   /** 练习提醒：提醒时间（HH:mm，24 小时制） */
   practiceReminderTime: string;
+  /* ---------- AI 翻译语言（语言子页面） ---------- */
+  /** 允许 AI 翻译：用实验性功能的大模型把界面翻译成其他语言 */
+  aiTranslateEnabled: boolean;
+  /** AI 翻译：目标语言显示名（如 Deutsch），生成过词典的语言；language = 'ai' 时生效 */
+  aiLanguage?: string;
 }

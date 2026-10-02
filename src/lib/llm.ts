@@ -12,7 +12,7 @@
 import type { AnalysisRecord } from '@/types';
 import type { AdviceTarget } from '@/lib/advice';
 import { computeSustainedMetrics } from '@/lib/audio/sustained';
-import { LOCALES, getLocale } from '@/i18n';
+import { LOCALES, getAiLocaleLabel, getLocale } from '@/i18n';
 
 /** 大模型接口配置（由设置解析而来） */
 export interface LlmConfig {
@@ -54,9 +54,11 @@ function chatEndpoint(baseUrl: string): string {
   return `${baseUrl}/chat/completions`;
 }
 
-/** 要求模型以当前界面语言回答 */
+/** 要求模型以当前界面语言回答（AI 语言用其语言名） */
 function languageName(): string {
-  return LOCALES.find((l) => l.id === getLocale())?.label ?? '简体中文';
+  return LOCALES.find((l) => l.id === getLocale())?.label
+    ?? getAiLocaleLabel()
+    ?? '简体中文';
 }
 
 /* ------------------------------ 分析标准（提示词） ------------------------------ */
@@ -262,6 +264,35 @@ function buildUserPrompt(
 /* ------------------------------ 请求与解析 ------------------------------ */
 
 /**
+ * OpenAI 兼容 chat 调用：返回模型回复文本；HTTP 错误 / 空回复抛出可读 Error
+ * （训练建议 / 周报 / AI 翻译语言表共用）
+ */
+export async function llmChat(
+  cfg: LlmConfig,
+  system: string,
+  user: string,
+  temperature = 0.3,
+): Promise<string> {
+  const res = await fetch(chatEndpoint(cfg.baseUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
+    body: JSON.stringify({
+      model: cfg.modelId,
+      temperature,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(await describeHttpError(res));
+  const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
+  const content = data.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
+  return content;
+}
+
+/**
  * 调用接口生成结构化建议；失败抛出含可读原因的 Error，由调用方展示
  */
 /** 提示词定制：补充规则 / 整体覆写（来自 设置 → 实验性功能 → 提示词） */
@@ -280,22 +311,12 @@ export async function fetchLlmAdvice(
   } = {},
 ): Promise<LlmAdviceResult> {
   const { baseline = null, prompt } = opts;
-  const res = await fetch(chatEndpoint(cfg.baseUrl), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
-    body: JSON.stringify({
-      model: cfg.modelId,
-      temperature: 0.4,
-      messages: [
-        { role: 'system', content: buildSystemPrompt(SYSTEM_PROMPT, prompt?.extraRules, prompt?.promptOverride) },
-        { role: 'user', content: buildUserPrompt(records, target, baseline) },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(await describeHttpError(res));
-  const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
-  const content = data.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
+  const content = await llmChat(
+    cfg,
+    buildSystemPrompt(SYSTEM_PROMPT, prompt?.extraRules, prompt?.promptOverride),
+    buildUserPrompt(records, target, baseline),
+    0.4,
+  );
   return parseLlmAdviceResult(content);
 }
 
@@ -502,22 +523,12 @@ export async function fetchWeeklyReport(
 ): Promise<LlmAdviceResult> {
   const payload = buildWeeklyPayload(records);
   if (payload == null) throw new Error('No records in the last 7 days');
-  const res = await fetch(chatEndpoint(cfg.baseUrl), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
-    body: JSON.stringify({
-      model: cfg.modelId,
-      temperature: 0.4,
-      messages: [
-        { role: 'system', content: buildSystemPrompt(WEEKLY_PROMPT, opts.prompt?.extraRules, opts.prompt?.promptOverride) },
-        { role: 'user', content: payload },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(await describeHttpError(res));
-  const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
-  const content = data.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
+  const content = await llmChat(
+    cfg,
+    buildSystemPrompt(WEEKLY_PROMPT, opts.prompt?.extraRules, opts.prompt?.promptOverride),
+    payload,
+    0.4,
+  );
   return parseLlmAdviceResult(content);
 }
 

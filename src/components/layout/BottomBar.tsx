@@ -30,7 +30,7 @@ import {
 import { useStore } from '@/store/useStore';
 import type { ViewType, TestMode } from '@/types';
 import { toast } from 'sonner';
-import { t } from '@/i18n';
+import { t, localeTag } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { cn } from '@/lib/utils';
 
@@ -334,6 +334,8 @@ interface DockProps {
   ballDocked: boolean;
   /** 悬浮球是否播放入场动画（首次进入测试页；layoutId 衔接时必须关闭） */
   ballEntrance: boolean;
+  /** 当前语言标签：memo 比较依赖——语言切换时本组件 props 其余不变，需此值触发页签文案重渲染 */
+  langKey: string;
   slotRef: RefObject<HTMLDivElement | null>;
   onLongPress: () => void;
 }
@@ -347,6 +349,7 @@ const Dock = memo(function Dock({
   split,
   ballDocked,
   ballEntrance,
+  langKey,
   slotRef,
   onLongPress,
 }: DockProps) {
@@ -414,6 +417,7 @@ const Dock = memo(function Dock({
     >
       <motion.nav
         layout
+        lang={langKey}
         transition={SPRING}
         className="flex items-center gap-0.5 rounded-[24px] bg-card/85 p-1.5 shadow-[0_12px_40px_-8px_rgba(28,25,45,0.18),0_3px_12px_rgba(28,25,45,0.06)] backdrop-blur-xl"
       >
@@ -580,6 +584,7 @@ export function BottomBar() {
         split={split}
         ballDocked={ballDocked}
         ballEntrance={!everDocked}
+        langKey={localeTag()}
         slotRef={slotRef}
         onLongPress={openMenu}
       />
