@@ -12,7 +12,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Trash2, ChevronRight, SquareTerminal, FileQuestion,
+  Trash2, ChevronRight, History,
   Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote, CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,6 +31,7 @@ import { useI18n } from '@/i18n/hook';
 import { localeTag } from '@/i18n';
 import type { AnalysisRecord, TestMode } from '@/types';
 import { cn } from '@/lib/utils';
+import { EmptyHero, EMPTY_PRIMARY, EMPTY_SECONDARY } from '@/components/layout/EmptyHero';
 
 const LONG_PRESS_MS = 480;
 
@@ -225,27 +226,23 @@ function EmptyHistory() {
   };
 
   return (
-    <div className="grid min-h-[60vh] place-items-center">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <FileQuestion size={30} strokeWidth={1.6} className="text-accent" />
-        <p className="text-sm text-ink-2">{t('history.empty')}</p>
-        <div className="mt-1 flex items-center gap-2">
-          <button
-            onClick={() => setTab('test')}
-            className="flex items-center gap-1.5 px-1 py-2 text-sm font-medium text-accent transition-opacity hover:opacity-70"
-          >
-            <SquareTerminal size={15} />
-            {t('common.goTest')}
-          </button>
-          <button
-            onClick={loadDemo}
-            className="px-1 py-2 text-sm font-medium text-ink-2 transition-opacity hover:opacity-70"
-          >
-            {t('common.loadDemo')}
-          </button>
-        </div>
-      </div>
-    </div>
+    <EmptyHero
+      /* -mt 抵消上方「列表/趋势」切换胶囊 + 间距，使图标与分析页落在屏幕同一位置 */
+      className="-mt-[50px]"
+      icon={<History size={26} strokeWidth={1.5} />}
+      title={t('history.emptyTitle')}
+      desc={t('history.emptyDesc')}
+      primary={
+        <button onClick={() => setTab('test')} className={EMPTY_PRIMARY}>
+          {t('common.goTest')}
+        </button>
+      }
+      secondary={
+        <button onClick={loadDemo} className={EMPTY_SECONDARY}>
+          {t('common.loadDemo')}
+        </button>
+      }
+    />
   );
 }
 

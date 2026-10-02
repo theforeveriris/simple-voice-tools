@@ -67,7 +67,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'test.titleSpectrum': '即時頻譜',
 
   /* ---------- 分析页 ---------- */
-  'analysis.emptyHint': '請先一試，得數而後可析',
+  'analysis.emptyHint': '一試既成，全報在此',
+  'analysis.emptyTitle': '尚無試錄',
   'analysis.avgF0': '均基頻',
   'analysis.chipFull': '全段',
   'analysis.chipRange': '區間 {a}–{b}',
@@ -190,7 +191,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'history.viewList': '列冊',
   'history.viewTrend': '趨勢',
   'history.searchPlaceholder': '索註、日期或其式',
-  'history.empty': '尚無試錄，盍一試之',
+  'history.emptyTitle': '尚無試錄',
+  'history.emptyDesc': '凡試輒存一錄，可隨時覆觀、相比、察其變',
   'history.noMatch': '無合「{q}」之錄',
   'history.deleteAria': '削此錄',
   'history.selectedCount': '已擇 {n} 條',

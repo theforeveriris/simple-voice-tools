@@ -67,7 +67,8 @@ export const ja = {
   'test.titleSpectrum': 'リアルタイムスペクトル',
 
   /* ---------- 分析页 ---------- */
-  'analysis.emptyHint': '先にテストを行って、分析用のデータを取得してください',
+  'analysis.emptyHint': 'テストをすると、ここに完全な分析レポートが表示されます',
+  'analysis.emptyTitle': 'まだテスト記録がありません',
   'analysis.avgF0': '平均基本周波数',
   'analysis.chipFull': '全編',
   'analysis.chipRange': '区間 {a}–{b}',
@@ -190,7 +191,8 @@ export const ja = {
   'history.viewList': 'リスト',
   'history.viewTrend': '推移',
   'history.searchPlaceholder': 'メモ・日付・モードを検索',
-  'history.empty': 'まだテスト記録がありません。テストをしてみましょう',
+  'history.emptyTitle': 'まだテスト記録がありません',
+  'history.emptyDesc': 'テストはすべて記録として保存され、いつでも見返し・比較・推移を確認できます',
   'history.noMatch': '「{q}」に一致する記録はありません',
   'history.deleteAria': 'この記録を削除',
   'history.selectedCount': '{n} 件を選択中',

@@ -66,7 +66,8 @@ export const en = {
   'test.titleSpectrum': 'Live spectrum',
 
   /* ---------- Analysis page ---------- */
-  'analysis.emptyHint': 'Run a test first to get data for analysis',
+  'analysis.emptyHint': 'Run a test and your full analysis report will appear here',
+  'analysis.emptyTitle': 'No recordings yet',
   'analysis.avgF0': 'Average F0',
   'analysis.chipFull': 'Full clip',
   'analysis.chipRange': 'Range {a}–{b}',
@@ -189,7 +190,8 @@ export const en = {
   'history.viewList': 'List',
   'history.viewTrend': 'Trend',
   'history.searchPlaceholder': 'Search notes, dates or modes',
-  'history.empty': 'No test records yet — go run a test',
+  'history.emptyTitle': 'No recordings yet',
+  'history.emptyDesc': 'Every test is saved as a record - review, compare and track changes anytime',
   'history.noMatch': 'No records matching "{q}"',
   'history.deleteAria': 'Delete this record',
   'history.selectedCount': '{n} selected',

@@ -66,7 +66,8 @@ export const zhTW = {
   'test.titleSpectrum': '即時頻譜',
 
   /* ---------- 分析頁 ---------- */
-  'analysis.emptyHint': '請先進行測試以獲得資料進行分析',
+  'analysis.emptyHint': '完成一次測試後，這裡會產生完整的分析報告',
+  'analysis.emptyTitle': '還沒有測試記錄',
   'analysis.avgF0': '平均基頻',
   'analysis.chipFull': '全段',
   'analysis.chipRange': '區間 {a}–{b}',
@@ -189,7 +190,8 @@ export const zhTW = {
   'history.viewList': '列表',
   'history.viewTrend': '趨勢',
   'history.searchPlaceholder': '搜尋備註、日期或模式',
-  'history.empty': '還沒有測試記錄，去做一次測試吧',
+  'history.emptyTitle': '還沒有測試記錄',
+  'history.emptyDesc': '每次測試都會存成一筆記錄，可隨時回看與對比',
   'history.noMatch': '沒有符合「{q}」的記錄',
   'history.deleteAria': '刪除該記錄',
   'history.selectedCount': '已選 {n} 筆',

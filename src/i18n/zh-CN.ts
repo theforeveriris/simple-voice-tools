@@ -67,7 +67,8 @@ export const zhCN = {
   'test.titleSpectrum': '实时频谱',
 
   /* ---------- 分析页 ---------- */
-  'analysis.emptyHint': '请先进行测试以获得数据进行分析',
+  'analysis.emptyHint': '完成一次测试后，这里会生成完整的分析报告',
+  'analysis.emptyTitle': '还没有测试记录',
   'analysis.avgF0': '平均基频',
   'analysis.chipFull': '全段',
   'analysis.chipRange': '区间 {a}–{b}',
@@ -190,7 +191,6 @@ export const zhCN = {
   'history.viewList': '列表',
   'history.viewTrend': '趋势',
   'history.searchPlaceholder': '搜索备注、日期或模式',
-  'history.empty': '还没有测试记录，去做一次测试吧',
   'history.noMatch': '没有匹配「{q}」的记录',
   'history.deleteAria': '删除该记录',
   'history.selectedCount': '已选 {n} 条',
@@ -209,6 +209,8 @@ export const zhCN = {
   'history.trendEmpty': '该测试模式下暂无记录',
   'history.recordAria': '打开第 {n} 条记录',
 
+  'history.emptyTitle': '还没有测试记录',
+  'history.emptyDesc': '每次测试都会存成一条记录，可随时回看与对比',
   /* ---------- 用声日记 ---------- */
   'history.diary': '用声日记',
   'history.diaryMetricCount': '次数',
