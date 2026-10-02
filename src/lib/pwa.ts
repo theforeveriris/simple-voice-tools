@@ -80,3 +80,44 @@ export function usePwaInstall(): { canInstall: boolean; standalone: boolean } {
   }, []);
   return state;
 }
+
+/* ------------------------------ 检查更新 ------------------------------ */
+
+export type UpdateCheckResult = 'unavailable' | 'latest' | 'found';
+
+/**
+ * 手动触发 Service Worker 更新检查（设置 → 应用 → 检查更新）。
+ * - 无 SW 注册（本地开发 / 不支持 / 未部署 HTTPS）→ 'unavailable'
+ * - 轮询 ~2.4s 未发现新版本（registerType autoUpdate 下 skipWaiting
+ *   会让新 SW 装完即激活）→ 'latest'
+ * - 发现新 SW（installing / waiting）→ 等其激活后自动刷新页面 → 'found'
+ */
+export async function checkForAppUpdate(): Promise<UpdateCheckResult> {
+  if (!('serviceWorker' in navigator)) return 'unavailable';
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return 'unavailable';
+  await reg.update();
+
+  const hasNewWorker = () => !!(reg.installing || reg.waiting);
+  const start = Date.now();
+  while (Date.now() - start < 2400) {
+    if (hasNewWorker()) {
+      // 新 SW 激活并接管页面（controllerchange）后刷新，超时兜底直接刷
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, 3000);
+        navigator.serviceWorker.addEventListener(
+          'controllerchange',
+          () => {
+            clearTimeout(timer);
+            resolve();
+          },
+          { once: true },
+        );
+      });
+      window.location.reload();
+      return 'found';
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return 'latest';
+}

@@ -108,7 +108,7 @@ export function LanguagePage({
           <p className="text-base font-semibold text-ink">{t('settings.language')}</p>
         </div>
 
-        {/* 界面语言 */}
+        {/* 界面语言 + AI 翻译（同一区块） */}
         <SettingsSection icon={Languages} title={t('settings.language')}>
           <SettingRow
             label={<InfoTip label={t('settings.language')} text={t('settings.languageDesc')} />}
@@ -138,10 +138,6 @@ export function LanguagePage({
               </SelectContent>
             </Select>
           </SettingRow>
-        </SettingsSection>
-
-        {/* AI 翻译（实验性） */}
-        <SettingsSection icon={Sparkles} title={t('settings.aiTranslate')}>
           <SettingRow label={<InfoTip label={t('settings.aiTranslate')} text={t('settings.aiTranslateDesc')} />}>
             <Switch
               checked={aiEnabled}
