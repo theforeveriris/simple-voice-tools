@@ -3,7 +3,7 @@
  * 页面切换（带过渡动画）+ 底部悬浮导航栏
  */
 
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, startTransition } from 'react';
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { BottomBar } from '@/components/layout/BottomBar';
@@ -62,13 +62,84 @@ function App() {
   // 语言切换（同步 <html lang> 与词典）
   useI18n();
 
-  // 切页瞬间瞬时回顶：滚动位置若被保留，新页高度与旧页不同会被浏览器
-  // 钳制跳变（新页入场动画还发生在视口外），看起来像闪动刷新。
-  // layoutEffect 在首帧绘制前执行；instant 覆盖 CSS 的 scroll-behavior:smooth，
-  // 避免 smooth 滚动与入场动画叠加出二次位移
+  /* ---- 两阶段页面切换 ----
+   * currentTab（急迫）：底栏胶囊 / 圆球立即动画；
+   * displayedTab（startTransition 低优先级）：页面内容挂载，期间保留旧页——
+   * 长列表（历史 200 张卡）这类重挂载不再阻塞入场动画造成白屏闪动。
+   * 新页提交瞬间（layoutEffect，首帧绘制前）瞬时回顶：
+   * 滚动位置若被保留，新页高度不同会被浏览器钳制跳变；instant 覆盖
+   * CSS 的 scroll-behavior:smooth，避免与入场动画叠加出二次位移。 */
+  const [displayedTab, setDisplayedTab] = useState<ViewType>(currentTab);
+  useEffect(() => {
+    if (currentTab === displayedTab) return;
+    startTransition(() => setDisplayedTab(currentTab));
+  }, [currentTab, displayedTab]);
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [currentTab]);
+  }, [displayedTab]);
+
+  /* ---- 移动端左右滑动切页 ----
+   * 触摸手势（桌面鼠标不受影响）：横向位移 > 56px 且为纵向 2 倍以上判定，
+   * 主导纵向即放弃（不干扰滚动）。canvas / 滑块 / 输入控件上的横向拖动是
+   * 图表交互，经 data-noswipe 与元素选择器排除。 */
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    let sx = 0;
+    let sy = 0;
+    let lastDx = 0;
+    let decided: 'h' | 'v' | null = null;
+    const start = (e: TouchEvent) => {
+      if (e.touches.length !== 1) {
+        decided = 'v';
+        return;
+      }
+      decided = null;
+      lastDx = 0;
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+    };
+    const move = (e: TouchEvent) => {
+      if (decided === 'v' || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - sx;
+      const dy = e.touches[0].clientY - sy;
+      lastDx = dx;
+      if (decided === 'h') {
+        e.preventDefault(); // 已判定为翻页手势：抑制纵向滚动抖动
+        return;
+      }
+      if ((e.target as HTMLElement).closest?.('canvas, input, textarea, select, [role="slider"], [data-noswipe]')) {
+        decided = 'v';
+        return;
+      }
+      if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 2) {
+        decided = 'h';
+        e.preventDefault();
+      } else if (Math.abs(dy) > 24) {
+        decided = 'v';
+      }
+    };
+    const end = () => {
+      if (decided !== 'h' || Math.abs(lastDx) < 56) return;
+      const i = TABS.indexOf(useStore.getState().currentTab);
+      const next = TABS[Math.max(0, Math.min(TABS.length - 1, i + (lastDx < 0 ? 1 : -1)))];
+      if (next !== useStore.getState().currentTab) {
+        navigator.vibrate?.(8);
+        useStore.getState().setTab(next);
+      }
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', end, { passive: true });
+    el.addEventListener('touchcancel', start, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', end);
+      el.removeEventListener('touchcancel', start);
+    };
+  }, []);
 
   // 浏览器返回/前进键在页签间导航（页签切换的写入方向在 useStore.setTab 里同步 hash）
   useEffect(() => {
@@ -222,24 +293,22 @@ function App() {
         toastOptions={{ style: { borderRadius: '8px' } }}
       />
 
-      <main className="mx-auto w-full max-w-5xl px-5 pt-7 pb-36">
+      <main ref={mainRef} className="mx-auto w-full max-w-5xl px-5 pt-7 pb-36">
         {/*
-          页面切换策略：旧页即时卸载（不做退场动画）+ 新页做入场动画。
-          退场动画会让测试页的三张 Canvas 图表在底栏弹簧动画期间持续重绘，
-          抢占主线程导致底栏动效掉帧；即时卸载让图表 rAF 立即停止，
-          底栏动画与入场淡入独占动画帧。
+          页面切换策略：两阶段切换（见上方注释）。旧页保留至新页就绪，
+          新页仅入场动画（不做退场动画），displayedTab 为 key 触发重挂载。
         */}
         <motion.div
-          key={currentTab}
+          key={displayedTab}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
         >
-          <PageErrorBoundary pageKey={currentTab}>
-            {currentTab === 'test' && <TestPage />}
-            {currentTab === 'analysis' && <AnalysisPage />}
-            {currentTab === 'history' && <HistoryPage />}
-            {currentTab === 'settings' && <SettingsPage />}
+          <PageErrorBoundary pageKey={displayedTab}>
+            {displayedTab === 'test' && <TestPage />}
+            {displayedTab === 'analysis' && <AnalysisPage />}
+            {displayedTab === 'history' && <HistoryPage />}
+            {displayedTab === 'settings' && <SettingsPage />}
           </PageErrorBoundary>
         </motion.div>
       </main>

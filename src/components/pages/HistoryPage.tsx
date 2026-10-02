@@ -33,6 +33,8 @@ import { localeTag } from '@/i18n';
 import type { AnalysisRecord, TestMode } from '@/types';
 import { cn } from '@/lib/utils';
 import { EmptyHero, EMPTY_PRIMARY, EMPTY_SECONDARY } from '@/components/layout/EmptyHero';
+import { useDeferredMount } from '@/hooks/useDeferredMount';
+import { registerBackClose } from '@/lib/backNav';
 
 const LONG_PRESS_MS = 480;
 
@@ -326,6 +328,13 @@ export function HistoryPage() {
   const [trendFilter, setTrendFilter] = useState<'all' | TestMode>('all');
   const [trendMetric, setTrendMetric] = useState<TrendMetric>('f0');
   const [diaryMetric, setDiaryMetric] = useState<DiaryMetric>('count');
+  const contentReady = useDeferredMount();
+
+  // 对比浮层的返回手势：系统返回 / 侧滑关闭对比，浮层内返回按钮走 history.back()
+  useEffect(() => {
+    if (!comparePair) return;
+    return registerBackClose(() => setComparePair(null));
+  }, [comparePair]);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const open = (record: AnalysisRecord) => {
@@ -464,7 +473,11 @@ export function HistoryPage() {
         )}
       </div>
 
-      {view === 'trend' ? (
+      {/* 重内容延迟两帧挂载：页面壳（列表/趋势切换）先随入场动画绘制，
+          记录卡 / 热力图 / 趋势图的挂载开销不再把入场动画阻塞成闪动 */}
+      {!contentReady ? (
+        <div className="min-h-[55vh]" aria-hidden />
+      ) : view === 'trend' ? (
         records.length === 0 ? (
           <EmptyHistory />
         ) : (
@@ -642,7 +655,7 @@ export function HistoryPage() {
 
       {/* 对比浮层 */}
       <AnimatePresence>
-        {comparePair && <CompareSheet pair={comparePair} onClose={() => setComparePair(null)} />}
+        {comparePair && <CompareSheet pair={comparePair} onClose={() => window.history.back()} />}
       </AnimatePresence>
     </div>
   );

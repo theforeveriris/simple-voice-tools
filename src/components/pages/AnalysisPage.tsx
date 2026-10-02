@@ -31,6 +31,7 @@ import { useI18n } from '@/i18n/hook';
 import type { AnalysisRecord, RecordSeries } from '@/types';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui';
+import { useDeferredMount } from '@/hooks/useDeferredMount';
 import { HeroSummary } from '@/components/analysis/HeroCard';
 import { BaselineStrip } from '@/components/analysis/BaselineStrip';
 import { PlaybackCard } from '@/components/analysis/PlaybackCard';
@@ -115,6 +116,7 @@ export function AnalysisPage() {
   // 区间联动统计：跟随音高曲线的区间（联动模式下即共享区间）。
   // 统一由序列重算（含全段）：保证与区间统计口径一致（如响度只计发声帧）；
   // 嗓音质量四项与靶标达成率是整段录音的临床指标，沿用录音时的整段值
+  const contentReady = useDeferredMount();
   const rangeStats = useMemo(() => {
     if (!record) return null;
     const r = syncChartRange ? sharedRange : (ownRanges.pitch ?? fullRange);
@@ -223,6 +225,9 @@ export function AnalysisPage() {
           </>
         }
       />
+      {/* 重内容延迟两帧挂载：Hero 概览先随入场动画绘制（见 useDeferredMount） */}
+      {!contentReady && <div className="min-h-[60vh]" aria-hidden />}
+      {contentReady && (<>
       {showBaseline && baselineRecord && <BaselineStrip record={record} baseline={baselineRecord} />}
       <PlaybackCard
         url={playback.audioUrl}
@@ -286,6 +291,8 @@ export function AnalysisPage() {
           playhead={playback.playTime}
         />
       )}
+
+      </>)}
 
       <NoteDialog record={record} open={noteOpen} onOpenChange={setNoteOpen} />
 

@@ -6,12 +6,13 @@
  * - 关于标签：开发者与贡献者、应用简介、文档（AboutTab）
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { DatabaseBackup, FlaskConical, Info, Languages, Palette, Settings2, Smartphone, ChevronRight, Search, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
+import { registerBackClose } from '@/lib/backNav';
 import type { AppSettings } from '@/types';
 import { LabsPage } from '@/components/settings/LabsPage';
 import { DataPage } from '@/components/settings/DataPage';
@@ -93,24 +94,42 @@ export function SettingsPage() {
 
   const update = (patch: Partial<AppSettings>) => updateSettings(patch);
 
+  // 子页面返回手势：任一子页打开时压入一条 history（系统返回 / 侧滑 → 关闭回主视图）；
+  // 子页头的返回按钮调 history.back() 走同一链路。切页签卸载本组件时清理。
+  const anySubOpen = appearanceOpen || languageOpen || appOpen || configOpen || labsOpen || dataOpen;
+  useEffect(() => {
+    if (!anySubOpen) return;
+    return registerBackClose(() => {
+      setAppearanceOpen(false);
+      setLanguageOpen(false);
+      setAppOpen(false);
+      setConfigOpen(false);
+      setLabsOpen(false);
+      setDataOpen(false);
+    });
+  }, [anySubOpen]);
+
+  /** 子页头的返回按钮：经 history.back() 消费返回手势栈（popstate 关闭子页） */
+  const subBack = () => () => window.history.back();
+
   // 子页面（设置标签 → 单行卡片入口）；open 状态不持久化，切换页签即回主视图
   if (appearanceOpen) {
-    return <AppearancePage settings={settings} update={update} onBack={() => setAppearanceOpen(false)} />;
+    return <AppearancePage settings={settings} update={update} onBack={subBack()} />;
   }
   if (languageOpen) {
-    return <LanguagePage settings={settings} update={update} onBack={() => setLanguageOpen(false)} />;
+    return <LanguagePage settings={settings} update={update} onBack={subBack()} />;
   }
   if (appOpen) {
-    return <AppPage onBack={() => setAppOpen(false)} />;
+    return <AppPage onBack={subBack()} />;
   }
   if (configOpen) {
-    return <ConfigPage settings={settings} update={update} onBack={() => setConfigOpen(false)} />;
+    return <ConfigPage settings={settings} update={update} onBack={subBack()} />;
   }
   if (labsOpen) {
-    return <LabsPage settings={settings} update={update} onBack={() => setLabsOpen(false)} />;
+    return <LabsPage settings={settings} update={update} onBack={subBack()} />;
   }
   if (dataOpen) {
-    return <DataPage settings={settings} update={update} onBack={() => setDataOpen(false)} />;
+    return <DataPage settings={settings} update={update} onBack={subBack()} />;
   }
 
   // 搜索结果（仅在设置标签且输入非空时展示；过滤开销极小，无需 memo——

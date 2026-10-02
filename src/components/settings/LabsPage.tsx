@@ -10,7 +10,7 @@
  * （本地自动备份已移至 数据管理 子页面）
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, SlidersHorizontal, Ruler, RotateCcw, LocateFixed, FileAudio,
@@ -36,6 +36,7 @@ import { GithubBackupSection } from './GithubBackupSection';
 import { LlmConfigSection } from './LlmConfigSection';
 import { PromptPage } from './PromptPage';
 import { InfoTip } from './InfoTip';
+import { registerBackClose } from '@/lib/backNav';
 
 export function LabsPage({
   settings,
@@ -64,10 +65,16 @@ export function LabsPage({
   const [importDragOver, setImportDragOver] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
+  // 二级子页面（提示词）的返回手势：在语言子页之上再压一层 history
+  useEffect(() => {
+    if (!promptOpen) return;
+    return registerBackClose(() => setPromptOpen(false));
+  }, [promptOpen]);
+
   // 二级子页面（提示词）独占整个视图；hooks 已全部调用，可安全提前返回
   if (promptOpen) {
     return (
-      <PromptPage settings={settings} update={update} onBack={() => setPromptOpen(false)} />
+      <PromptPage settings={settings} update={update} onBack={() => window.history.back()} />
     );
   }
 

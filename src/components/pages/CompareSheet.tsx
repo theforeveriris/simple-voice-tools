@@ -235,7 +235,7 @@ export function CompareSheet({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] overflow-y-auto bg-surface"
+      data-noswipe className="fixed inset-0 z-[60] overflow-y-auto bg-surface"
     >
       <div className="mx-auto w-full max-w-3xl px-5 py-6">
         <div className="flex items-center justify-between">
