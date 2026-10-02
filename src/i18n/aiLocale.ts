@@ -3,6 +3,7 @@
  * 把 zh-CN 基准词典分批交给大模型翻译成目标语言，生成的新语言词典
  * 缓存在 localStorage（svt:i18n-ai:<slug>），经 registerAiDict 注入 i18n
  * 即可作为界面语言使用；未翻译到的词条自动回退简体中文。
+ * 支持增量补全（应用升级新增词条）、用户术语表、词典导出/导入分享。
  */
 
 import { zhCN } from './zh-CN';
@@ -12,6 +13,8 @@ import { llmChat, type LlmConfig } from '@/lib/llm';
 const LS_PREFIX = 'svt:i18n-ai:';
 /** 每批翻译的词条数：全量约 660 键 → 8 批左右，兼顾单次请求体积与调用次数 */
 const BATCH = 90;
+/** 词典分享文件的格式版本（settings / records 同风格：app + kind + version） */
+const AI_LOCALE_FORMAT_VERSION = 1;
 
 /** AI 语言词典缓存（localStorage 持久化结构） */
 export interface AiLocaleCache {
@@ -46,6 +49,14 @@ export function loadAiCache(label: string): AiLocaleCache | null {
   }
 }
 
+function saveAiCache(cache: AiLocaleCache): void {
+  try {
+    localStorage.setItem(LS_PREFIX + aiSlug(cache.label), JSON.stringify(cache));
+  } catch {
+    /* 配额不足：词典仍可在本次会话使用 */
+  }
+}
+
 /** 清除某语言的 AI 词典缓存 */
 export function clearAiCache(label: string): void {
   try {
@@ -66,9 +77,49 @@ export function hydrateAiLocale(label: string): boolean {
   return true;
 }
 
-/** 翻译提示词：术语与占位符保护 + 纯 JSON 输出 */
-function systemPrompt(lang: string): string {
-  return [
+/** 基准词条（zh-CN 全量） */
+function baseEntries(): [string, string][] {
+  return Object.entries(zhCN as unknown as Record<string, string>);
+}
+
+/** 缓存中缺失的基准词条（应用升级新增的界面文案） */
+export function missingKeys(label: string): string[] {
+  const cache = loadAiCache(label);
+  if (!cache) return baseEntries().map(([k]) => k);
+  const have = new Set(Object.keys(cache.dict));
+  return baseEntries().map(([k]) => k).filter((k) => !have.has(k));
+}
+
+/** 覆盖率：词典中仍有效的词条数 / 基准词条总数（缓存不存在返回 null） */
+export function cacheCoverage(label: string): { covered: number; total: number } | null {
+  const cache = loadAiCache(label);
+  if (!cache) return null;
+  const base = zhCN as unknown as Record<string, unknown>;
+  const covered = Object.keys(cache.dict).filter((k) => k in base).length;
+  return { covered, total: Object.keys(base).length };
+}
+
+/* ------------------------------ 术语表 ------------------------------ */
+
+/**
+ * 解析用户术语表：每行一条「中文 = 译文」（= / → / : 均可作分隔），
+ * 空行与残缺行忽略
+ */
+export function parseGlossary(raw: string | undefined | null): [string, string][] {
+  if (!raw) return [];
+  const out: [string, string][] = [];
+  for (const line of raw.split('\n')) {
+    const parts = line.split(/\s*(?:=|→|:)\s*/);
+    if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
+      out.push([parts[0].trim(), parts[1].trim()]);
+    }
+  }
+  return out;
+}
+
+/** 翻译提示词：术语保护 + 用户术语表 + 纯 JSON 输出 */
+function systemPrompt(lang: string, glossary: [string, string][]): string {
+  const lines = [
     'You are the UI translator for "Simple Voice Tool", a self-tracking voice-training app',
     '(transgender voice training and voice health).',
     `Translate the Simplified Chinese UI strings in the user message into ${lang}.`,
@@ -77,9 +128,16 @@ function systemPrompt(lang: string): string {
     '- Keep technical terms and units unchanged: F0, F1, F2, MPT, CPPS, HNR, Jitter, Shimmer, YIN, pYIN,',
     '  MPM, LPC, Hz, dB, P10, P90, PWA, CSV, JSON, HTML, PNG, ZIP, AI, API, GitHub, WebDAV, NAS.',
     '- Keep each translation short and natural for app UI text.',
+  ];
+  if (glossary.length > 0) {
+    lines.push('Glossary — always use exactly these translations for these source terms:');
+    for (const [src, dst] of glossary) lines.push(`- ${src} → ${dst}`);
+  }
+  lines.push(
     'Respond ONLY with a single JSON object mapping the SAME ids to the translations;',
     'no markdown fences, no commentary.',
-  ].join('\n');
+  );
+  return lines.join('\n');
 }
 
 /** 解析单批回复：取首个 JSON 对象，仅接受已知键与非空字符串值 */
@@ -94,19 +152,17 @@ function parseBatch(content: string, allowed: Set<string>): Record<string, strin
   return out;
 }
 
-/**
- * 分批调用大模型翻译整个基准词典，写入缓存并注册生效。
- * 某批失败即抛错（已完成批次保留在返回的缓存中，未覆盖词条回退中文）。
- */
-export async function generateAiLocale(
-  label: string,
+/** 分批翻译词条并并入 dict（进度按批上报） */
+async function translateInto(
+  entries: [string, string][],
+  dict: Record<string, string>,
   cfg: LlmConfig,
+  lang: string,
+  glossary: [string, string][],
   onProgress?: (frac: number) => void,
-): Promise<AiLocaleCache> {
-  const entries = Object.entries(zhCN as unknown as Record<string, string>);
-  const dict: Record<string, string> = {};
+): Promise<void> {
   const total = Math.max(1, Math.ceil(entries.length / BATCH));
-  const system = systemPrompt(label.trim());
+  const system = systemPrompt(lang, glossary);
   for (let i = 0; i < total; i++) {
     const batch = entries.slice(i * BATCH, (i + 1) * BATCH);
     const parsed = parseBatch(
@@ -116,12 +172,114 @@ export async function generateAiLocale(
     Object.assign(dict, parsed);
     onProgress?.((i + 1) / total);
   }
-  const cache: AiLocaleCache = { label: label.trim(), dict, model: cfg.modelId, at: Date.now() };
-  try {
-    localStorage.setItem(LS_PREFIX + aiSlug(label), JSON.stringify(cache));
-  } catch {
-    /* 配额不足等：词典仍可在本次会话使用 */
-  }
+}
+
+function saveAndRegister(label: string, dict: Record<string, string>, model: string): AiLocaleCache {
+  const cache: AiLocaleCache = { label: label.trim(), dict, model, at: Date.now() };
+  saveAiCache(cache);
   registerAiDict(cache.label, dict, aiSlug(label));
   return cache;
+}
+
+export interface GenerateOptions {
+  /** 用户术语表（设置 → 语言 → 翻译术语表） */
+  glossary?: string;
+}
+
+/** 全量生成：把整个基准词典翻译成目标语言，写入缓存并注册生效 */
+export async function generateAiLocale(
+  label: string,
+  cfg: LlmConfig,
+  onProgress?: (frac: number) => void,
+  opts: GenerateOptions = {},
+): Promise<AiLocaleCache> {
+  const dict: Record<string, string> = {};
+  await translateInto(baseEntries(), dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress);
+  return saveAndRegister(label, dict, cfg.modelId);
+}
+
+/**
+ * 增量补全：只翻译缓存缺失的基准词条（应用升级新增的界面文案），
+ * 并入现有词典后保存注册。无缓存时等价于全量生成。
+ */
+export async function translateMissing(
+  label: string,
+  cfg: LlmConfig,
+  onProgress?: (frac: number) => void,
+  opts: GenerateOptions = {},
+): Promise<AiLocaleCache> {
+  const cache = loadAiCache(label);
+  const dict: Record<string, string> = { ...(cache?.dict ?? {}) };
+  const have = new Set(Object.keys(dict));
+  const missing = baseEntries().filter(([k]) => !have.has(k));
+  if (missing.length === 0) return cache ?? saveAndRegister(label, dict, cfg.modelId);
+  await translateInto(missing, dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress);
+  return saveAndRegister(label, dict, cache?.model ?? cfg.modelId);
+}
+
+/* ------------------------------ 词典分享（导出 / 导入） ------------------------------ */
+
+export interface AiLocalePayload {
+  app: string;
+  kind: 'ai-locale';
+  version: number;
+  exportedAt: string;
+  label: string;
+  model: string;
+  generatedAt: number;
+  dict: Record<string, string>;
+}
+
+/** 组装词典分享 JSON（与设置 / 记录导出同风格：app + kind + version） */
+export function buildAiLocalePayload(cache: AiLocaleCache): AiLocalePayload {
+  return {
+    app: 'simple-voice-tools',
+    kind: 'ai-locale',
+    version: AI_LOCALE_FORMAT_VERSION,
+    exportedAt: new Date().toISOString(),
+    label: cache.label,
+    model: cache.model,
+    generatedAt: cache.at,
+    dict: cache.dict,
+  };
+}
+
+/**
+ * 解析词典分享 JSON：校验 app/kind/version，dict 仅保留基准中存在的键。
+ * @throws 格式不符时抛 Error（调用方展示导入失败提示）
+ */
+export function parseAiLocalePayload(json: string): AiLocaleCache {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error('invalid json');
+  }
+  const obj = parsed as Partial<AiLocalePayload> | null;
+  if (
+    !obj || typeof obj !== 'object'
+    || obj.app !== 'simple-voice-tools' || obj.kind !== 'ai-locale'
+    || typeof obj.version !== 'number' || obj.version > AI_LOCALE_FORMAT_VERSION
+    || typeof obj.label !== 'string' || !obj.label.trim()
+    || typeof obj.dict !== 'object' || obj.dict == null
+  ) {
+    throw new Error('invalid payload');
+  }
+  const base = zhCN as unknown as Record<string, unknown>;
+  const dict: Record<string, string> = {};
+  for (const [k, v] of Object.entries(obj.dict)) {
+    if (k in base && typeof v === 'string' && v.trim()) dict[k] = v.trim();
+  }
+  return {
+    label: obj.label.trim(),
+    dict,
+    model: typeof obj.model === 'string' && obj.model.trim() ? obj.model : 'unknown',
+    at: typeof obj.generatedAt === 'number' ? obj.generatedAt : Date.now(),
+  };
+}
+
+/** 保存导入的词典并注册生效（供语言子页导入流程使用） */
+export function importAiCache(cache: AiLocaleCache): void {
+  saveAiCache(cache);
+  registerAiDict(cache.label, cache.dict, aiSlug(cache.label));
 }

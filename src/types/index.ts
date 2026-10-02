@@ -302,4 +302,6 @@ export interface AppSettings {
   aiTranslateEnabled: boolean;
   /** AI 翻译：目标语言显示名（如 Deutsch），生成过词典的语言；language = 'ai' 时生效 */
   aiLanguage?: string;
+  /** AI 翻译：术语表原文（每行「中文 = 译文」），生成 / 补全时注入提示词 */
+  aiGlossary?: string;
 }

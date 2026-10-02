@@ -30,7 +30,7 @@ import {
 import { useStore } from '@/store/useStore';
 import type { ViewType, TestMode } from '@/types';
 import { toast } from 'sonner';
-import { t, localeTag } from '@/i18n';
+import { t, getI18nVersion, localeTag } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { cn } from '@/lib/utils';
 
@@ -336,6 +336,8 @@ interface DockProps {
   ballEntrance: boolean;
   /** 当前语言标签：memo 比较依赖——语言切换时本组件 props 其余不变，需此值触发页签文案重渲染 */
   langKey: string;
+  /** 词典版本：编辑词条等不走语言切换的词典更新同样触发页签重渲染 */
+  i18nVersion: number;
   slotRef: RefObject<HTMLDivElement | null>;
   onLongPress: () => void;
 }
@@ -350,6 +352,7 @@ const Dock = memo(function Dock({
   ballDocked,
   ballEntrance,
   langKey,
+  i18nVersion,
   slotRef,
   onLongPress,
 }: DockProps) {
@@ -418,6 +421,7 @@ const Dock = memo(function Dock({
       <motion.nav
         layout
         lang={langKey}
+        data-i18n-version={i18nVersion}
         transition={SPRING}
         className="flex items-center gap-0.5 rounded-[24px] bg-card/85 p-1.5 shadow-[0_12px_40px_-8px_rgba(28,25,45,0.18),0_3px_12px_rgba(28,25,45,0.06)] backdrop-blur-xl"
       >
@@ -585,6 +589,7 @@ export function BottomBar() {
         ballDocked={ballDocked}
         ballEntrance={!everDocked}
         langKey={localeTag()}
+        i18nVersion={getI18nVersion()}
         slotRef={slotRef}
         onLongPress={openMenu}
       />

@@ -19,6 +19,7 @@ import { applyTheme, presetSpec } from '@/lib/theme/monet';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
+import { missingKeys } from '@/i18n/aiLocale';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
 import { checkPracticeReminder } from '@/lib/reminder';
@@ -151,6 +152,15 @@ function App() {
     setCurrentAnalysis(demo);
     setTab('analysis');
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // AI 语言词典缺失提示：应用升级新增界面词条后，缓存词典会落后于基准，
+  // 新词条回退中文——启动时提醒一次去语言子页补全
+  useEffect(() => {
+    const s = useStore.getState().settings;
+    if (s.language !== 'ai' || !s.aiLanguage) return;
+    const n = missingKeys(s.aiLanguage).length;
+    if (n > 0) toast.info(t('toast.aiMissingHint', { n }));
   }, []);
 
   // 实验性：本地自动备份的每周兜底（距上次 ≥7 天才写，未配置文件夹时为空操作）

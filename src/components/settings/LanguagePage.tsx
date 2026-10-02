@@ -2,21 +2,30 @@
  * 语言（设置的子页面）
  * - 界面语言：内置语言（zh-CN / zh-TW / en / ja / 文言）+ AI 翻译语言（已生成时）
  * - AI 翻译（实验性）：用 实验性功能 → 大模型配置 的接口把基准词典翻译成
- *   任意目标语言，词典缓存本地并可切换；未覆盖词条回退简体中文
+ *   任意目标语言；支持增量补全缺失词条、术语表、编辑词条、词典分享。
+ *   未覆盖词条回退简体中文，自定义词条（编辑词条）优先级最高。
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Languages, Loader2, Trash2, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft, ChevronDown, Download, Languages, Loader2, Pencil, Trash2, Sparkles, Upload,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { LOCALES, t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import { loadAiCache, clearAiCache, generateAiLocale, hydrateAiLocale } from '@/i18n/aiLocale';
+import {
+  loadAiCache, clearAiCache, generateAiLocale, hydrateAiLocale, translateMissing,
+  missingKeys, cacheCoverage, buildAiLocalePayload, parseAiLocalePayload, importAiCache,
+} from '@/i18n/aiLocale';
 import { resolveLlmConfig } from '@/lib/llm';
+import { downloadBlob } from '@/lib/file';
 import type { AppSettings, Locale } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
+import { EditStringsSheet } from './EditStringsSheet';
+import { cn } from '@/lib/utils';
 
 export function LanguagePage({
   settings,
@@ -32,10 +41,16 @@ export function LanguagePage({
   const [draft, setDraft] = useState(settings.aiLanguage ?? '');
   const [busy, setBusy] = useState(false);
   const [pct, setPct] = useState(0);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const aiEnabled = settings.aiTranslateEnabled;
   const cache = settings.aiLanguage ? loadAiCache(settings.aiLanguage) : null;
   const aiItemVisible = aiEnabled && cache != null;
+  // 覆盖率与缺失词条数（缓存存在时；渲染期读取，生成/导入后经重渲染自动刷新）
+  const coverage = settings.aiLanguage ? cacheCoverage(settings.aiLanguage) : null;
+  const missing = settings.aiLanguage ? missingKeys(settings.aiLanguage).length : 0;
 
   /** 切换语言（AI 项需先确保词典已注册） */
   const setLanguage = (v: Locale) => {
@@ -53,8 +68,8 @@ export function LanguagePage({
     update({ language: v });
   };
 
-  /** 生成 / 重新生成 AI 语言词典 */
-  const onGenerate = () => {
+  /** 生成（全量）/ 补全（仅缺失词条）AI 语言词典 */
+  const onGenerate = (missingOnly: boolean) => {
     if (busy) return;
     const label = draft.trim();
     if (!label) return;
@@ -67,7 +82,10 @@ export function LanguagePage({
     setPct(0);
     void (async () => {
       try {
-        const done = await generateAiLocale(label, cfg, setPct);
+        const opts = { glossary: settings.aiGlossary };
+        const done = missingOnly
+          ? await translateMissing(label, cfg, setPct, opts)
+          : await generateAiLocale(label, cfg, setPct, opts);
         update({ aiLanguage: done.label, language: 'ai' });
         setDraft(done.label);
         toast.success(t('toast.aiDone', { label: done.label }));
@@ -86,6 +104,33 @@ export function LanguagePage({
     if (settings.language === 'ai') update({ language: 'en' });
     update({ aiLanguage: undefined });
     toast.success(t('toast.aiCleared'));
+  };
+
+  /** 导出当前 AI 词典为 JSON（分享 / 备份） */
+  const onExport = () => {
+    if (!cache) return;
+    const payload = buildAiLocalePayload(cache);
+    downloadBlob(
+      `voice-ai-locale-${cache.label.toLowerCase()}.json`,
+      new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+    );
+    toast.success(t('toast.settingsExported'));
+  };
+
+  /** 导入词典分享 JSON（写入缓存并注册；当前语言为 AI 时立即生效） */
+  const onImportFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = parseAiLocalePayload(String(reader.result));
+        importAiCache(imported);
+        update({ aiLanguage: imported.label });
+        toast.success(t('toast.aiImported', { label: imported.label, n: Object.keys(imported.dict).length }));
+      } catch {
+        toast.error(t('toast.aiImportFail'));
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -156,24 +201,107 @@ export function LanguagePage({
                   disabled={busy}
                   className="w-full rounded-xl border border-black/10 bg-surface-hi px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-2/50 focus:border-accent disabled:opacity-60"
                 />
-                {cache && (
+                {cache && coverage && (
                   <p className="px-0.5 text-[10px] leading-relaxed text-ink-2">
-                    {t('settings.aiGeneratedInfo', { label: cache.label, n: Object.keys(cache.dict).length, model: cache.model })}
+                    {t('settings.aiGeneratedInfo', {
+                      label: cache.label,
+                      covered: coverage.covered,
+                      total: coverage.total,
+                      pct: Math.round((coverage.covered / Math.max(1, coverage.total)) * 100),
+                      model: cache.model,
+                    })}
                   </p>
                 )}
               </SettingRow>
               <SettingRow
                 label={busy ? t('settings.aiGenerating', { pct: Math.round(pct * 100) }) : t('settings.aiGenerate')}
               >
+                <div className="flex items-center gap-3">
+                  {cache && missing > 0 && !busy && (
+                    <button
+                      onClick={() => onGenerate(false)}
+                      className="px-1 py-2 text-xs font-medium text-ink-2 transition-opacity hover:opacity-70"
+                    >
+                      {t('settings.aiRegenAll')}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onGenerate(cache != null && missing > 0)}
+                    disabled={busy || (cache == null && !draft.trim())}
+                    className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
+                  >
+                    {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {cache && missing > 0
+                      ? t('settings.aiMissing', { n: missing })
+                      : cache ? t('settings.aiRegenerate') : t('settings.aiGenerate')}
+                  </button>
+                </div>
+              </SettingRow>
+              {/* 翻译术语表（可折叠） */}
+              <SettingRow label={<InfoTip label={t('settings.aiGlossary')} text={t('settings.aiGlossaryDesc')} />}>
                 <button
-                  onClick={onGenerate}
-                  disabled={busy || !draft.trim()}
-                  className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
+                  onClick={() => setGlossaryOpen((v) => !v)}
+                  aria-expanded={glossaryOpen}
+                  className="flex items-center gap-0.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
                 >
-                  {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                  {cache ? t('settings.aiRegenerate') : t('settings.aiGenerate')}
+                  {glossaryOpen ? t('common.close') : t('settings.aiGlossaryOpen')}
+                  <ChevronDown size={13} className={cn('transition-transform', glossaryOpen && 'rotate-180')} />
                 </button>
               </SettingRow>
+              {glossaryOpen && (
+                <SettingRow stacked label={t('settings.aiGlossary')}>
+                  <textarea
+                    value={settings.aiGlossary ?? ''}
+                    onChange={(e) => update({ aiGlossary: e.target.value })}
+                    placeholder={t('settings.aiGlossaryPlaceholder')}
+                    rows={3}
+                    spellCheck={false}
+                    className="w-full resize-y rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent"
+                  />
+                </SettingRow>
+              )}
+              {/* 编辑词条（自定义覆盖，优先于词典） */}
+              <SettingRow label={<InfoTip label={t('settings.aiEditStrings')} text={t('settings.aiEditStringsDesc')} />}>
+                <button
+                  onClick={() => setEditOpen(true)}
+                  className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+                >
+                  <Pencil size={13} />
+                  {t('settings.editOpen')}
+                </button>
+              </SettingRow>
+              {/* 分享词典（导出 / 导入） */}
+              {cache && (
+                <SettingRow label={t('settings.aiShare')}>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={onExport}
+                      className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+                    >
+                      <Download size={13} />
+                      {t('common.export')}
+                    </button>
+                    <button
+                      onClick={() => importInputRef.current?.click()}
+                      className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+                    >
+                      <Upload size={13} />
+                      {t('common.import')}
+                    </button>
+                  </div>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onImportFile(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </SettingRow>
+              )}
               {cache && (
                 <SettingRow label={t('settings.aiClear')}>
                   <button
@@ -188,6 +316,9 @@ export function LanguagePage({
             </>
           )}
         </SettingsSection>
+
+        {/* 编辑词条浮层 */}
+        {editOpen && <EditStringsSheet onClose={() => setEditOpen(false)} />}
       </motion.div>
     </div>
   );

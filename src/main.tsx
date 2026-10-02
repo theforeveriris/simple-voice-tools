@@ -5,7 +5,8 @@ import App from './App.tsx'
 import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
 import { initPwaInstall } from '@/lib/pwa'
 import { useHistoryStore } from '@/store/useHistoryStore'
-import { setLocale } from '@/i18n'
+import { useStore } from '@/store/useStore'
+import { setLocale, DEFAULT_LOCALE } from '@/i18n'
 import { hydrateAiLocale } from '@/i18n/aiLocale'
 import type { Locale, ThemeMode } from '@/types'
 
@@ -35,11 +36,31 @@ applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, saved
 function savedPrideFlagOf(saved: { huePreset?: string; prideFlag?: string }, isLegacyFlag: boolean): string {
   return (isLegacyFlag ? saved.huePreset : saved.prideFlag) ?? 'transPride';
 }
-// 无保存语言时用默认英文（同步 <html lang> 与词典）；AI 语言需先注册缓存词典
-if (saved.language === 'ai' && saved.aiLanguage && hydrateAiLocale(saved.aiLanguage)) {
+
+/** 首次启动：按浏览器语言匹配内置语言（匹配不上回退英文默认） */
+function detectBrowserLocale(): Locale {
+  const langs: readonly string[] = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const raw of langs) {
+    const tag = raw.toLowerCase();
+    if (tag === 'zh-cn' || tag === 'zh-hans') return 'zh-CN';
+    if (tag === 'zh-tw' || tag === 'zh-hk' || tag === 'zh-mo' || tag === 'zh-hant') return 'zh-TW';
+    if (tag.startsWith('ja')) return 'ja';
+  }
+  if (langs.some((l) => l.toLowerCase().startsWith('zh'))) return 'zh-CN';
+  return DEFAULT_LOCALE;
+}
+
+// 首次启动（无保存设置）跟随浏览器语言；老用户与已显式选择的语言不受影响
+if (!localStorage.getItem('svt:settings:v1')) {
+  const detected = detectBrowserLocale();
+  if (detected !== DEFAULT_LOCALE) {
+    useStore.getState().updateSettings({ language: detected });
+  }
+  setLocale(detected);
+} else if (saved.language === 'ai' && saved.aiLanguage && hydrateAiLocale(saved.aiLanguage)) {
   setLocale('ai')
 } else {
-  setLocale(saved.language ?? 'en')
+  setLocale(saved.language ?? DEFAULT_LOCALE)
 }
 
 // PWA：捕获安装事件（Service Worker 由 vite-plugin-pwa 注入注册）

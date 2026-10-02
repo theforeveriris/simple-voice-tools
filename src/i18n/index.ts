@@ -99,12 +99,64 @@ export function getLocale(): Locale {
   return current;
 }
 
+/* ---------------- 用户自定义词条覆盖（语言子页 → 编辑词条） ----------------
+ * 当前语言维度的本地覆盖层，优先于内置词典与 AI 词典；
+ * AI 语言按其 slug 分库（切换 AI 语言互不串扰）。 */
+
+const OVERRIDE_PREFIX = 'svt:i18n-overrides:';
+const overrideDicts = new Map<string, Dict>();
+
+/** 当前语言的覆盖层（惰性从 localStorage 加载；损坏视为空） */
+function overrideStore(): Dict {
+  const id = localeTag();
+  let d = overrideDicts.get(id);
+  if (!d) {
+    d = {};
+    try {
+      const raw = localStorage.getItem(OVERRIDE_PREFIX + id);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof v === 'string' && v.trim()) d[k as DictKey] = v;
+        }
+      }
+    } catch {
+      /* 忽略损坏缓存 */
+    }
+    overrideDicts.set(id, d);
+  }
+  return d;
+}
+
+/** 当前语言某词条的自定义译文（无则 undefined） */
+export function getOverride(key: DictKey): string | undefined {
+  return overrideStore()[key];
+}
+
+/** 保存 / 移除（value = null 或空串）当前语言的自定义译文，立即生效 */
+export function setOverride(key: DictKey, value: string | null): void {
+  const d = overrideStore();
+  if (value == null || !value.trim()) delete d[key];
+  else d[key] = value.trim();
+  try {
+    localStorage.setItem(OVERRIDE_PREFIX + localeTag(), JSON.stringify(d));
+  } catch {
+    /* 配额不足：仅内存生效 */
+  }
+  bump();
+}
+
+/** 当前语言的自定义词条数 */
+export function overrideCount(): number {
+  return Object.keys(overrideStore()).length;
+}
+
 /**
  * 取词条。支持 {name} 占位符：t('key', { name: value })
- * 查找顺序：内置词典 → AI 词典 → zh-CN 基准回退
+ * 查找顺序：用户自定义 → 内置词典 → AI 词典 → zh-CN 基准回退
  */
 export function t(key: DictKey, params?: Record<string, string | number>): string {
-  const raw = DICTS[current][key] ?? aiDicts.get(current)?.[key] ?? zhCN[key];
+  const raw = overrideStore()[key] ?? DICTS[current][key] ?? aiDicts.get(current)?.[key] ?? zhCN[key];
   if (!raw) return key;
   if (!params) return raw;
   return raw.replace(/\{(\w+)\}/g, (_, name: string) =>

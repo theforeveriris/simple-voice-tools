@@ -40,7 +40,7 @@ export function buildSettingsPayload(settings: AppSettings): SettingsPayload {
 }
 
 /** 可选字符串字段（不在 DEFAULT_SETTINGS 中，单独白名单） */
-const OPTIONAL_STRING_KEYS = ['githubClientId', 'githubRepo', 'baselineRecordId', 'aiLanguage'] as const;
+const OPTIONAL_STRING_KEYS = ['githubClientId', 'githubRepo', 'baselineRecordId', 'aiLanguage', 'aiGlossary'] as const;
 
 /** 枚举字符串字段：导入时校验取值，非法值忽略（保持当前设置） */
 const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
