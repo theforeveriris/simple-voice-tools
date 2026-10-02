@@ -163,6 +163,17 @@ function App() {
     if (n > 0) toast.info(t('toast.aiMissingHint', { n }));
   }, []);
 
+  // 版本更新提示：检测到的版本号与上次见过的不一致（升级而非首装）时提示一次；
+  // 更新内容卡片在 设置 → 应用 中展示（独立标记，点「知道了」清除）
+  useEffect(() => {
+    const seen = localStorage.getItem('svt:update-seen');
+    if (seen && seen !== __APP_VERSION__) {
+      toast.info(t('toast.updatedTo', { version: __APP_VERSION__ }), { duration: 8000 });
+      localStorage.setItem('svt:update-notes-open', '1');
+    }
+    localStorage.setItem('svt:update-seen', __APP_VERSION__);
+  }, []);
+
   // 实验性：本地自动备份的每周兜底（距上次 ≥7 天才写，未配置文件夹时为空操作）
   useEffect(() => {
     void maybeAutoBackup('launch');

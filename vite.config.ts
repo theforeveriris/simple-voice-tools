@@ -1,14 +1,22 @@
 import path from "path"
+import { readFileSync } from "node:fs"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
 import { inspectAttr } from 'kimi-plugin-inspect-react'
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as { version: string }
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   base: './',
   build: {
     outDir: 'docs',
+  },
+  // 版本号 / 构建日期注入（设置 → 应用 → 版本与更新 展示）
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
   },
   plugins: [
     // 开发期 DOM 检查辅助插件，不进生产构建

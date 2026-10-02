@@ -85,6 +85,45 @@ export function usePwaInstall(): { canInstall: boolean; standalone: boolean } {
 
 export type UpdateCheckResult = 'unavailable' | 'latest' | 'found';
 
+/** Service Worker 状态（设置 → 应用 → 运行状态） */
+export type SwStatus = 'unsupported' | 'none' | 'installing' | 'waiting' | 'active';
+
+/** 读取当前 Service Worker 状态 */
+export async function getServiceWorkerStatus(): Promise<SwStatus> {
+  if (!('serviceWorker' in navigator)) return 'unsupported';
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return 'none';
+  if (reg.waiting) return 'waiting';
+  if (reg.installing) return 'installing';
+  return 'active';
+}
+
+/** 持久化存储是否已授予（配额不被浏览器自动回收） */
+export async function isStoragePersisted(): Promise<boolean> {
+  try {
+    return await navigator.storage?.persisted?.() ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 修复工具：删除全部缓存并注销 Service Worker，随后由调用方 reload。
+ * 录音记录与音频在 IndexedDB，不受影响
+ */
+export async function resetAppRuntime(): Promise<void> {
+  try {
+    if ('caches' in window) {
+      await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
+    }
+    if ('serviceWorker' in navigator) {
+      await Promise.all((await navigator.serviceWorker.getRegistrations()).map((r) => r.unregister()));
+    }
+  } catch {
+    /* 尽力而为：失败也继续刷新 */
+  }
+}
+
 /**
  * 手动触发 Service Worker 更新检查（设置 → 应用 → 检查更新）。
  * - 无 SW 注册（本地开发 / 不支持 / 未部署 HTTPS）→ 'unavailable'
