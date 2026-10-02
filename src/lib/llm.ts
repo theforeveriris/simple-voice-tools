@@ -265,13 +265,14 @@ function buildUserPrompt(
 
 /**
  * OpenAI 兼容 chat 调用：返回模型回复文本；HTTP 错误 / 空回复抛出可读 Error
- * （训练建议 / 周报 / AI 翻译语言表共用）
+ * （训练建议 / 周报 / AI 翻译共用）；signal 用于取消（后台任务中断）
  */
 export async function llmChat(
   cfg: LlmConfig,
   system: string,
   user: string,
   temperature = 0.3,
+  signal?: AbortSignal,
 ): Promise<string> {
   const res = await fetch(chatEndpoint(cfg.baseUrl), {
     method: 'POST',
@@ -284,6 +285,7 @@ export async function llmChat(
         { role: 'user', content: user },
       ],
     }),
+    signal,
   });
   if (!res.ok) throw new Error(await describeHttpError(res));
   const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };

@@ -6,20 +6,19 @@
  *   未覆盖词条回退简体中文，自定义词条（编辑词条）优先级最高。
  */
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, ChevronDown, Download, Languages, Loader2, Pencil, Trash2, Sparkles, Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { LOCALES, t } from '@/i18n';
+import { LOCALES, localeTag, t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import {
-  loadAiCache, clearAiCache, generateAiLocale, hydrateAiLocale, translateMissing,
+  loadAiCache, clearAiCache, hydrateAiLocale,
   missingKeys, cacheCoverage, buildAiLocalePayload, parseAiLocalePayload, importAiCache,
-  type TranslateProgress,
 } from '@/i18n/aiLocale';
-import { resolveLlmConfig } from '@/lib/llm';
+import { subscribeAITask, getAITaskState, startAITask, cancelAITask } from '@/i18n/aiTranslateTask';
 import { downloadBlob } from '@/lib/file';
 import type { AppSettings, Locale } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
@@ -40,12 +39,13 @@ export function LanguagePage({
 }) {
   useI18n();
   const [draft, setDraft] = useState(settings.aiLanguage ?? '');
-  const [busy, setBusy] = useState(false);
-  const [prog, setProg] = useState<TranslateProgress | null>(null);
-  const pct = prog ? Math.round(prog.frac * 100) : 0;
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
+  // 翻译任务在模块级运行（后台不中断），这里经 useSyncExternalStore 订阅其状态
+  const task = useSyncExternalStore(subscribeAITask, getAITaskState);
+  const busy = task.status === 'running';
+  const pct = task.progress ? Math.round(task.progress.frac * 100) : 0;
 
   const aiEnabled = settings.aiTranslateEnabled;
   const cache = settings.aiLanguage ? loadAiCache(settings.aiLanguage) : null;
@@ -70,34 +70,16 @@ export function LanguagePage({
     update({ language: v });
   };
 
-  /** 生成（全量）/ 补全（仅缺失词条）AI 语言词典 */
+  /** 生成（全量）/ 补全（仅缺失词条）：交给后台任务管理器，换页不中断 */
   const onGenerate = (missingOnly: boolean) => {
     if (busy) return;
     const label = draft.trim();
     if (!label) return;
-    const cfg = resolveLlmConfig(settings);
-    if (!cfg) {
-      toast.error(t('toast.aiNeedLlm'));
+    if (!startAITask(label, missingOnly)) {
+      toast.info(t('toast.aiTaskBusy'));
       return;
     }
-    setBusy(true);
-    setProg(null);
-    void (async () => {
-      try {
-        const opts = { glossary: settings.aiGlossary };
-        const done = missingOnly
-          ? await translateMissing(label, cfg, setProg, opts)
-          : await generateAiLocale(label, cfg, setProg, opts);
-        update({ aiLanguage: done.label, language: 'ai' });
-        setDraft(done.label);
-        toast.success(t('toast.aiDone', { label: done.label }));
-      } catch (err) {
-        toast.error(t('toast.aiFail', { msg: err instanceof Error ? err.message : String(err) }));
-      } finally {
-        setBusy(false);
-        setProg(null);
-      }
-    })();
+    setDraft(label);
   };
 
   /** 清除 AI 语言缓存（当前正在使用时回退默认英文） */
@@ -242,8 +224,8 @@ export function LanguagePage({
                   </button>
                 </div>
               </SettingRow>
-              {/* 翻译进度条 + 批次 / 词条明细 */}
-              {busy && prog && (
+              {/* 翻译任务卡：进度条 + 批次明细 + 日志（后台运行，离开页面不中断） */}
+              {busy && task.progress && (
                 <div className="px-0.5 pb-1">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-hi">
                     <div
@@ -253,13 +235,34 @@ export function LanguagePage({
                   </div>
                   <p className="mt-1 text-[10px] tabular-nums text-ink-2">
                     {t('settings.aiProgressDetail', {
-                      batch: prog.batch + 1,
-                      total: prog.totalBatches,
-                      done: prog.entriesDone,
-                      all: prog.entriesTotal,
+                      batch: task.progress.batch + 1,
+                      total: task.progress.totalBatches,
+                      done: task.progress.entriesDone,
+                      all: task.progress.entriesTotal,
                     })}
+                    <span className="mx-1.5 opacity-40">·</span>
+                    {t('settings.aiTaskHint')}
                   </p>
                 </div>
+              )}
+              {task.log.length > 0 && (
+                <SettingRow stacked label={<InfoTip label={t('settings.aiTaskLog')} text={t('settings.aiTaskLogDesc')} />}>
+                  <div className="max-h-28 overflow-y-auto rounded-xl bg-surface-hi/70 px-3 py-2 font-mono text-[10px] leading-relaxed text-ink-2">
+                    {task.log.map((l, i) => (
+                      <p key={`${l.at}-${i}`} className="whitespace-pre-wrap">
+                        <span className="opacity-50">[{new Date(l.at).toLocaleTimeString(localeTag(), { hour12: false })}]</span> {l.text}
+                      </p>
+                    ))}
+                  </div>
+                  {busy && (
+                    <button
+                      onClick={cancelAITask}
+                      className="mt-1 w-fit px-1 py-1 text-[11px] font-medium text-red-500 transition-opacity hover:opacity-70"
+                    >
+                      {t('settings.aiCancel')}
+                    </button>
+                  )}
+                </SettingRow>
               )}
               {/* 翻译术语表（可折叠） */}
               <SettingRow label={<InfoTip label={t('settings.aiGlossary')} text={t('settings.aiGlossaryDesc')} />}>

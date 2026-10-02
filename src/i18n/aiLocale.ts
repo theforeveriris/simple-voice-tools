@@ -172,6 +172,7 @@ async function translateInto(
   lang: string,
   glossary: [string, string][],
   onProgress?: (p: TranslateProgress) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const totalBatches = Math.max(1, Math.ceil(entries.length / BATCH));
   const system = systemPrompt(lang, glossary);
@@ -190,7 +191,7 @@ async function translateInto(
   for (let i = 0; i < totalBatches; i++) {
     const batch = entries.slice(i * BATCH, (i + 1) * BATCH);
     const parsed = parseBatch(
-      await llmChat(cfg, system, JSON.stringify(Object.fromEntries(batch), null, 1)),
+      await llmChat(cfg, system, JSON.stringify(Object.fromEntries(batch), null, 1), 0.3, signal),
       new Set(batch.map(([k]) => k)),
     );
     Object.assign(dict, parsed);
@@ -208,6 +209,8 @@ function saveAndRegister(label: string, dict: Record<string, string>, model: str
 export interface GenerateOptions {
   /** 用户术语表（设置 → 语言 → 翻译术语表） */
   glossary?: string;
+  /** 取消信号（后台任务中断用） */
+  signal?: AbortSignal;
 }
 
 /** 全量生成：把整个基准词典翻译成目标语言，写入缓存并注册生效 */
@@ -218,7 +221,7 @@ export async function generateAiLocale(
   opts: GenerateOptions = {},
 ): Promise<AiLocaleCache> {
   const dict: Record<string, string> = {};
-  await translateInto(baseEntries(), dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress);
+  await translateInto(baseEntries(), dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress, opts.signal);
   return saveAndRegister(label, dict, cfg.modelId);
 }
 
@@ -237,7 +240,7 @@ export async function translateMissing(
   const have = new Set(Object.keys(dict));
   const missing = baseEntries().filter(([k]) => !have.has(k));
   if (missing.length === 0) return cache ?? saveAndRegister(label, dict, cfg.modelId);
-  await translateInto(missing, dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress);
+  await translateInto(missing, dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress, opts.signal);
   return saveAndRegister(label, dict, cache?.model ?? cfg.modelId);
 }
 
