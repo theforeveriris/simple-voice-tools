@@ -623,6 +623,8 @@ export const zhCN = {
   'settings.aiLanguagePlaceholder': '如 Deutsch / Español / 한국어…',
   'settings.aiGenerate': '生成翻译',
   'settings.aiRegenerate': '重新生成',
+  'settings.aiWorking': '翻译中…',
+  'settings.aiProgressDetail': '第 {batch}/{total} 批 · 已翻译 {done}/{all} 条',
   'settings.aiGenerating': '翻译中 {pct}%',
   'settings.aiGeneratedInfo': '已生成 {label}（{covered}/{total} 条 · {pct}% · {model}）',
   'settings.aiClear': '清除 AI 语言',

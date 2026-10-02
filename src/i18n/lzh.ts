@@ -623,6 +623,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.aiLanguagePlaceholder': '如 Deutsch / Español / 한국어…',
   'settings.aiGenerate': '生其譯',
   'settings.aiRegenerate': '復生其譯',
+  'settings.aiWorking': '譯中…',
+  'settings.aiProgressDetail': '第 {batch}/{total} 批 · 已譯 {done}/{all} 條',
   'settings.aiGenerating': '譯中 {pct}%',
   'settings.aiGeneratedInfo': '既生 {label}（{covered}/{total} 條 · {pct}% · {model}）',
   'settings.aiClear': '罷 AI 之語',

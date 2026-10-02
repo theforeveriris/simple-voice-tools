@@ -623,6 +623,8 @@ export const ja = {
   'settings.aiLanguagePlaceholder': '例：Deutsch / Español / 한국어…',
   'settings.aiGenerate': '翻訳を生成',
   'settings.aiRegenerate': '再生成',
+  'settings.aiWorking': '翻訳中…',
+  'settings.aiProgressDetail': 'バッチ {batch}/{total} · {done}/{all} 項目を翻訳済み',
   'settings.aiGenerating': '翻訳中 {pct}%',
   'settings.aiGeneratedInfo': '生成済み：{label}（{covered}/{total} 件 · {pct}% · {model}）',
   'settings.aiClear': 'AI 言語をクリア',

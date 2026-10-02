@@ -622,6 +622,8 @@ export const en = {
   'settings.aiLanguagePlaceholder': 'e.g. Deutsch / Español / 한국어…',
   'settings.aiGenerate': 'Generate translation',
   'settings.aiRegenerate': 'Regenerate',
+  'settings.aiWorking': 'Translating…',
+  'settings.aiProgressDetail': 'Batch {batch}/{total} · {done}/{all} strings translated',
   'settings.aiGenerating': 'Translating {pct}%',
   'settings.aiGeneratedInfo': 'Generated: {label} ({covered}/{total} strings · {pct}% · {model})',
   'settings.aiClear': 'Clear AI language',

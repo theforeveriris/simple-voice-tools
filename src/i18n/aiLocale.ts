@@ -152,25 +152,49 @@ function parseBatch(content: string, allowed: Set<string>): Record<string, strin
   return out;
 }
 
-/** 分批翻译词条并并入 dict（进度按批上报） */
+/** 翻译进度（按批上报；batch = 已完成批次数，0 起始） */
+export interface TranslateProgress {
+  /** 完成比例 0-1（按已翻译词条数） */
+  frac: number;
+  /** 已完成批次 / 总批次 */
+  batch: number;
+  totalBatches: number;
+  /** 已翻译并入词典的词条数 / 本轮总词条数 */
+  entriesDone: number;
+  entriesTotal: number;
+}
+
+/** 分批翻译词条并并入 dict（每批完成与开始时上报进度） */
 async function translateInto(
   entries: [string, string][],
   dict: Record<string, string>,
   cfg: LlmConfig,
   lang: string,
   glossary: [string, string][],
-  onProgress?: (frac: number) => void,
+  onProgress?: (p: TranslateProgress) => void,
 ): Promise<void> {
-  const total = Math.max(1, Math.ceil(entries.length / BATCH));
+  const totalBatches = Math.max(1, Math.ceil(entries.length / BATCH));
   const system = systemPrompt(lang, glossary);
-  for (let i = 0; i < total; i++) {
+  const report = (batch: number): void => {
+    const entriesDone = Math.min(entries.length, batch * BATCH);
+    onProgress?.({
+      frac: entries.length ? entriesDone / entries.length : 1,
+      batch,
+      totalBatches,
+      entriesDone,
+      entriesTotal: entries.length,
+    });
+  };
+  // 起始进度：让界面立即出现「第 1/N 批」而不是静默等待首批返回
+  report(0);
+  for (let i = 0; i < totalBatches; i++) {
     const batch = entries.slice(i * BATCH, (i + 1) * BATCH);
     const parsed = parseBatch(
       await llmChat(cfg, system, JSON.stringify(Object.fromEntries(batch), null, 1)),
       new Set(batch.map(([k]) => k)),
     );
     Object.assign(dict, parsed);
-    onProgress?.((i + 1) / total);
+    report(i + 1);
   }
 }
 
@@ -190,7 +214,7 @@ export interface GenerateOptions {
 export async function generateAiLocale(
   label: string,
   cfg: LlmConfig,
-  onProgress?: (frac: number) => void,
+  onProgress?: (p: TranslateProgress) => void,
   opts: GenerateOptions = {},
 ): Promise<AiLocaleCache> {
   const dict: Record<string, string> = {};
@@ -205,7 +229,7 @@ export async function generateAiLocale(
 export async function translateMissing(
   label: string,
   cfg: LlmConfig,
-  onProgress?: (frac: number) => void,
+  onProgress?: (p: TranslateProgress) => void,
   opts: GenerateOptions = {},
 ): Promise<AiLocaleCache> {
   const cache = loadAiCache(label);

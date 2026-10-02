@@ -622,6 +622,8 @@ export const zhTW = {
   'settings.aiLanguagePlaceholder': '如 Deutsch / Español / 한국어…',
   'settings.aiGenerate': '產生翻譯',
   'settings.aiRegenerate': '重新產生',
+  'settings.aiWorking': '翻譯中…',
+  'settings.aiProgressDetail': '第 {batch}/{total} 批 · 已翻譯 {done}/{all} 條',
   'settings.aiGenerating': '翻譯中 {pct}%',
   'settings.aiGeneratedInfo': '已產生 {label}（{covered}/{total} 條 · {pct}% · {model}）',
   'settings.aiClear': '清除 AI 語言',

@@ -17,6 +17,7 @@ import { useI18n } from '@/i18n/hook';
 import {
   loadAiCache, clearAiCache, generateAiLocale, hydrateAiLocale, translateMissing,
   missingKeys, cacheCoverage, buildAiLocalePayload, parseAiLocalePayload, importAiCache,
+  type TranslateProgress,
 } from '@/i18n/aiLocale';
 import { resolveLlmConfig } from '@/lib/llm';
 import { downloadBlob } from '@/lib/file';
@@ -40,7 +41,8 @@ export function LanguagePage({
   useI18n();
   const [draft, setDraft] = useState(settings.aiLanguage ?? '');
   const [busy, setBusy] = useState(false);
-  const [pct, setPct] = useState(0);
+  const [prog, setProg] = useState<TranslateProgress | null>(null);
+  const pct = prog ? Math.round(prog.frac * 100) : 0;
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -79,13 +81,13 @@ export function LanguagePage({
       return;
     }
     setBusy(true);
-    setPct(0);
+    setProg(null);
     void (async () => {
       try {
         const opts = { glossary: settings.aiGlossary };
         const done = missingOnly
-          ? await translateMissing(label, cfg, setPct, opts)
-          : await generateAiLocale(label, cfg, setPct, opts);
+          ? await translateMissing(label, cfg, setProg, opts)
+          : await generateAiLocale(label, cfg, setProg, opts);
         update({ aiLanguage: done.label, language: 'ai' });
         setDraft(done.label);
         toast.success(t('toast.aiDone', { label: done.label }));
@@ -93,6 +95,7 @@ export function LanguagePage({
         toast.error(t('toast.aiFail', { msg: err instanceof Error ? err.message : String(err) }));
       } finally {
         setBusy(false);
+        setProg(null);
       }
     })();
   };
@@ -214,7 +217,7 @@ export function LanguagePage({
                 )}
               </SettingRow>
               <SettingRow
-                label={busy ? t('settings.aiGenerating', { pct: Math.round(pct * 100) }) : t('settings.aiGenerate')}
+                label={busy ? t('settings.aiGenerating', { pct }) : t('settings.aiGenerate')}
               >
                 <div className="flex items-center gap-3">
                   {cache && missing > 0 && !busy && (
@@ -231,12 +234,33 @@ export function LanguagePage({
                     className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
                   >
                     {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                    {cache && missing > 0
-                      ? t('settings.aiMissing', { n: missing })
-                      : cache ? t('settings.aiRegenerate') : t('settings.aiGenerate')}
+                    {busy
+                      ? t('settings.aiWorking')
+                      : cache && missing > 0
+                        ? t('settings.aiMissing', { n: missing })
+                        : cache ? t('settings.aiRegenerate') : t('settings.aiGenerate')}
                   </button>
                 </div>
               </SettingRow>
+              {/* 翻译进度条 + 批次 / 词条明细 */}
+              {busy && prog && (
+                <div className="px-0.5 pb-1">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-hi">
+                    <div
+                      className="h-full rounded-full bg-accent transition-[width] duration-700 ease-out"
+                      style={{ width: `${Math.max(3, pct)}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] tabular-nums text-ink-2">
+                    {t('settings.aiProgressDetail', {
+                      batch: prog.batch + 1,
+                      total: prog.totalBatches,
+                      done: prog.entriesDone,
+                      all: prog.entriesTotal,
+                    })}
+                  </p>
+                </div>
+              )}
               {/* 翻译术语表（可折叠） */}
               <SettingRow label={<InfoTip label={t('settings.aiGlossary')} text={t('settings.aiGlossaryDesc')} />}>
                 <button
