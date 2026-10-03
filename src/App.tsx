@@ -3,9 +3,10 @@
  * 页面切换（带过渡动画）+ 底部悬浮导航栏
  */
 
-import { useEffect, useLayoutEffect, useRef, useState, startTransition } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, startTransition, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
 import { BottomBar } from '@/components/layout/BottomBar';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
@@ -20,6 +21,7 @@ import { startAmbientLoop, watchAuroraHours } from '@/lib/theme/ambient';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
+import { isNative, ShareTarget, type ShareTargetBatch } from '@/lib/platform';
 import { missingKeys } from '@/i18n/aiLocale';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
@@ -267,31 +269,64 @@ function App() {
     void maybeAutoBackup('launch');
   }, []);
 
+  // 系统分享的音频文件 → 离线分析管线 → 落库并跳到分析页。
+  // Web 走 PWA share target（SW 暂存），原生走 ShareTarget 插件，共用本函数
+  const importSharedFile = useCallback(async (file: File) => {
+    const loading = toast.loading(t('importAudio.processing'));
+    try {
+      const { record, audio, truncated } = await analyzeAudioFile(file);
+      toast.dismiss(loading);
+      useHistoryStore.getState().addRecord(record, audio ?? undefined);
+      setCurrentAnalysis(record);
+      setTab('analysis');
+      void maybeAutoBackup('record');
+      toast.success(truncated ? t('toast.importAudioTruncated') : t('toast.importAudioDone'));
+    } catch (err) {
+      toast.dismiss(loading);
+      toast.error(t(importErrorKey(err)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // PWA Share Target：系统「分享到 Simple Voice Tool」的音频文件
   // 由 Service Worker 暂存并 303 重定向回来，这里取走并走离线分析管线
   useEffect(() => {
-    if (!new URLSearchParams(window.location.search).has('share-target')) return;
+    if (isNative || !new URLSearchParams(window.location.search).has('share-target')) return;
     // 立即清掉查询参数，刷新/回退不会重复处理
     window.history.replaceState(null, '', window.location.pathname + window.location.hash);
     void (async () => {
       const file = await takeSharedFile();
-      if (!file) return;
-      const loading = toast.loading(t('importAudio.processing'));
-      try {
-        const { record, audio, truncated } = await analyzeAudioFile(file);
-        toast.dismiss(loading);
-        useHistoryStore.getState().addRecord(record, audio ?? undefined);
-        setCurrentAnalysis(record);
-        setTab('analysis');
-        void maybeAutoBackup('record');
-        toast.success(truncated ? t('toast.importAudioTruncated') : t('toast.importAudioDone'));
-      } catch (err) {
-        toast.dismiss(loading);
-        toast.error(t(importErrorKey(err)));
-      }
+      if (file) await importSharedFile(file);
     })();
+  }, [importSharedFile]);
+
+  // 原生壳的「分享到」：MainActivity 把 SEND/SEND_MULTIPLE 音频交给 ShareTarget
+  // 插件（无 SW 可用）；consume() 取走应用未启动期间的积压，listener 接后续分享
+  useEffect(() => {
+    if (!isNative) return;
+    let handle: { remove: () => Promise<void> } | null = null;
+    const importNativeFile = async (path: string, name: string) => {
+      try {
+        const res = await fetch(Capacitor.convertFileSrc(path));
+        const blob = await res.blob();
+        await importSharedFile(new File([blob], name, { type: blob.type }));
+      } catch {
+        toast.error(t('toast.importAudioDecodeFail'));
+      }
+    };
+    const handleBatch = async (batch: ShareTargetBatch) => {
+      for (const f of batch.files) await importNativeFile(f.path, f.name);
+    };
+    void (async () => {
+      handle = await ShareTarget.addListener('shareTargetReceived', (batch) => void handleBatch(batch));
+      const { batches } = await ShareTarget.start();
+      for (const b of batches) await handleBatch(b);
+    })();
+    return () => {
+      void handle?.remove();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [importSharedFile]);
 
   return (
       <div className="app-root min-h-dvh bg-surface text-ink">

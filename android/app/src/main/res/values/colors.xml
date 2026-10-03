@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 对齐 Web 端 theme_color / manifest background_color（浅粉底），
+         启动 splash 与系统栏区域尽量贴近应用配色 -->
+    <color name="colorPrimary">#FBF2F2</color>
+    <color name="colorPrimaryDark">#FBF2F2</color>
+</resources>

@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { t } from '@/i18n';
+import { isNative } from '@/lib/platform';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -88,9 +89,9 @@ export type UpdateCheckResult = 'unavailable' | 'latest' | 'found';
 /** Service Worker 状态（设置 → 应用 → 运行状态） */
 export type SwStatus = 'unsupported' | 'none' | 'installing' | 'waiting' | 'active';
 
-/** 读取当前 Service Worker 状态 */
+/** 读取当前 Service Worker 状态（原生壳内无 SW，恒为 unsupported） */
 export async function getServiceWorkerStatus(): Promise<SwStatus> {
-  if (!('serviceWorker' in navigator)) return 'unsupported';
+  if (isNative || !('serviceWorker' in navigator)) return 'unsupported';
   const reg = await navigator.serviceWorker.getRegistration();
   if (!reg) return 'none';
   if (reg.waiting) return 'waiting';
@@ -112,6 +113,8 @@ export async function isStoragePersisted(): Promise<boolean> {
  * 录音记录与音频在 IndexedDB，不受影响
  */
 export async function resetAppRuntime(): Promise<void> {
+  // 原生壳内没有缓存 / SW：无需清理（录音记录与音频在 IndexedDB，本就不动）
+  if (isNative) return;
   try {
     if ('caches' in window) {
       await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
@@ -134,7 +137,8 @@ export async function resetAppRuntime(): Promise<void> {
  * - 确有新构建：触发 SW 更新，等新工作器激活接管页面（或 8s 兜底）后刷新 → 'found'
  */
 export async function checkForAppUpdate(): Promise<UpdateCheckResult> {
-  if (!('serviceWorker' in navigator)) return 'unavailable';
+  // 原生壳内无 SW：更新由应用商店 / 重新安装接管
+  if (isNative || !('serviceWorker' in navigator)) return 'unavailable';
   const reg = await navigator.serviceWorker.getRegistration();
   if (!reg) return 'unavailable';
 

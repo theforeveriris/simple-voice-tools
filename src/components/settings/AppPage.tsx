@@ -19,6 +19,7 @@ import {
 } from '@/lib/pwa';
 import { t, localeTag } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
+import { isNative } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 import {
   SettingsSection, SettingRow,
@@ -167,11 +168,12 @@ export function AppPage({
           <p className="text-base font-semibold text-ink">{t('settings.app')}</p>
         </div>
 
-        {/* 安装与分享 */}
+        {/* 安装与分享（原生壳内应用即已安装，无 Web 安装流程） */}
         <SettingsSection icon={Smartphone} title={t('settings.app')}>
-          <SettingRow
-            label={<InfoTip label={t('settings.install')} text={t('settings.installManualHint')} />}
-          >
+          {!isNative && (
+            <SettingRow
+              label={<InfoTip label={t('settings.install')} text={t('settings.installManualHint')} />}
+            >
             <button
               type="button"
               onClick={async () => {
@@ -193,6 +195,7 @@ export function AppPage({
               {install.standalone ? t('settings.installDone') : install.canInstall ? t('settings.installOneClick') : t('settings.installManual')}
             </button>
           </SettingRow>
+          )}
           <SettingRow label={t('settings.shareApp')}>
             <button
               type="button"
@@ -227,22 +230,26 @@ export function AppPage({
           <SettingRow label={t('settings.versionLabel')} desc={__BUILD_DATE__}>
             <span className="text-xs font-semibold tabular-nums text-ink">v{__APP_VERSION__}</span>
           </SettingRow>
-          <SettingRow
-            label={<InfoTip label={t('settings.checkUpdate')} text={t('settings.checkUpdateDesc')} />}
-          >
-            <button
-              type="button"
-              onClick={onCheckUpdate}
-              disabled={checking}
-              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-60"
+          {/* 检查更新走 Service Worker；原生壳的更新由应用商店/重新安装接管 */}
+          {!isNative && (
+            <SettingRow
+              label={<InfoTip label={t('settings.checkUpdate')} text={t('settings.checkUpdateDesc')} />}
             >
-              {checking ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              {checking ? t('settings.checkUpdateBusy') : t('settings.checkUpdate')}
-            </button>
-          </SettingRow>
-          <SettingRow
-            label={<InfoTip label={t('settings.resetCache')} text={t('settings.resetCacheDesc')} />}
-          >
+              <button
+                type="button"
+                onClick={onCheckUpdate}
+                disabled={checking}
+                className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-60"
+              >
+                {checking ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                {checking ? t('settings.checkUpdateBusy') : t('settings.checkUpdate')}
+              </button>
+            </SettingRow>
+          )}
+          {!isNative && (
+            <SettingRow
+              label={<InfoTip label={t('settings.resetCache')} text={t('settings.resetCacheDesc')} />}
+            >
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-red-500 transition-opacity hover:opacity-70">
@@ -269,15 +276,16 @@ export function AppPage({
               </AlertDialogContent>
             </AlertDialog>
           </SettingRow>
+          )}
         </SettingsSection>
 
         {/* 运行状态 */}
         <SettingsSection icon={Activity} title={t('settings.statusSection')}>
           <StatusRow
             label={t('settings.statusMode')}
-            value={install.standalone ? t('settings.statusStandalone') : t('settings.statusBrowser')}
+            value={isNative || install.standalone ? t('settings.statusStandalone') : t('settings.statusBrowser')}
           />
-          <StatusRow label={t('settings.statusSw')} value={swLabel} />
+          {!isNative && <StatusRow label={t('settings.statusSw')} value={swLabel} />}
           <StatusRow
             label={t('settings.statusPersist')}
             value={persisted ? t('settings.statusOn') : t('settings.statusOff')}

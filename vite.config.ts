@@ -43,6 +43,8 @@ export default defineConfig(({ command }) => ({
     VitePWA({
       // SW 自动更新：新版本下载完成后下次加载生效
       registerType: 'autoUpdate',
+      // 注册改为 main.tsx 手动执行（isNative 时跳过——原生壳内无 SW 支持）
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'og-image.png'],
       manifest: {
         name: 'Simple Voice Tool',

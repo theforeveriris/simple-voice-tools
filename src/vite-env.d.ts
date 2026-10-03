@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/client" />
 
 /** 构建时由 vite define 注入（vite.config.ts 读取 package.json） */
 declare const __APP_VERSION__: string;

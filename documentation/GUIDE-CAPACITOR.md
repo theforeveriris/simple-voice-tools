@@ -1,0 +1,95 @@
+# Capacitor 安卓壳（GUIDE-CAPACITOR）
+
+用 Capacitor 把现有 Web 应用原样打包为安卓 App：**Web 代码 100% 复用**，
+壳层只做权限、分享接收、通知、系统栏适配四件事。
+
+## 架构总览
+
+```
+浏览器 PWA  ←─ 同一份 Vite 构建（docs/）→  Capacitor WebView（https://localhost）
+                                        ├─ 麦克风：RECORD_AUDIO 权限 + WebView getUserMedia 桥
+                                        ├─ 分享接收：ShareTargetPlugin（Java）→ Web 导入管线
+                                        └─ 提醒通知：@capacitor/local-notifications
+```
+
+Web 层平台分支的唯一入口是 `src/lib/platform.ts` 的 `isNative`
+（`Capacitor.isNativePlatform()`）。浏览器里恒为 `false`，所有 Web 行为不变：
+
+| 能力 | 浏览器 PWA | 原生壳 |
+| --- | --- | --- |
+| Service Worker / 检查更新 | 注册 SW（`main.tsx` 手动注册） | 跳过；更新走重新安装/应用商店 |
+| 设置 → 应用 | 安装入口 / 检查更新 / 清缓存可见 | 隐藏（无意义）；版本展示保留 |
+| 「分享到」 | manifest share_target（SW 拦截 POST） | `ShareTargetPlugin` 收 SEND intent → 缓存目录 → 事件给 Web |
+| 练习提醒 | Web Notification | `LocalNotifications.schedule`（即时展示） |
+| 其余（Web Audio / MediaRecorder / IndexedDB / vibrate / clipboard） | — | WebView 原样可用，无分支 |
+
+## 日常开发流
+
+```bash
+npm run cap:sync   # = npm run build + npx cap sync android（构建产物拷入 android 工程）
+npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
+```
+
+改动 Web 代码 → `npm run cap:sync` → Android Studio 里重新 Run。
+改原生代码（manifest / 插件）→ Android Studio 里直接 Run（无需 sync）。
+
+## 构建发布 APK / AAB
+
+```bash
+npm run cap:sync
+cd android
+./gradlew assembleDebug                 # 调试 APK：app/build/outputs/apk/debug/
+./gradlew assembleRelease               # 需先配置签名（见下）
+```
+
+签名（发布用）：生成 keystore 后在 `android/key.properties`（勿提交）配置
+storeFile/storePassword/keyAlias/keyPassword，并在 `android/app/build.gradle`
+挂 signingConfigs——或直接用 Android Studio 的 Generate Signed Bundle。
+
+首次真机验证清单：
+- [ ] 三种录音模式（系统弹麦克风权限 → 同意后波形正常）
+- [ ] 分析页图表 / 回放 / 语谱图
+- [ ] 系统「分享到」音频文件（微信语音导出 / 文件管理器）→ 自动进分析页
+- [ ] 练习提醒的测试通知（Android 13+ 首次会申请通知权限）
+- [ ] 设置导出/导入、ZIP 备份恢复
+
+## 原生分享接收（ShareTargetPlugin）
+
+- `android/.../ShareTargetPlugin.java`：SEND / SEND_MULTIPLE 的音频流拷入
+  `cacheDir/share-target`（沿用来源文件名）。Web 先挂监听再调 `start()` 握手：
+  握手返回积压批次（应用未启动期间的分享），之后到达的分享经
+  `shareTargetReceived` 事件实时推送（无丢失、无重复）。
+- Web 侧：`src/lib/platform.ts` 的 `ShareTarget` 绑定 + `App.tsx` 的监听 effect，
+  与 PWA share target 共用 `importSharedFile()`（`analyzeAudioFile` 管线）。
+- 缓存文件 24 小时后由插件自动清理。
+
+## 已知限制 / 后续可选
+
+- **导出下载**：`a[download]`（报告 PNG / CSV）在 WebView 里走系统下载管理器，
+  行为与浏览器略有差异；若需系统分享面板，接 `@capacitor/share` +
+  `@capacitor/filesystem`（shareCard / file.ts 两处调用点）。
+- **本地自动备份**（File System Access）：Android WebView 不支持，功能自动隐藏；
+  需要时换 `@capacitor/filesystem`。
+- **应用图标 / 启动图**：当前为 Capacitor 模板默认。生成自有图标：
+  `npm i -D @capacitor/assets`，按其约定放 `assets/icon-only.png`（1024²，
+  可用 `public/icon-512.png` 放大）与 `assets/splash.png`，然后
+  `npx capacitor-assets generate --android`。
+- **PWA 与原生数据不互通**：两侧 IndexedDB 独立，迁移走设置里的 ZIP 备份/恢复。
+- **aiLocale 的 AI 翻译 / 大模型建议**：纯 HTTP，无需额外配置，直接可用。
+
+## 常见问题
+
+- **麦克风不弹权限**：确认 manifest 有 `RECORD_AUDIO`（已加）。Capacitor 的
+  BridgeWebChromeClient 会把 WebView 的 getUserMedia 请求映射为运行时权限弹窗；
+  若极老机型仍不弹，兜底方案是加一个请求运行时权限的小插件（未预置）。
+- **Node 版本**：Capacitor 7 要求 Node ≥ 20。
+- **gradle 报 SDK 找不到**：`android/local.properties` 的 `sdk.dir`（本机已配置，
+  该文件不提交）。
+- **Gradle 发行包下载超时**：`services.gradle.org` 在国内网络常超时，
+  `gradle/wrapper/gradle-wrapper.properties` 已改用腾讯云镜像（附注释，可换回官方源）。
+- **路径含中文报错**：AGP 检测到非 ASCII 路径会拒绝构建；
+  `android/gradle.properties` 已加 `android.overridePathCheck=true`（官方开关）。
+- **「无效的源发行版：21」**：Capacitor 7 需要 JDK 21 编译；命令行构建时若
+  `JAVA_HOME` 指向 JDK 17 会报此错。指定 JDK 21 再跑：
+  `JAVA_HOME=<JDK21路径> ./gradlew assembleDebug`（Android Studio 内构建不受影响，
+  其自带 JBR 21）。
