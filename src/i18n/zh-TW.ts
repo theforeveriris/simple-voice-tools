@@ -782,8 +782,6 @@ export const zhTW = {
   'settings.voiceTintDesc': '彩蛋：錄音或即時練習時，介面色相隨你的音高流動——低音偏藍，高音偏粉',
   'settings.volumeBreath': '音量呼吸',
   'settings.volumeBreathDesc': '彩蛋：背景漸變濃度隨麥克風音量起伏，說話時氤氳光斑隨之呼吸',
-  'settings.presetDynamic': "跟隨桌布",
-  'settings.presetDynamicDesc': "取 Material You 桌布主色生成整套配色，隨桌布變化",
   'settings.presetMonet': '莫奈取色',
   'settings.accentHue': '強調色相',
   'settings.accentHueDesc': '按鈕、選中態與圖表主曲線的色相；預設跟隨主題色相，拖動後獨立，可組成雙色調',

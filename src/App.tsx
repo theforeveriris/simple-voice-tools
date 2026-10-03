@@ -22,7 +22,6 @@ import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { isNative, ShareTarget, syncNativeSystemBars, type ShareTargetBatch } from '@/lib/platform';
-import { getWallpaperHues } from '@/lib/theme/dynamic';
 import { missingKeys } from '@/i18n/aiLocale';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
@@ -213,25 +212,6 @@ function App() {
       syncNativeSystemBars();
     };
     apply();
-    // 「跟随壁纸」：解析壁纸三色的色相（会话缓存）→ 重应用；回前台 force 刷新
-    if (isNative && huePreset === 'dynamic') {
-      let alive = true;
-      const applyDynamic = (hues: { hue: number; accentHue: number; darkHue: number } | null) => {
-        if (!alive || !hues) return;
-        const p = presetSpec('dynamic', hues.hue, prideFlag, hues.accentHue, hues.darkHue);
-        applyTheme(p.hue, theme === 'dark' || (theme === 'system' && mq.matches), p.accentHue, p.spec, prideFlag);
-        syncNativeSystemBars();
-      };
-      void getWallpaperHues().then(applyDynamic);
-      const onVisible = () => {
-        if (document.visibilityState === 'visible') void getWallpaperHues(true).then(applyDynamic);
-      };
-      document.addEventListener('visibilitychange', onVisible);
-      return () => {
-        alive = false;
-        document.removeEventListener('visibilitychange', onVisible);
-      };
-    }
     if (theme === 'system') {
       mq.addEventListener('change', apply);
       return () => mq.removeEventListener('change', apply);

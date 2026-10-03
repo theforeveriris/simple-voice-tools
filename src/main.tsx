@@ -41,20 +41,17 @@ applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, saved
 // 原生壳：状态栏/手势条底色对齐首帧主题（后续变化由 App 的主题 effect 接管）
 if (isNative) syncNativeSystemBars()
 
-// 原生壳 +「跟随壁纸」预设（含原生首启默认）：先用默认色相保证首帧，
-// 异步取壁纸色相后重应用——Material You 取色就位时界面整体转向壁纸色
-if (isNative) {
-  if (firstRun) {
-    useStore.getState().updateSettings({ huePreset: 'dynamic' })
-  }
-  if ((saved.huePreset ?? 'monet') === 'dynamic' || firstRun) {
-    void getWallpaperHues().then((hues) => {
-      if (!hues) return
-      const p = presetSpec('dynamic', hues.hue, savedPrideFlagOf(saved, isLegacyFlag), hues.accentHue, hues.darkHue)
-      applyTheme(p.hue, dark, p.accentHue, p.spec, savedPrideFlagOf(saved, isLegacyFlag))
-      syncNativeSystemBars()
-    })
-  }
+// 原生壳首启：莫奈默认色相取自壁纸（Material You）——壁纸主/次/三色映射进
+// 莫奈三滑条并持久化，此后配色归用户滑条接管，与手动调色无区别
+if (isNative && firstRun) {
+  void getWallpaperHues().then((hues) => {
+    if (!hues) return
+    useStore.getState().updateSettings({ hue: hues.hue, accentHue: hues.accentHue, darkHue: hues.darkHue })
+    const flag = savedPrideFlagOf(saved, isLegacyFlag)
+    const p = presetSpec('monet', hues.hue, flag, hues.accentHue, hues.darkHue)
+    applyTheme(p.hue, dark, p.accentHue, p.spec, flag)
+    syncNativeSystemBars()
+  })
 }
 
 /** 迁移后的旗帜：旧预设值优先，其次已存的 prideFlag */

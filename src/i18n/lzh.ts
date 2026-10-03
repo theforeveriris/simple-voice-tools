@@ -783,8 +783,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.voiceTintDesc': '密藏之趣：方錄音或習聲之際，界面色相隨聲之高低而流——聲低偏靛，聲高偏粉',
   'settings.volumeBreath': '隨聲吐納',
   'settings.volumeBreathDesc': '密藏之趣：背景漸染之濃，隨麥克風聲量而起伏，言之則光暈吐納如息',
-  'settings.presetDynamic': "隨壁紙",
-  'settings.presetDynamicDesc': "取壁紙之色以生配色，隨壁紙而變",
   'settings.presetMonet': '莫奈取色',
   'settings.accentHue': '強調之色',
   'settings.accentHueDesc': '鈕鍵、選中與圖表主線之色相；常隨主題之色，拖之則自立，可成雙色',

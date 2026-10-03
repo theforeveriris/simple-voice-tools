@@ -1,22 +1,20 @@
 /**
- * 「跟随壁纸」动态取色（Material You）
+ * 「莫奈取色」首启默认 = 壁纸色（Material You）
  * 原生壳内读取系统壁纸的主/次/三色（SystemBars.wallpaperColors，API 27+），
- * 把三个色相映射进应用的莫奈色板（主色相 / 强调色相 / 深色色相）。
- * 结果按会话缓存；壁纸变化后由调用方在应用回前台时 force 刷新。
- * 浏览器中恒返回 null（该预设仅原生壳内可选）。
+ * 转成 HSL 色相写入莫奈三滑条（主/强调/深色）作为首启默认值——
+ * 此后配色与手动调色完全同轨（用户滑条可改），不作为独立预设存在。
+ * 浏览器中恒返回 null（保持原默认色相）。
  */
 
 import { isNative, SystemBars } from '@/lib/platform';
 
-export interface DynamicHues {
+export interface WallpaperHues {
   hue: number;
   accentHue: number;
   darkHue: number;
 }
 
-let cache: DynamicHues | null = null;
-
-/** #RRGGBB → HSL 色相（0-360）；解析失败或无彩色返回 null */
+/** #RRGGBB → HSL 色相（0-360）；解析失败或无彩色（纯灰）返回 null */
 export function hexHue(hex: string): number | null {
   const m = hex.match(/^#?([0-9a-fA-F]{6})$/);
   if (!m) return null;
@@ -36,29 +34,21 @@ export function hexHue(hex: string): number | null {
   return hue < 0 ? hue + 360 : hue;
 }
 
-/** 当前缓存的壁纸色相（未解析时 null，供设置页色卡即时展示） */
-export function cachedDynamicHues(): DynamicHues | null {
-  return cache;
-}
-
 /**
- * 解析壁纸色相（会话缓存；force = 跳过缓存重新读取，用于回到前台刷新）。
- * 主色不可用（低饱和 / 无壁纸信息 / 非原生）返回 null，调用方回退默认配色。
+ * 解析壁纸三色的色相。主色不可用（纯灰 / 无壁纸信息 / 非原生）返回 null，
+ * 调用方（main.tsx 首启）保持默认色相不变。
  */
-export async function getWallpaperHues(force = false): Promise<DynamicHues | null> {
+export async function getWallpaperHues(): Promise<WallpaperHues | null> {
   if (!isNative) return null;
-  if (!force && cache) return cache;
   try {
     const r = await SystemBars.wallpaperColors();
     const primaryHue = r?.primary ? hexHue(r.primary) : null;
-    if (primaryHue == null) {
-      cache = null;
-      return null;
-    }
-    const accentHue = (r?.secondary ? hexHue(r.secondary) : null) ?? primaryHue;
-    const darkHue = (r?.tertiary ? hexHue(r.tertiary) : null) ?? primaryHue;
-    cache = { hue: primaryHue, accentHue, darkHue };
-    return cache;
+    if (primaryHue == null) return null;
+    return {
+      hue: primaryHue,
+      accentHue: (r?.secondary ? hexHue(r.secondary) : null) ?? primaryHue,
+      darkHue: (r?.tertiary ? hexHue(r.tertiary) : null) ?? primaryHue,
+    };
   } catch {
     return null;
   }

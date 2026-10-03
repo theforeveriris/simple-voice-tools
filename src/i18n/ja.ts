@@ -783,8 +783,6 @@ export const ja = {
   'settings.voiceTintDesc': '隠し機能：録音・練習中、画面の色相が声の高さに合わせて変化します。低い声は青寄り、高い声はピンク寄りに',
   'settings.volumeBreath': '音量の呼吸',
   'settings.volumeBreathDesc': '隠し機能：マイクの音量に合わせてグラデーションの濃さが揺らぎ、話すにつれて光が呼吸します',
-  'settings.presetDynamic': "壁紙に合わせる",
-  'settings.presetDynamicDesc': "Material You の壁紙カラーでテーマを生成、壁紙に合わせて変化",
   'settings.presetMonet': 'モネ',
   'settings.accentHue': 'アクセントの色相',
   'settings.accentHueDesc': 'ボタン・選択状態・グラフの主線の色相。デフォルトはテーマの色相に追従し、動かすと独立してツートーンになります',

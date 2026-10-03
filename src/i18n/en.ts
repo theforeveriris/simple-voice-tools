@@ -782,8 +782,6 @@ export const en = {
   'settings.voiceTintDesc': 'Easter egg: while recording or practising live, the interface hue flows with your pitch — lower drifts blue, higher drifts pink',
   'settings.volumeBreath': 'Volume breathing',
   'settings.volumeBreathDesc': 'Easter egg: the gradient glow swells with your microphone level, breathing along as you speak',
-  'settings.presetDynamic': "Wallpaper",
-  'settings.presetDynamicDesc': "Follow your wallpaper colors (Material You)",
   'settings.presetMonet': 'Monet',
   'settings.accentHue': 'Accent hue',
   'settings.accentHueDesc': 'Hue for buttons, selection and chart lines; follows the theme hue by default — drag to detach and build a two-tone scheme',

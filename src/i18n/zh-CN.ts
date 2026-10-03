@@ -784,8 +784,6 @@ export const zhCN = {
   'settings.voiceTintDesc': '彩蛋：录音或实时练习时，界面色相随你的音高流动——低音偏蓝，高音偏粉',
   'settings.volumeBreath': '音量呼吸',
   'settings.volumeBreathDesc': '彩蛋：背景渐变浓度随麦克风音量起伏，说话时氤氲光斑随之呼吸',
-  'settings.presetDynamic': "跟随壁纸",
-  'settings.presetDynamicDesc': "取 Material You 壁纸主色生成整套配色，随壁纸变化",
   'settings.presetMonet': '莫奈取色',
   'settings.accentHue': '强调色相',
   'settings.accentHueDesc': '按钮、选中态与图表主曲线的色相；默认跟随主题色相，拖动后独立，可组成双色调',
