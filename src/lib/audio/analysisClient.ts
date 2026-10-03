@@ -89,7 +89,7 @@ function requestVq(w: Worker, pcm: Float32Array, sampleRate: number): Promise<Vq
   return new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
-    w.postMessage({ type: 'vq', id, pcm, sampleRate } satisfies AnalysisRequest, [pcm.buffer]);
+    w.postMessage({ type: 'vq', id, pcm, sampleRate, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
   });
 }
 

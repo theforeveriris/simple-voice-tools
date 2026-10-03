@@ -21,8 +21,6 @@ const STORAGE_DECIMATE = 2;
 const ANALYSIS_FPS = 60;
 /** 共振峰计算节流：每 N 帧计算一次（LPC 开销较大） */
 const FORMANT_EVERY = 2;
-/** 发声帧能量门限（dB）：响度统计只计该值以上的帧，与 voiceQuality/CPPS 门限一致 */
-const ACTIVE_DB = -50;
 /** 监听模式缓冲上限（帧数，约 2 分钟 @60fps）：长时间练习不无限占用内存 */
 const MONITOR_BUFFER_FRAMES = 7200;
 /** 未设置「最长录音时长」时的硬性上限（秒）：
@@ -52,7 +50,8 @@ export function computeStats(series: RecordSeries, sampleHz: number): VoiceStats
     const f2 = series.f2[i];
     if (f2 != null) f2s.push(f2);
     // 响度只统计发声帧：静音帧会拉低均值，且占比随录音停顿变化，录音之间不可比
-    if (series.rmsDb[i] >= ACTIVE_DB) activeDb.push(series.rmsDb[i]);
+    // （门限为实验性可调参数，见 algoParams）
+    if (series.rmsDb[i] >= getAlgoParams().activeGateDb) activeDb.push(series.rmsDb[i]);
   }
 
   const sorted = (arr: number[]) => [...arr].sort((a, b) => a - b);

@@ -12,6 +12,7 @@
  */
 
 import { detectPitchYin } from './pitch';
+import { getAlgoParams } from './algoParams';
 
 export interface VoiceQuality {
   jitterPct: number | null;
@@ -23,12 +24,6 @@ export interface VoiceQuality {
 const WIN_SEC = 0.128;
 /** 窗移（秒）：不重叠 */
 const HOP_SEC = 0.128;
-/** 能量门限（dB），低于此视为静音帧 */
-const GATE_DB = -50;
-/** 周期性置信度门槛：低于此不参与统计 */
-const MIN_PROB = 0.55;
-/** 参与 Jitter/Shimmer 的最少周期数 */
-const MIN_PERIODS = 8;
 /** Jitter / Shimmer 离群上限（超过视为检测错误丢弃） */
 const JITTER_CAP = 5;
 const SHIMMER_CAP = 15;
@@ -102,6 +97,8 @@ export function computeVoiceQuality(samples: Float32Array, sampleRate: number): 
   const win = Math.max(1024, Math.round(WIN_SEC * sampleRate));
   const hop = Math.max(win, Math.round(HOP_SEC * sampleRate));
   const yinWindow = Math.min(win, 2048); // YIN 只需覆盖 tauMax，取子窗即可
+  // 实验性可调参数：活跃门限 / 置信度门槛 / 最少周期数，音高搜索范围随全局参数
+  const { activeGateDb, vqMinProb, vqMinPeriods, pitchMinHz, pitchMaxHz } = getAlgoParams();
 
   const jitters: number[] = [];
   const shimmers: number[] = [];
@@ -115,14 +112,14 @@ export function computeVoiceQuality(samples: Float32Array, sampleRate: number): 
     let sum = 0;
     for (let i = 0; i < win; i++) sum += frame[i] * frame[i];
     const db = 20 * Math.log10(Math.sqrt(sum / win) + 1e-10);
-    if (db < GATE_DB) {
+    if (db < activeGateDb) {
       prevF0 = 0;
       continue;
     }
 
     // YIN 音高（用帧首子窗降低开销）
-    const pitch = detectPitchYin(frame.subarray(0, yinWindow), sampleRate, 60, 600);
-    if (!pitch || pitch.prob < MIN_PROB) {
+    const pitch = detectPitchYin(frame.subarray(0, yinWindow), sampleRate, pitchMinHz, pitchMaxHz);
+    if (!pitch || pitch.prob < vqMinProb) {
       prevF0 = 0;
       continue;
     }
@@ -139,7 +136,7 @@ export function computeVoiceQuality(samples: Float32Array, sampleRate: number): 
 
     // Jitter / Shimmer：帧内周期序列
     const info = extractPeriods(frame, sampleRate, pitch.freq);
-    if (!info || info.periods.length < MIN_PERIODS) continue;
+    if (!info || info.periods.length < vqMinPeriods) continue;
     const tMean = mean(info.periods);
     const aMean = mean(info.amps);
     if (tMean <= 0 || aMean <= 0) continue;

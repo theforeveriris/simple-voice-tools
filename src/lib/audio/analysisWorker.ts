@@ -23,7 +23,7 @@ export interface VqRequest {
   /** 原始采样率单声道 PCM（录音收尾的嗓音质量计算） */
   pcm: Float32Array;
   sampleRate: number;
-  /** 发起方的算法参数快照（当前 VQ/CPPS 不消费，随协议统一携带） */
+  /** 发起方的算法参数快照（VQ / CPPS 的门限与平滑参数在此消费） */
   params?: AlgoParams;
 }
 

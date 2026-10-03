@@ -204,12 +204,24 @@ export interface AlgoParams {
   pitchMaxHz: number;
   /** LPC 预加重系数（0 = 关闭）：提升高频，抵消声道辐射特性 */
   preEmphasis: number;
+  /** LPC 阶数（0 = 自动 2 + fs/1000）：更高解析出更多共振峰，也更易分裂 */
+  lpcOrder: number;
   /** F1 候选搜索下限（Hz） */
   f1MinHz: number;
   /** F2 候选搜索上限（Hz） */
   f2MaxHz: number;
   /** 发声能量门限（dBFS）：低于该值的帧不做音高检测 */
   voicedGateDb: number;
+  /** 活跃帧能量门限（dBFS）：响度统计 / 嗓音质量 / CPPS 的静音帧判据 */
+  activeGateDb: number;
+  /** 嗓音质量：YIN 周期性置信度门槛，低于此帧不参与 J/S/HNR 统计 */
+  vqMinProb: number;
+  /** 嗓音质量：参与 Jitter/Shimmer 统计的最少周期数 */
+  vqMinPeriods: number;
+  /** CPPS：倒谱峰搜索的基频上限（Hz） */
+  cppsF0Max: number;
+  /** CPPS：帧级 CPP 的时间平滑窗（帧数） */
+  cppsSmoothFrames: number;
 }
 
 /**
@@ -342,6 +354,18 @@ export interface AppSettings {
   algoF2MaxHz: number;
   /** 发声能量门限（dBFS） */
   algoVoicedGateDb: number;
+  /** 活跃帧能量门限（dBFS）：响度统计 / 嗓音质量 / CPPS 共用 */
+  algoActiveGateDb: number;
+  /** LPC 阶数（0 = 自动） */
+  algoLpcOrder: number;
+  /** 嗓音质量：周期性置信度门槛 */
+  algoVqMinProb: number;
+  /** 嗓音质量：最少周期数 */
+  algoVqMinPeriods: number;
+  /** CPPS：倒谱峰搜索基频上限（Hz） */
+  algoCppsF0Max: number;
+  /** CPPS：时间平滑帧数 */
+  algoCppsSmoothFrames: number;
   /** 分析页是否显示语谱图卡片 */
   showSpectrogram: boolean;
   /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */

@@ -332,6 +332,66 @@ export function LabsPage({
               format={(v) => `${v} dB`}
             />
           </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoActiveGate')} text={t('settings.algoActiveGateDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoActiveGateDb}
+              options={[-70, -65, -60, -55, -50, -45, -40, -35, -30]}
+              onChange={(v) => update({ algoActiveGateDb: v })}
+              format={(v) => `${v} dB`}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoLpcOrder')} text={t('settings.algoLpcOrderDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoLpcOrder}
+              options={[0, 10, 12, 14, 16, 18, 22]}
+              onChange={(v) => update({ algoLpcOrder: v })}
+              format={(v) => (v === 0 ? t('settings.algoOrderAuto') : `${v}`)}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoVqMinProb')} text={t('settings.algoVqMinProbDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoVqMinProb}
+              options={[0.3, 0.4, 0.5, 0.55, 0.6, 0.7, 0.8]}
+              onChange={(v) => update({ algoVqMinProb: v })}
+              format={(v) => v.toFixed(2)}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoVqMinPeriods')} text={t('settings.algoVqMinPeriodsDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoVqMinPeriods}
+              options={[4, 6, 8, 10, 12, 16]}
+              onChange={(v) => update({ algoVqMinPeriods: v })}
+              format={(v) => `${v}`}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoCppsF0Max')} text={t('settings.algoCppsF0MaxDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoCppsF0Max}
+              options={[300, 400, 500, 600, 800, 1000]}
+              onChange={(v) => update({ algoCppsF0Max: v })}
+              format={(v) => `${v} Hz`}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoCppsSmooth')} text={t('settings.algoCppsSmoothDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoCppsSmoothFrames}
+              options={[1, 3, 5, 7, 9, 11, 15]}
+              onChange={(v) => update({ algoCppsSmoothFrames: v })}
+              format={(v) => `${v}`}
+            />
+          </SettingRow>
           <SettingRow label={t('settings.algoReset')}>
             <button
               onClick={() => {
@@ -340,9 +400,15 @@ export function LabsPage({
                   algoPitchMinHz: ALGO_PARAM_DEFAULTS.pitchMinHz,
                   algoPitchMaxHz: ALGO_PARAM_DEFAULTS.pitchMaxHz,
                   algoPreEmphasis: ALGO_PARAM_DEFAULTS.preEmphasis,
+                  algoLpcOrder: ALGO_PARAM_DEFAULTS.lpcOrder,
                   algoF1MinHz: ALGO_PARAM_DEFAULTS.f1MinHz,
                   algoF2MaxHz: ALGO_PARAM_DEFAULTS.f2MaxHz,
                   algoVoicedGateDb: ALGO_PARAM_DEFAULTS.voicedGateDb,
+                  algoActiveGateDb: ALGO_PARAM_DEFAULTS.activeGateDb,
+                  algoVqMinProb: ALGO_PARAM_DEFAULTS.vqMinProb,
+                  algoVqMinPeriods: ALGO_PARAM_DEFAULTS.vqMinPeriods,
+                  algoCppsF0Max: ALGO_PARAM_DEFAULTS.cppsF0Max,
+                  algoCppsSmoothFrames: ALGO_PARAM_DEFAULTS.cppsSmoothFrames,
                 });
                 toast.success(t('toast.algoResetDone'));
               }}

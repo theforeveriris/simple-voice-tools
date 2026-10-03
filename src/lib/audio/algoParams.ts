@@ -16,9 +16,15 @@ export const ALGO_PARAM_DEFAULTS: AlgoParams = {
   pitchMinHz: 60,
   pitchMaxHz: 600,
   preEmphasis: 0.97,
+  lpcOrder: 0,
   f1MinHz: 200,
   f2MaxHz: 3400,
   voicedGateDb: -55,
+  activeGateDb: -50,
+  vqMinProb: 0.55,
+  vqMinPeriods: 8,
+  cppsF0Max: 500,
+  cppsSmoothFrames: 5,
 };
 
 /** 单实例当前值 */

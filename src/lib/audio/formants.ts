@@ -15,8 +15,8 @@ export interface FormantEstimate {
 
 /** 抽取倍数：44.1kHz → 约11kHz，足以覆盖 F3 以下频段 */
 const DECIMATION = 4;
-/** LPC 阶数基准：约 2 + fs/1000 */
-const lpcOrder = (fs: number) => 2 + Math.round(fs / 1000);
+/** LPC 阶数基准（自动档）：约 2 + fs/1000 */
+const lpcOrderAuto = (fs: number) => 2 + Math.round(fs / 1000);
 
 /* ------------------------------ 复用缓冲 ------------------------------ */
 /**
@@ -193,7 +193,12 @@ export function extractFormants(
   // 静音门限：能量太低时 LPC 不稳定
   if (rms < -52) return { f1: null, f2: null };
 
-  const order = Math.min(lpcOrder(sampleRate / DECIMATION), (samples.length / DECIMATION) >> 2);
+  // LPC 阶数：实验性可调（0 = 自动 2 + fs/1000），并钳制到帧长的 1/4 防不稳定
+  const { lpcOrder } = getAlgoParams();
+  const order = Math.min(
+    lpcOrder > 0 ? lpcOrder : lpcOrderAuto(sampleRate / DECIMATION),
+    (samples.length / DECIMATION) >> 2,
+  );
   ensureFormantScratch(samples.length, order);
   // 实验性可调参数：预加重系数与 F1/F2 候选搜索窗（见 algoParams）
   const { preEmphasis, f1MinHz, f2MaxHz } = getAlgoParams();

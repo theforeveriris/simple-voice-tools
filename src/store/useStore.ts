@@ -198,9 +198,15 @@ function syncModuleSettings(s: AppSettings): void {
     pitchMinHz: s.algoPitchMinHz,
     pitchMaxHz: s.algoPitchMaxHz,
     preEmphasis: s.algoPreEmphasis,
+    lpcOrder: s.algoLpcOrder,
     f1MinHz: s.algoF1MinHz,
     f2MaxHz: s.algoF2MaxHz,
     voicedGateDb: s.algoVoicedGateDb,
+    activeGateDb: s.algoActiveGateDb,
+    vqMinProb: s.algoVqMinProb,
+    vqMinPeriods: s.algoVqMinPeriods,
+    cppsF0Max: s.algoCppsF0Max,
+    cppsSmoothFrames: s.algoCppsSmoothFrames,
   });
 }
 syncModuleSettings(useStore.getState().settings);

@@ -14,6 +14,8 @@
  * （气息声/噪声成分高）。数值仅供参考，不构成医学诊断。
  */
 
+import { getAlgoParams } from './algoParams';
+
 /** FFT 必须为 2 的幂：返回 >= n 的最小 2 的幂 */
 function nextPow2(n: number): number {
   let p = 1;
@@ -66,13 +68,8 @@ export function fft(re: Float32Array, im: Float32Array): void {
 const FRAME_SEC = 0.04;
 /** 帧移（秒） */
 const HOP_SEC = 0.01;
-/** 能量门限（dB），低于此视为静音帧（与 voiceQuality 一致） */
-const GATE_DB = -50;
-/** 基频搜索范围（Hz）→ quefrency 区间 */
+/** 基频搜索下限（Hz）→ quefrency 区间下界（上限为实验性可调参数，见 algoParams） */
 const F0_MIN = 60;
-const F0_MAX = 500;
-/** 时间平滑窗（帧数，5 帧 = 50ms） */
-const SMOOTH_FRAMES = 5;
 /** 参与统计的最少有效帧数 */
 const MIN_FRAMES = 10;
 
@@ -125,8 +122,10 @@ function frameCpp(
   fft(re, im);
   const inv = 1 / fftSize;
 
-  // quefrency 搜索区间（样本）
-  const qMin = Math.max(2, Math.floor(sampleRate / F0_MAX));
+  // quefrency 搜索区间（样本）：基频上限 → 短 quefrency 下界，下限 → 长 quefrency 上界；
+  // 上限为实验性可调参数（见 algoParams）
+  const { cppsF0Max } = getAlgoParams();
+  const qMin = Math.max(2, Math.floor(sampleRate / cppsF0Max));
   const qMax = Math.min(half - 1, Math.ceil(sampleRate / F0_MIN));
   if (qMax <= qMin + 4) return null;
 
@@ -166,6 +165,8 @@ export function computeCpps(samples: Float32Array, sampleRate: number): number |
 
   const re = new Float32Array(fftSize);
   const im = new Float32Array(fftSize);
+  // 实验性可调参数：活跃帧门限与时间平滑窗（见 algoParams）
+  const { activeGateDb, cppsSmoothFrames } = getAlgoParams();
 
   const raw: number[] = [];
   for (let start = 0; start + frameLen <= samples.length; start += hop) {
@@ -174,18 +175,18 @@ export function computeCpps(samples: Float32Array, sampleRate: number): number |
     let sum = 0;
     for (let i = 0; i < frameLen; i++) sum += frame[i] * frame[i];
     const db = 20 * Math.log10(Math.sqrt(sum / frameLen) + 1e-10);
-    if (db < GATE_DB) continue;
+    if (db < activeGateDb) continue;
     const cpp = frameCpp(frame, sampleRate, fftSize, window, re, im);
     if (cpp != null && isFinite(cpp)) raw.push(cpp);
   }
 
   if (raw.length < MIN_FRAMES) return null;
 
-  // 时间平滑：5 帧滑动平均（抑制帧间倒谱峰跳动）
+  // 时间平滑：滑动平均（抑制帧间倒谱峰跳动）
   const smoothed: number[] = [];
   for (let i = 0; i < raw.length; i++) {
-    const lo = Math.max(0, i - Math.floor(SMOOTH_FRAMES / 2));
-    const hi = Math.min(raw.length, i + Math.floor(SMOOTH_FRAMES / 2) + 1);
+    const lo = Math.max(0, i - Math.floor(cppsSmoothFrames / 2));
+    const hi = Math.min(raw.length, i + Math.floor(cppsSmoothFrames / 2) + 1);
     let s = 0;
     for (let j = lo; j < hi; j++) s += raw[j];
     smoothed.push(s / (hi - lo));
