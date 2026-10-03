@@ -419,7 +419,7 @@ export const zhTW = {
   'settings.updateSection': '版本與更新',
   'settings.checkUpdate': '檢查更新',
   'settings.checkUpdateBusy': '檢查中…',
-  'settings.checkUpdateDesc': '透過 Service Worker 檢查並套用新版本；發現新版本時會自動重新整理頁面。需要 HTTPS 生產部署環境，本機開發伺服器不可用',
+  'settings.checkUpdateDesc': '將頁面正在執行的建置與線上部署比對，發現新版本時自動完成更新並重新整理頁面。需要 HTTPS 生產部署環境，本機開發伺服器不可用',
   'toast.updateLatest': '已是最新版本',
   'toast.updateFound': '發現新版本，正在套用並重新整理…',
   'toast.updateUnavailable': '目前環境不支援檢查更新（需 HTTPS 生產部署）',

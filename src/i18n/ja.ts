@@ -420,7 +420,7 @@ export const ja = {
   'settings.updateSection': 'バージョンと更新',
   'settings.checkUpdate': '更新を確認',
   'settings.checkUpdateBusy': '確認中…',
-  'settings.checkUpdateDesc': 'Service Worker 経由で新バージョンを確認・適用します。見つかった場合は自動的にページを再読み込みします。HTTPS 本番環境が必要で、ローカル開発サーバーでは利用できません',
+  'settings.checkUpdateDesc': '実行中のビルドとデプロイ済みのビルドを比較し、新バージョンがあれば更新を完了して自動的に再読み込みします。HTTPS 本番環境が必要で、ローカル開発サーバーでは利用できません',
   'toast.updateLatest': '最新バージョンです',
   'toast.updateFound': '新バージョンを検出 — 適用して再読み込みします…',
   'toast.updateUnavailable': 'この環境では更新確認を利用できません（HTTPS 本番環境が必要）',

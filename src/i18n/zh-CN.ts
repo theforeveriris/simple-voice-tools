@@ -420,7 +420,7 @@ export const zhCN = {
   'settings.updateSection': '版本与更新',
   'settings.checkUpdate': '检查更新',
   'settings.checkUpdateBusy': '检查中…',
-  'settings.checkUpdateDesc': '通过 Service Worker 检查并应用新版本；发现新版本时会自动刷新页面。需要 HTTPS 生产部署环境，本地开发服务器不可用',
+  'settings.checkUpdateDesc': '将页面正在运行的构建与线上部署比对，发现新版本时自动完成更新并刷新页面。需要 HTTPS 生产部署环境，本地开发服务器不可用',
   'toast.updateLatest': '已是最新版本',
   'toast.updateFound': '发现新版本，正在应用并刷新…',
   'toast.updateUnavailable': '当前环境不支持检查更新（需 HTTPS 生产部署）',

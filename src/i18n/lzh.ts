@@ -420,7 +420,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.updateSection': '版本與新',
   'settings.checkUpdate': '省視新版',
   'settings.checkUpdateBusy': '省視中…',
-  'settings.checkUpdateDesc': '因 Service Worker 省視新版，得之則自刷其頁。須 HTTPS 之部署，本地開發之伺不可用',
+  'settings.checkUpdateDesc': '以方今所行之構較線上所部署者，得新版則自成其更而自刷其頁。須 HTTPS 之部署，本地開發之伺不可用',
   'toast.updateLatest': '已是最新之版',
   'toast.updateFound': '得新版，方施之而自刷…',
   'toast.updateUnavailable': '此境不可省視新版（須 HTTPS 之部署）',

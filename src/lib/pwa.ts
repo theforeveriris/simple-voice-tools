@@ -125,38 +125,80 @@ export async function resetAppRuntime(): Promise<void> {
 }
 
 /**
- * 手动触发 Service Worker 更新检查（设置 → 应用 → 检查更新）。
- * - 无 SW 注册（本地开发 / 不支持 / 未部署 HTTPS）→ 'unavailable'
- * - 轮询 ~2.4s 未发现新版本（registerType autoUpdate 下 skipWaiting
- *   会让新 SW 装完即激活）→ 'latest'
- * - 发现新 SW（installing / waiting）→ 等其激活后自动刷新页面 → 'found'
+ * 手动触发更新检查（设置 → 应用 → 检查更新）。
+ * 先比对「页面正在运行的构建」与「线上部署的构建」（version.json 的 builtAt
+ * 时间戳）——autoUpdate（skipWaiting + clientsClaim）下新 SW 部署后几秒内就会
+ * 装完激活，只轮询 installing / waiting 工作器永远撞不上瞬态，会误报「已是最新」。
+ * - 无 SW 注册（本地开发 / 不支持 / 未部署 HTTPS）或线上构建信息拉取失败 → 'unavailable'
+ * - builtAt 相同（页面运行的就是线上最新构建）→ 'latest'
+ * - 确有新构建：触发 SW 更新，等新工作器激活接管页面（或 8s 兜底）后刷新 → 'found'
  */
 export async function checkForAppUpdate(): Promise<UpdateCheckResult> {
   if (!('serviceWorker' in navigator)) return 'unavailable';
   const reg = await navigator.serviceWorker.getRegistration();
   if (!reg) return 'unavailable';
-  await reg.update();
 
-  const hasNewWorker = () => !!(reg.installing || reg.waiting);
-  const start = Date.now();
-  while (Date.now() - start < 2400) {
-    if (hasNewWorker()) {
-      // 新 SW 激活并接管页面（controllerchange）后刷新，超时兜底直接刷
-      await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, 3000);
-        navigator.serviceWorker.addEventListener(
-          'controllerchange',
-          () => {
-            clearTimeout(timer);
-            resolve();
-          },
-          { once: true },
-        );
-      });
-      window.location.reload();
-      return 'found';
-    }
-    await new Promise((r) => setTimeout(r, 300));
+  const deployed = await fetchDeployedVersion(reg);
+  if (!deployed) return 'unavailable';
+  if (deployed.builtAt === __BUILD_AT__) return 'latest';
+
+  // 线上确有新构建：触发 SW 更新，等它接管页面后刷新。
+  // controllerchange 必须在轮询前挂好——新工作器激活可能比轮询间隔更快；
+  // 超时兜底也直接刷新：导航本身会再触发一次更新检查，最多多按一次
+  const prevController = navigator.serviceWorker.controller;
+  const takenOver = () => {
+    const cur = navigator.serviceWorker.controller;
+    return !!cur && cur !== prevController;
+  };
+  void reg.update();
+  await new Promise<void>((resolve) => {
+    const deadline = setTimeout(resolve, 8000);
+    const tick = setInterval(() => {
+      if (takenOver()) {
+        clearInterval(tick);
+        clearTimeout(deadline);
+        resolve();
+      }
+    }, 250);
+    navigator.serviceWorker.addEventListener(
+      'controllerchange',
+      () => {
+        if (takenOver()) {
+          clearInterval(tick);
+          clearTimeout(deadline);
+          resolve();
+        }
+      },
+      { once: true },
+    );
+  });
+  window.location.reload();
+  return 'found';
+}
+
+interface DeployedVersion {
+  version: string;
+  builtAt: number;
+}
+
+/**
+ * 拉取线上构建信息（vite 构建产出的 version.json，不在 SW 预缓存清单内；
+ * no-store + 时间戳参数双保险绕过 HTTP 缓存与 Service Worker 透传）
+ * @returns 解析失败 / 离线时 null（调用方报「无法检查」）
+ */
+async function fetchDeployedVersion(reg: ServiceWorkerRegistration): Promise<DeployedVersion | null> {
+  try {
+    // 相对 SW 脚本 URL 解析：应用部署在任意子路径下都能定位到同目录的 version.json
+    const swUrl = reg.active?.scriptURL ?? reg.waiting?.scriptURL ?? reg.installing?.scriptURL;
+    const url = new URL('version.json', swUrl ?? document.baseURI);
+    url.searchParams.set('t', String(Date.now()));
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = (await res.json()) as Partial<DeployedVersion>;
+    return typeof data.builtAt === 'number' && isFinite(data.builtAt)
+      ? { version: typeof data.version === 'string' ? data.version : '', builtAt: data.builtAt }
+      : null;
+  } catch {
+    return null;
   }
-  return 'latest';
 }

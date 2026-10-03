@@ -419,7 +419,7 @@ export const en = {
   'settings.updateSection': 'Version & updates',
   'settings.checkUpdate': 'Check for updates',
   'settings.checkUpdateBusy': 'Checking…',
-  'settings.checkUpdateDesc': 'Checks and applies new versions via the Service Worker; the page reloads automatically when one is found. Requires an HTTPS production deployment — unavailable on the local dev server',
+  'settings.checkUpdateDesc': 'Compares the build you are running against the deployed one and completes the update with an automatic reload when a new version is found. Requires an HTTPS production deployment — unavailable on the local dev server',
   'toast.updateLatest': 'You are on the latest version',
   'toast.updateFound': 'New version found — applying and reloading…',
   'toast.updateUnavailable': 'Update checks are unavailable here (requires an HTTPS production deployment)',

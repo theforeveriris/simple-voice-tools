@@ -33,11 +33,15 @@ define: {
 1. **自动**：每次加载页面，Workbox 检测 `sw.js` 字节差异 → 后台下载新 SW →
    skipWaiting 激活 → **下次加载**生效（autoUpdate 语义）。
 2. **手动**（设置 → 应用 → 检查更新，`checkForAppUpdate`）：
-   - `getRegistration()` → `reg.update()`；
-   - 轮询 ~2.4s 观测 `installing / waiting` worker；
-   - 发现新 SW：等 `controllerchange`（新 SW activate + clientsClaim 接管页面）
-     或 3s 兜底 → `location.reload()` → toast「发现新版本」；
-   - 超时无新 SW → 「已是最新版本」；无注册 → 「当前环境不支持」。
+   - `getRegistration()` → fetch 线上 `version.json`（构建时由 vite 插件产出，
+     不在预缓存清单内，`no-store` + 时间戳参数绕过 HTTP 缓存）；
+   - 比对 `builtAt` 与页面内的 `__BUILD_AT__`（同一次构建双写，必须一致）：
+     **相同 → 「已是最新」**——autoUpdate（skipWaiting + clientsClaim）下新 SW
+     部署后几秒内就装完激活，只轮询 `installing / waiting` 撞不上瞬态，
+     会把「已部署未刷新」误报成最新（历史 bug）；
+   - 不同 → `reg.update()`，监听 `controllerchange`（先于轮询挂好）+ 8s 兜底，
+     新 SW 接管页面后 `location.reload()` → toast「发现新版本」；
+   - 线上构建信息拉取失败 / 无 SW 注册 → 「当前环境不支持」。
 
 ### 更新内容卡（What's new）
 

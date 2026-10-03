@@ -7,6 +7,10 @@ import { inspectAttr } from 'kimi-plugin-inspect-react'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as { version: string }
 
+// 本次构建的时间戳（毫秒）：define 注入页面 + version.json 双写必须同源同值，
+// 检查更新以两者相等判定「页面运行的构建 = 线上构建」
+const buildAt = Date.now()
+
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   base: './',
@@ -17,11 +21,25 @@ export default defineConfig(({ command }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    __BUILD_AT__: JSON.stringify(buildAt),
   },
   plugins: [
     // 开发期 DOM 检查辅助插件，不进生产构建
     ...(command === 'serve' ? [inspectAttr()] : []),
     react(),
+    // 构建信息清单：检查更新 fetch 它与页面内的 __BUILD_AT__ 比对。
+    // 故意不进 SW 预缓存（globPatterns 不含 json）——fetch 才能直达网络拿到线上最新
+    {
+      name: 'emit-version-json',
+      apply: 'build',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'version.json',
+          source: JSON.stringify({ version: pkg.version, builtAt: buildAt }),
+        })
+      },
+    },
     VitePWA({
       // SW 自动更新：新版本下载完成后下次加载生效
       registerType: 'autoUpdate',
