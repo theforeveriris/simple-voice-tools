@@ -51,6 +51,8 @@ kv 仓库键清单：
 | `llm-api-key` | store/useStore | 大模型 API Key |
 | `autoBackup:handle` | backup/local | 本地自动备份目录句柄（FileSystemDirectoryHandle） |
 | `autoBackup:lastTs` | backup/local | 上次自动备份时间 |
+| `llm:usage:totals` | lib/llmUsage | 大模型 Token 用量聚合（按功能分组的计数器） |
+| `llm:usage:log` | lib/llmUsage | 大模型调用明细（最新在前，封顶 200 条） |
 
 约定：**凭据与句柄一律进 kv，不进 localStorage**（localStorage 会被设置导出、
 容易被顺手清掉，且句柄无法结构化克隆进 localStorage）。

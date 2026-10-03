@@ -12,12 +12,12 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { buildAdvice, type AdviceTarget } from '@/lib/advice';
 import {
-  cachedLlmAdvice, fetchLlmAdvice, llmAdviceKey, resolveLlmConfig,
+  cachedLlmAdvice, fetchLlmAdvice, isAbortError, llmAdviceKey, resolveLlmConfig,
   type LlmAdviceResult,
 } from '@/lib/llm';
 import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
-import { LlmResultView } from '@/components/analysis/LlmResultView';
+import { LlmResultView, StreamPreview } from '@/components/analysis/LlmResultView';
 
 /** 建议卡通用骨架：标题行 + 内容 + 底部提示 */
 export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
@@ -106,10 +106,13 @@ interface LlmState {
   doneKey: string | null;
   result: LlmAdviceResult | null;
   error: string | null;
+  /** 本轮请求被用户取消（区别于失败） */
+  cancelled: boolean;
 }
 
 /** 大模型判断：点击触发后异步生成（会话内缓存，失败可重试）。
- *  不在挂载时自动请求：调用是付费 API 且会上传统计到第三方，由用户显式发起 */
+ *  不在挂载时自动请求：调用是付费 API 且会上传统计到第三方，由用户显式发起。
+ *  流式生成：加载中实时预览模型输出原文，可随时取消（卸载不中断，跑完照常进缓存） */
 function LlmAdvice({
   records,
   target,
@@ -125,12 +128,14 @@ function LlmAdvice({
 }) {
   const [nonce, setNonce] = useState(0);
   const [started, setStarted] = useState(false);
-  const [state, setState] = useState<LlmState>({ doneKey: null, result: null, error: null });
+  const [streamText, setStreamText] = useState<string | null>(null);
+  const [state, setState] = useState<LlmState>({ doneKey: null, result: null, error: null, cancelled: false });
   // effect 按缓存键（值稳定）触发，输入经 ref 传递：键值不变则不重复请求
   const latest = useRef({ records, target, cfg, baseline, prompt });
   useEffect(() => {
     latest.current = { records, target, cfg, baseline, prompt };
   });
+  const abortRef = useRef<AbortController | null>(null);
   const key = cfg ? llmAdviceKey(cfg, records, target, { baseline, prompt }) : null;
   const requestKey = key ? `${key}#${nonce}` : null;
 
@@ -138,15 +143,33 @@ function LlmAdvice({
     if (!started || !key || !requestKey) return;
     const { cfg: curCfg, records: curRecords, target: curTarget, baseline: curBaseline, prompt: curPrompt } = latest.current;
     if (!curCfg) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
     let alive = true;
-    cachedLlmAdvice(key, () => fetchLlmAdvice(curRecords, curTarget, curCfg, { baseline: curBaseline, prompt: curPrompt }))
+    setStreamText(null);
+    cachedLlmAdvice(key, () => fetchLlmAdvice(curRecords, curTarget, curCfg, {
+      baseline: curBaseline,
+      prompt: curPrompt,
+      signal: controller.signal,
+      onDelta: (acc) => {
+        if (alive) setStreamText(acc);
+      },
+    }))
       .then((result) => {
-        if (alive) setState({ doneKey: requestKey, result, error: null });
+        if (alive) setState({ doneKey: requestKey, result, error: null, cancelled: false });
       })
       .catch((err: unknown) => {
         if (alive) {
-          setState({ doneKey: requestKey, result: null, error: err instanceof Error ? err.message : String(err) });
+          setState({
+            doneKey: requestKey,
+            result: null,
+            error: isAbortError(err) ? null : err instanceof Error ? err.message : String(err),
+            cancelled: isAbortError(err),
+          });
         }
+      })
+      .finally(() => {
+        if (abortRef.current === controller) abortRef.current = null;
       });
     return () => {
       alive = false;
@@ -170,10 +193,19 @@ function LlmAdvice({
   const loading = state.doneKey !== requestKey;
   if (loading) {
     return (
-      <p className="flex items-center gap-2 px-0.5 text-xs text-ink-2">
-        <Loader2 size={13} className="animate-spin text-accent" />
-        {t('analysis.adviceLlmLoading')}
-      </p>
+      <div className="flex flex-col px-0.5">
+        <div className="flex items-center gap-2 text-xs text-ink-2">
+          <Loader2 size={13} className="animate-spin text-accent" />
+          {t('analysis.adviceLlmLoading')}
+          <button
+            onClick={() => abortRef.current?.abort()}
+            className="ml-auto text-[11px] font-medium text-ink-2 transition-opacity hover:opacity-70"
+          >
+            {t('common.cancel')}
+          </button>
+        </div>
+        {streamText != null && <StreamPreview text={streamText} />}
+      </div>
     );
   }
   if (state.error != null) {
@@ -183,6 +215,20 @@ function LlmAdvice({
           <span className="font-medium">{t('analysis.adviceLlmError')}</span>
           <span className="ml-1 break-all text-ink-2">{state.error}</span>
         </p>
+        <button
+          onClick={() => setNonce((n) => n + 1)}
+          className="flex w-fit items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+        >
+          <RefreshCw size={12} />
+          {t('analysis.adviceLlmRetry')}
+        </button>
+      </div>
+    );
+  }
+  if (state.cancelled) {
+    return (
+      <div className="flex flex-col gap-1.5 px-0.5">
+        <p className="text-xs leading-relaxed text-ink-2">{t('analysis.adviceLlmCancelled')}</p>
         <button
           onClick={() => setNonce((n) => n + 1)}
           className="flex w-fit items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70"

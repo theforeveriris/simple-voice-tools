@@ -13,6 +13,7 @@ import type { AnalysisRecord } from '@/types';
 import type { AdviceTarget } from '@/lib/advice';
 import { computeSustainedMetrics } from '@/lib/audio/sustained';
 import { LOCALES, getAiLocaleLabel, getLocale } from '@/i18n';
+import { recordLlmUsage, type LlmFeature, type LlmUsageReal } from '@/lib/llmUsage';
 
 /** 大模型接口配置（由设置解析而来） */
 export interface LlmConfig {
@@ -263,9 +264,42 @@ function buildUserPrompt(
 
 /* ------------------------------ 请求与解析 ------------------------------ */
 
+function chatMessages(system: string, user: string) {
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
+function chatHeaders(cfg: LlmConfig) {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` };
+}
+
+/** 从响应体取 usage（OpenAI 兼容字段）；缺任一项视为未提供 */
+function extractUsage(data: unknown): LlmUsageReal | null {
+  const u = (data as { usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } } | null)?.usage;
+  const p = typeof u?.prompt_tokens === 'number' ? u.prompt_tokens : null;
+  const c = typeof u?.completion_tokens === 'number' ? u.completion_tokens : null;
+  return p != null && c != null ? { promptTokens: p, completionTokens: c } : null;
+}
+
+/** 请求完成后落账 Token 用量（feature 未标注的调用不计） */
+function trackUsage(
+  feature: LlmFeature | undefined,
+  cfg: LlmConfig,
+  system: string,
+  user: string,
+  content: string,
+  real: LlmUsageReal | null,
+): void {
+  if (!feature) return;
+  recordLlmUsage(feature, cfg.modelId, `${system}\n${user}`, content, real);
+}
+
 /**
- * OpenAI 兼容 chat 调用：返回模型回复文本；HTTP 错误 / 空回复抛出可读 Error
- * （训练建议 / 周报 / AI 翻译共用）；signal 用于取消（后台任务中断）
+ * OpenAI 兼容 chat 调用（非流式）：返回模型回复文本；HTTP 错误 / 空回复抛出可读 Error
+ * （AI 翻译 / 连接测试共用）；signal 用于取消（后台任务中断）；
+ * feature 用于 Token 用量归账（省略则不计）
  */
 export async function llmChat(
   cfg: LlmConfig,
@@ -273,24 +307,130 @@ export async function llmChat(
   user: string,
   temperature = 0.3,
   signal?: AbortSignal,
+  feature?: LlmFeature,
 ): Promise<string> {
   const res = await fetch(chatEndpoint(cfg.baseUrl), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
-    body: JSON.stringify({
-      model: cfg.modelId,
-      temperature,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    }),
+    headers: chatHeaders(cfg),
+    body: JSON.stringify({ model: cfg.modelId, temperature, messages: chatMessages(system, user) }),
     signal,
   });
   if (!res.ok) throw new Error(await describeHttpError(res));
   const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
   const content = data.choices?.[0]?.message?.content;
   if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
+  trackUsage(feature, cfg, system, user, content, extractUsage(data));
+  return content;
+}
+
+/** 判断错误是否为请求取消（AbortSignal 触发），调用方据此区分「已取消」与失败 */
+export function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'AbortError';
+}
+
+/**
+ * SSE 缓冲解析：提取已完整到达的 `data:` 行载荷，末尾半行留在 rest 与下一块拼接。
+ * 容忍 \r\n 与裸 \r 行分隔；非 data 行（注释 / 事件名 / 空行）直接忽略。
+ */
+export function extractDataLines(buffer: string): { payloads: string[]; rest: string } {
+  const normalized = buffer.replace(/\r\n?/g, '\n');
+  const lastNl = normalized.lastIndexOf('\n');
+  const complete = lastNl === -1 ? '' : normalized.slice(0, lastNl);
+  const rest = lastNl === -1 ? normalized : normalized.slice(lastNl + 1);
+  const payloads: string[] = [];
+  for (const line of complete.split('\n')) {
+    const m = line.match(/^data:\s?(.*)$/);
+    if (m) payloads.push(m[1]);
+  }
+  return { payloads, rest };
+}
+
+/** 流式调用选项：temperature 默认 0.3；onDelta 每收到增量回调一次累积全文 */
+export interface LlmStreamOptions {
+  temperature?: number;
+  signal?: AbortSignal;
+  onDelta?: (accumulated: string) => void;
+  /** Token 用量归账功能名（省略则不计） */
+  feature?: LlmFeature;
+}
+
+/**
+ * OpenAI 兼容 chat 调用（SSE 流式）：训练建议 / 周报共用，逐字回调 onDelta，
+ * 返回完整回复文本。服务商忽略 stream 参数时退回整体 JSON 一次性回调；
+ * usage 在 stream_options.include_usage 的末尾块（choices 为空数组）捕获。
+ */
+export async function llmChatStream(
+  cfg: LlmConfig,
+  system: string,
+  user: string,
+  opts: LlmStreamOptions = {},
+): Promise<string> {
+  const { temperature = 0.3, signal, onDelta, feature } = opts;
+  const res = await fetch(chatEndpoint(cfg.baseUrl), {
+    method: 'POST',
+    headers: chatHeaders(cfg),
+    body: JSON.stringify({
+      model: cfg.modelId,
+      temperature,
+      stream: true,
+      stream_options: { include_usage: true },
+      messages: chatMessages(system, user),
+    }),
+    signal,
+  });
+  if (!res.ok) throw new Error(await describeHttpError(res));
+
+  const ctype = res.headers.get('content-type') ?? '';
+  if (!ctype.includes('text/event-stream')) {
+    // 服务商不支持流式：按非流式整体读取，一次性回调
+    const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
+    const content = data.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
+    trackUsage(feature, cfg, system, user, content, extractUsage(data));
+    onDelta?.(content);
+    return content;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No response body');
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let content = '';
+  let usage: LlmUsageReal | null = null;
+  let finished = false;
+  try {
+    while (!finished) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { payloads, rest } = extractDataLines(buffer);
+      buffer = rest;
+      for (const payload of payloads) {
+        if (payload === '[DONE]') {
+          finished = true;
+          break;
+        }
+        let obj: { choices?: { delta?: { content?: unknown } }[]; usage?: unknown };
+        try {
+          obj = JSON.parse(payload);
+        } catch {
+          continue;
+        }
+        const delta = obj.choices?.[0]?.delta?.content;
+        if (typeof delta === 'string' && delta) {
+          content += delta;
+          onDelta?.(content);
+        }
+        const u = extractUsage(obj);
+        if (u) usage = u;
+      }
+    }
+  } finally {
+    // 提前结束（[DONE] / 出错）时释放连接
+    void reader.cancel().catch(() => {});
+  }
+  if (!content.trim()) throw new Error('Empty response');
+  trackUsage(feature, cfg, system, user, content, usage);
   return content;
 }
 
@@ -310,33 +450,24 @@ export async function fetchLlmAdvice(
   opts: {
     baseline?: AnalysisRecord | null;
     prompt?: LlmPromptOptions;
+    signal?: AbortSignal;
+    onDelta?: (accumulated: string) => void;
   } = {},
 ): Promise<LlmAdviceResult> {
-  const { baseline = null, prompt } = opts;
-  const content = await llmChat(
+  const { baseline = null, prompt, signal, onDelta } = opts;
+  const content = await llmChatStream(
     cfg,
     buildSystemPrompt(SYSTEM_PROMPT, prompt?.extraRules, prompt?.promptOverride),
     buildUserPrompt(records, target, baseline),
-    0.4,
+    { temperature: 0.4, signal, onDelta, feature: 'advice' },
   );
   return parseLlmAdviceResult(content);
 }
 
 /** 最小连通性测试：返回模型回复摘要（供 toast 展示），失败抛错 */
 export async function testLlmConnection(cfg: LlmConfig): Promise<string> {
-  const res = await fetch(chatEndpoint(cfg.baseUrl), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
-    body: JSON.stringify({
-      model: cfg.modelId,
-      messages: [{ role: 'user', content: 'Reply with exactly: OK' }],
-    }),
-  });
-  if (!res.ok) throw new Error(await describeHttpError(res));
-  const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
-  const content = data.choices?.[0]?.message?.content;
+  const content = await llmChat(cfg, 'You are a connectivity test.', 'Reply with exactly: OK', 0, undefined, 'test');
   // 回复异常（空 / JSON 体 / 超长）时直接展示模型 ID，避免 toast 出现一大段文字
-  if (typeof content !== 'string') return cfg.modelId;
   const trimmed = content.trim();
   return trimmed && !trimmed.startsWith('{') && trimmed.length <= 40
     ? trimmed
@@ -521,15 +652,16 @@ export function buildWeeklyPayload(records: AnalysisRecord[], now = Date.now()):
 export async function fetchWeeklyReport(
   records: AnalysisRecord[],
   cfg: LlmConfig,
-  opts: { prompt?: LlmPromptOptions } = {},
+  opts: { prompt?: LlmPromptOptions; signal?: AbortSignal; onDelta?: (accumulated: string) => void } = {},
 ): Promise<LlmAdviceResult> {
+  const { prompt, signal, onDelta } = opts;
   const payload = buildWeeklyPayload(records);
   if (payload == null) throw new Error('No records in the last 7 days');
-  const content = await llmChat(
+  const content = await llmChatStream(
     cfg,
-    buildSystemPrompt(WEEKLY_PROMPT, opts.prompt?.extraRules, opts.prompt?.promptOverride),
+    buildSystemPrompt(WEEKLY_PROMPT, prompt?.extraRules, prompt?.promptOverride),
     payload,
-    0.4,
+    { temperature: 0.4, signal, onDelta, feature: 'weekly' },
   );
   return parseLlmAdviceResult(content);
 }

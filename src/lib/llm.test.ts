@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLlmAdviceResult, buildSystemPrompt } from './llm';
+import { parseLlmAdviceResult, buildSystemPrompt, extractDataLines } from './llm';
 
 const BASE = '内置分析标准 ## Analysis standard';
 
@@ -84,5 +84,32 @@ describe('parseLlmAdviceResult', () => {
   it('完全无有效内容时抛错', () => {
     expect(() => parseLlmAdviceResult('   ')).toThrow();
     expect(() => parseLlmAdviceResult('{"unrelated": 1}')).toThrow();
+  });
+});
+
+
+describe('extractDataLines', () => {
+  it('提取完整的 data 行，忽略注释与空行', () => {
+    const r = extractDataLines('data: {"a":1}\n\n: keep-alive\ndata: {"b":2}\n');
+    expect(r.payloads).toEqual(['{"a":1}', '{"b":2}']);
+    expect(r.rest).toBe('');
+  });
+
+  it('末尾半行留在 rest，与下一块拼接后可提取', () => {
+    const first = extractDataLines('data: {"a":');
+    expect(first.payloads).toEqual([]);
+    expect(first.rest).toBe('data: {"a":');
+    const joined = extractDataLines(`${first.rest}1}\ndata: [DONE]\n`);
+    expect(joined.payloads).toEqual(['{"a":1}', '[DONE]']);
+  });
+
+  it('容忍 CRLF 与裸 CR 行分隔', () => {
+    expect(extractDataLines('data: a\r\ndata: b\r').payloads).toEqual(['a', 'b']);
+  });
+
+  it('无换行的纯半行全部留在 rest', () => {
+    const r = extractDataLines('data: {"x"');
+    expect(r.payloads).toEqual([]);
+    expect(r.rest).toBe('data: {"x"');
   });
 });

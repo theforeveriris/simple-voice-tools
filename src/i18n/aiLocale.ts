@@ -191,7 +191,7 @@ async function translateInto(
   for (let i = 0; i < totalBatches; i++) {
     const batch = entries.slice(i * BATCH, (i + 1) * BATCH);
     const parsed = parseBatch(
-      await llmChat(cfg, system, JSON.stringify(Object.fromEntries(batch), null, 1), 0.3, signal),
+      await llmChat(cfg, system, JSON.stringify(Object.fromEntries(batch), null, 1), 0.3, signal, 'translate'),
       new Set(batch.map(([k]) => k)),
     );
     Object.assign(dict, parsed);

@@ -76,6 +76,7 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceMode' },
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceOnCompare' },
   { page: 'labs', sectionKey: 'settings.llmSection', labelKey: 'settings.llmBaseUrl' },
+  { page: 'labs', sectionKey: 'settings.llmUsageTitle', labelKey: 'settings.llmUsageTitle' },
   { page: 'labs', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandBounds' },
   { page: 'labs', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandReset' },
   { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoParams' },

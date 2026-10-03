@@ -9,18 +9,20 @@ import { useEffect, useRef, useState } from 'react';
 import { CalendarRange, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import {
-  cachedWeeklyReport, fetchWeeklyReport, resolveLlmConfig, weekRecords, weeklyReportKey,
+  cachedWeeklyReport, fetchWeeklyReport, isAbortError, resolveLlmConfig, weekRecords, weeklyReportKey,
   type LlmAdviceResult, type LlmPromptOptions,
 } from '@/lib/llm';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AnalysisRecord } from '@/types';
-import { LlmResultView } from '@/components/analysis/LlmResultView';
+import { LlmResultView, StreamPreview } from '@/components/analysis/LlmResultView';
 
 interface ReportState {
   doneKey: string | null;
   result: LlmAdviceResult | null;
   error: string | null;
+  /** 本轮请求被用户取消（区别于失败） */
+  cancelled: boolean;
 }
 
 export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
@@ -37,12 +39,14 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
   const [nonce, setNonce] = useState(0);
   // 点过「生成」之后才拉取（周报调接口花钱，不自动发起）；重新生成 = nonce + 1
   const [requested, setRequested] = useState(false);
-  const [state, setState] = useState<ReportState>({ doneKey: null, result: null, error: null });
+  const [streamText, setStreamText] = useState<string | null>(null);
+  const [state, setState] = useState<ReportState>({ doneKey: null, result: null, error: null, cancelled: false });
   // effect 按缓存键（值稳定）触发，输入经 ref 传递
   const latest = useRef({ records, cfg, prompt });
   useEffect(() => {
     latest.current = { records, cfg, prompt };
   });
+  const abortRef = useRef<AbortController | null>(null);
   const key = cfg ? weeklyReportKey(cfg, records, prompt) : null;
   const requestKey = key ? `${key}#${nonce}` : null;
   const hasWeek = weekRecords(records).length > 0;
@@ -51,15 +55,32 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
     if (!requested || !key || !requestKey) return;
     const { cfg: curCfg, records: curRecords, prompt: curPrompt } = latest.current;
     if (!curCfg) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
     let alive = true;
-    cachedWeeklyReport(key, () => fetchWeeklyReport(curRecords, curCfg, { prompt: curPrompt }))
+    setStreamText(null);
+    cachedWeeklyReport(key, () => fetchWeeklyReport(curRecords, curCfg, {
+      prompt: curPrompt,
+      signal: controller.signal,
+      onDelta: (acc) => {
+        if (alive) setStreamText(acc);
+      },
+    }))
       .then((result) => {
-        if (alive) setState({ doneKey: requestKey, result, error: null });
+        if (alive) setState({ doneKey: requestKey, result, error: null, cancelled: false });
       })
       .catch((err: unknown) => {
         if (alive) {
-          setState({ doneKey: requestKey, result: null, error: err instanceof Error ? err.message : String(err) });
+          setState({
+            doneKey: requestKey,
+            result: null,
+            error: isAbortError(err) ? null : err instanceof Error ? err.message : String(err),
+            cancelled: isAbortError(err),
+          });
         }
+      })
+      .finally(() => {
+        if (abortRef.current === controller) abortRef.current = null;
       });
     return () => {
       alive = false;
@@ -83,16 +104,36 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
       ) : !hasWeek ? (
         <p className="px-0.5 text-xs leading-relaxed text-ink-2">{t('history.reportEmpty')}</p>
       ) : loading ? (
-        <p className="flex items-center gap-2 px-0.5 text-xs text-ink-2">
-          <Loader2 size={13} className="animate-spin text-accent" />
-          {t('history.reportLoading')}
-        </p>
+        <div className="flex flex-col px-0.5">
+          <div className="flex items-center gap-2 text-xs text-ink-2">
+            <Loader2 size={13} className="animate-spin text-accent" />
+            {t('history.reportLoading')}
+            <button
+              onClick={() => abortRef.current?.abort()}
+              className="ml-auto text-[11px] font-medium text-ink-2 transition-opacity hover:opacity-70"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+          {streamText != null && <StreamPreview text={streamText} />}
+        </div>
       ) : state.error != null ? (
         <div className="flex flex-col gap-1.5 px-0.5">
           <p className="text-xs leading-relaxed text-ink">
             <span className="font-medium">{t('history.reportFail')}</span>
             <span className="ml-1 break-all text-ink-2">{state.error}</span>
           </p>
+          <button
+            onClick={() => setNonce((n) => n + 1)}
+            className="flex w-fit items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+          >
+            <RefreshCw size={12} />
+            {t('analysis.adviceLlmRetry')}
+          </button>
+        </div>
+      ) : state.cancelled ? (
+        <div className="flex flex-col gap-1.5 px-0.5">
+          <p className="text-xs leading-relaxed text-ink-2">{t('analysis.adviceLlmCancelled')}</p>
           <button
             onClick={() => setNonce((n) => n + 1)}
             className="flex w-fit items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70"

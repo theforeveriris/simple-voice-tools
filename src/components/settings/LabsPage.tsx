@@ -2,6 +2,7 @@
  * 实验性功能（设置的子页面）
  * - 功能开关（语谱图 / 实时频谱 / 训练建议三态 + 对比页建议）
  * - 大模型配置（训练建议「基于大模型判断」的接口参数 + 提示词子页面）
+ * - Token 用量（本机统计的大模型接口消耗）
  * - 自定义音区边界（实验性）
  * - 算法参数（实验性）：YIN 阈值 / 音高搜索范围 / 预加重 / F1·F2 搜索窗 / 发声门限
  * - 实时功能：实时元音落点 / F0 基频曲线 / 声谱图 / 声域图（VRP）
@@ -36,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch }
 import { SettingsSection, SettingRow } from './rows';
 import { GithubBackupSection } from './GithubBackupSection';
 import { LlmConfigSection } from './LlmConfigSection';
+import { LlmUsageSection } from './LlmUsageSection';
 import { PromptPage } from './PromptPage';
 import { InfoTip } from './InfoTip';
 import { registerBackClose } from '@/lib/backNav';
@@ -216,6 +218,9 @@ export function LabsPage({
 
         {/* 大模型配置（训练建议选「基于大模型判断」时使用） */}
         <LlmConfigSection settings={settings} update={update} onOpenPrompt={() => setPromptOpen(true)} />
+
+        {/* Token 用量（本机统计的大模型接口消耗） */}
+        <LlmUsageSection />
 
         {/* 自定义音区边界 */}
         <SettingsSection icon={Ruler} title={t('settings.bandCustom')}>
