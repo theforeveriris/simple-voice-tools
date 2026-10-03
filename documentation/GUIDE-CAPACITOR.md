@@ -51,7 +51,11 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
   但创建**正式 Release**。
 - 手动触发：Actions 页 `workflow_dispatch`。
 
-当前 CI 产出 **debug 签名** APK（可直接安装）。正式签名升级路径：生成 keystore 后
+当前 CI 产出 **debug 签名** APK（可直接安装）。CI 使用仓库内固定的
+`android/ci-debug.keystore`（密码 android，仅 debug 用途）——保证每次 CI 构建的
+签名一致，可以直接覆盖安装而无需卸载。本机构建的 APK 用的是本机 debug keystore，
+与 CI 构建之间签名不同，互相覆盖安装前需先卸载（会丢数据，先做 ZIP 备份）。
+正式签名升级路径：生成 keystore 后
 `base64 -w0 keystore.jks` 存入 secrets `ANDROID_KEYSTORE`，密码/别名存
 `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`，在 CI 中解码写文件并在
 `android/app/build.gradle` 挂 signingConfig，改跑 `assembleRelease`。

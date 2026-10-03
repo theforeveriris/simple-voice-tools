@@ -64,17 +64,21 @@ function luminanceOf(cssColor: string): number | null {
  */
 export function syncNativeSystemBars(): void {
   if (!isNative) return;
-  const cs = getComputedStyle(document.body);
-  let css = cs.backgroundColor;
-  if (luminanceOf(css) == null) css = getComputedStyle(document.documentElement).backgroundColor;
-  // 主题背景是渐变/自定义图片时计算值可能为 transparent，此时状态栏取暗或亮的中性近似
-  const lum = luminanceOf(css);
-  const color = lum != null
-    ? (() => {
-        const m = css.match(/(\d+)/g)!;
-        return `#${m.slice(0, 3).map((x) => Number(x).toString(16).padStart(2, '0')).join('')}`;
-      })()
-    : '#FBF2F2';
-  const dark = lum != null ? lum < 128 : false;
-  void SystemBars.setColors({ color, dark }).catch(() => {});
+  try {
+    const cs = getComputedStyle(document.body);
+    let css = cs.backgroundColor;
+    if (luminanceOf(css) == null) css = getComputedStyle(document.documentElement).backgroundColor;
+    // 主题背景是渐变/自定义图片时计算值可能为 transparent，此时状态栏取暗或亮的中性近似
+    const lum = luminanceOf(css);
+    const color = lum != null
+      ? (() => {
+          const m = css.match(/(\d+)/g)!;
+          return `#${m.slice(0, 3).map((x) => Number(x).toString(16).padStart(2, '0')).join('')}`;
+        })()
+      : '#FBF2F2';
+    const dark = lum != null ? lum < 128 : false;
+    void SystemBars.setColors({ color, dark }).catch(() => {});
+  } catch {
+    // 系统栏配色属锦上添花：任何环境异常（如 DOM 未就绪）都静默跳过
+  }
 }

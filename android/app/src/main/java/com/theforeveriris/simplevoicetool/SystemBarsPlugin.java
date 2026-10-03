@@ -28,29 +28,33 @@ public class SystemBarsPlugin extends Plugin {
 
     @PluginMethod
     public void setColors(PluginCall call) {
-        String color = call.getString("color");
-        Boolean dark = call.getBoolean("dark");
-        Activity activity = getActivity();
+        final String color = call.getString("color");
+        final Boolean dark = call.getBoolean("dark");
+        final Activity activity = getActivity();
         if (activity == null) {
             call.resolve();
             return;
         }
-        Window window = activity.getWindow();
-        if (color != null) {
+        // Capacitor 在 CapacitorPlugins 线程上回调 @PluginMethod，
+        // 触碰 View（DecorView 背景）必须切回主线程，否则 CalledFromWrongThreadException
+        activity.runOnUiThread(() -> {
             try {
-                int c = Color.parseColor(color);
-                // Android < 15 的正式途径；15+ 被忽略（edge-to-edge 强制），无副作用
-                window.setStatusBarColor(c);
-                window.setNavigationBarColor(c);
-                // edge-to-edge 下真正生效的一层：系统栏露出的区域就是 DecorView 背景
-                window.getDecorView().setBackgroundColor(c);
-            } catch (IllegalArgumentException ignored) {
-                // 颜色串非法：保持现状，不打断调用方
+                Window window = activity.getWindow();
+                if (color != null) {
+                    int c = Color.parseColor(color);
+                    // Android < 15 的正式途径；15+ 被忽略（edge-to-edge 强制），无副作用
+                    window.setStatusBarColor(c);
+                    window.setNavigationBarColor(c);
+                    // edge-to-edge 下真正生效的一层：系统栏露出的区域就是 DecorView 背景
+                    window.getDecorView().setBackgroundColor(c);
+                }
+                if (dark != null) {
+                    applyIconAppearance(window, dark);
+                }
+            } catch (Exception ignored) {
+                // 配色失败不影响应用本体
             }
-        }
-        if (dark != null) {
-            applyIconAppearance(window, dark);
-        }
+        });
         call.resolve();
     }
 
