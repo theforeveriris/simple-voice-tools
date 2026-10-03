@@ -14,6 +14,7 @@ import {
 } from '@/constants';
 import { applyPrideParams } from '@/lib/theme/monet';
 import { applyBgImage } from '@/lib/theme/bgImage';
+import { setAlgoParams } from '@/lib/audio/algoParams';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
@@ -191,6 +192,16 @@ function syncModuleSettings(s: AppSettings): void {
   applyPrideParams(s.prideGlow, s.prideSaturation, s.prideGlassBlur, s.prideDrift);
   // 自定义背景图参数（CSS 变量与 bg-image 类；毛玻璃强度共用 prideGlassBlur）
   applyBgImage(s);
+  // 算法参数（实验性）：实时循环与主线程离线回退读模块单例；Worker 随请求携带快照
+  setAlgoParams({
+    yinThreshold: s.algoYinThreshold,
+    pitchMinHz: s.algoPitchMinHz,
+    pitchMaxHz: s.algoPitchMaxHz,
+    preEmphasis: s.algoPreEmphasis,
+    f1MinHz: s.algoF1MinHz,
+    f2MaxHz: s.algoF2MaxHz,
+    voicedGateDb: s.algoVoicedGateDb,
+  });
 }
 syncModuleSettings(useStore.getState().settings);
 useStore.subscribe((state, prev) => {

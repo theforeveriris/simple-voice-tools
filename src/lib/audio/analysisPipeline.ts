@@ -11,6 +11,7 @@ import { detectPitch } from './pitchAlt';
 import { extractFormants } from './formants';
 import { computeVoiceQuality } from './voiceQuality';
 import { computeCpps, fft } from './cpp';
+import { getAlgoParams } from './algoParams';
 import { spectrumRowToBands } from './spectrogram';
 import { SPEC_BANDS } from '@/constants';
 import type { PitchAlgorithm } from '@/types';
@@ -86,6 +87,8 @@ export function analyzePcmFrames(
   const row = new Uint8Array(SPEC_BANDS);
   let smoothF1: number | null = null;
   let smoothF2: number | null = null;
+  // 算法参数（实验性）：主线程由 syncModuleSettings 维护，Worker 侧随请求快照写入
+  const { pitchMinHz, pitchMaxHz, voicedGateDb } = getAlgoParams();
 
   for (let k = 0; k < frames; k++) {
     const start = k * hop;
@@ -93,7 +96,9 @@ export function analyzePcmFrames(
     const now = (start + FRAME_SAMPLES) / PIPELINE_HZ;
 
     const dbFrame = rmsDb(frame);
-    const pitch = dbFrame > -55 ? detectPitchYin(frame, PIPELINE_HZ) : null;
+    const pitch = dbFrame > voicedGateDb
+      ? detectPitchYin(frame, PIPELINE_HZ, pitchMinHz, pitchMaxHz)
+      : null;
 
     // 共振峰每 2 帧一次（LPC 开销较大），指数平滑系数与实时管线一致
     if (k % 2 === 0 && pitch) {
@@ -161,12 +166,16 @@ export function analyzePitchFrames(
   const frames = Math.max(0, Math.floor((pcm.length - FRAME_SAMPLES) / hop) + 1);
   const t: number[] = [];
   const f0: number[] = [];
+  // 算法参数（实验性）：同 analyzePcmFrames，读模块快照
+  const { pitchMinHz, pitchMaxHz, voicedGateDb } = getAlgoParams();
   for (let k = 0; k < frames; k++) {
     const start = k * hop;
     const frame = pcm.subarray(start, start + FRAME_SAMPLES);
     const now = (start + FRAME_SAMPLES) / PIPELINE_HZ;
     const dbFrame = rmsDb(frame);
-    const pitch = dbFrame > -55 ? detectPitch(frame, PIPELINE_HZ, 60, 600, algo) : null;
+    const pitch = dbFrame > voicedGateDb
+      ? detectPitch(frame, PIPELINE_HZ, pitchMinHz, pitchMaxHz, algo)
+      : null;
     t.push(Math.round(now * 1000) / 1000);
     f0.push(pitch ? pitch.freq : NaN);
     if (onProgress && k % PROGRESS_EVERY_FRAMES === PROGRESS_EVERY_FRAMES - 1) {

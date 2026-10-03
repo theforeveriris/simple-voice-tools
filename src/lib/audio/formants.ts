@@ -6,6 +6,8 @@
  *   由单位圆内根的辐角/模长换算共振峰频率与带宽。
  */
 
+import { getAlgoParams } from './algoParams';
+
 export interface FormantEstimate {
   f1: number | null;
   f2: number | null;
@@ -193,12 +195,14 @@ export function extractFormants(
 
   const order = Math.min(lpcOrder(sampleRate / DECIMATION), (samples.length / DECIMATION) >> 2);
   ensureFormantScratch(samples.length, order);
+  // 实验性可调参数：预加重系数与 F1/F2 候选搜索窗（见 algoParams）
+  const { preEmphasis, f1MinHz, f2MaxHz } = getAlgoParams();
 
   // 1. 预加重（提升高频，抵消声道辐射特性）
   const pre = preBuf;
   pre[0] = samples[0];
   for (let i = 1; i < samples.length; i++) {
-    pre[i] = samples[i] - 0.97 * samples[i - 1];
+    pre[i] = samples[i] - preEmphasis * samples[i - 1];
   }
 
   // 2. 抗混叠低通 + 4x 抽取
@@ -259,12 +263,12 @@ export function extractFormants(
     }
   }
 
-  // 8. 挑选 F1 / F2
+  // 8. 挑选 F1 / F2（搜索窗下限/上限实验性可调）
   let f1: number | null = null;
   let f2: number | null = null;
   let f1Idx = -1;
   for (let i = 0; i < nCand; i++) {
-    if (candF[i] >= 200 && candF[i] <= 1100) {
+    if (candF[i] >= f1MinHz && candF[i] <= 1100) {
       f1Idx = i;
       f1 = candF[i];
       break;
@@ -273,7 +277,7 @@ export function extractFormants(
   if (f1Idx >= 0) {
     const f2Lower = Math.max(candF[f1Idx] + 150, 700);
     for (let i = f1Idx + 1; i < nCand; i++) {
-      if (candF[i] >= f2Lower && candF[i] <= 3400) {
+      if (candF[i] >= f2Lower && candF[i] <= f2MaxHz) {
         f2 = candF[i];
         break;
       }

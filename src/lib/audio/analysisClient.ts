@@ -7,6 +7,7 @@
  */
 
 import { analyzePcmFrames, analyzePitchFrames, computeVqMetrics, type FrameAnalysisResult, type PitchSeriesResult, type VqMetrics } from './analysisPipeline';
+import { getAlgoParams } from './algoParams';
 import type { AnalysisRequest } from './analysisWorker';
 import type { PitchAlgorithm } from '@/types';
 
@@ -77,8 +78,9 @@ function requestFrames(
     const id = ++seq;
     pending.set(id, { resolve: resolve as (value: unknown) => void, reject, onProgress });
     // PCM 以 transfer 交付（几秒音频即数 MB，结构化克隆是纯浪费的整块拷贝）；
-    // 交付后主线程这份 buffer 即失效，本请求失败无法再回退主线程（见 runFrameAnalysis）
-    w.postMessage({ type: 'frames', id, pcm } satisfies AnalysisRequest, [pcm.buffer]);
+    // 交付后主线程这份 buffer 即失效，本请求失败无法再回退主线程（见 runFrameAnalysis）。
+    // 算法参数快照随请求下发（Worker 模块实例独立，见 analysisWorker）
+    w.postMessage({ type: 'frames', id, pcm, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
   });
 }
 
@@ -101,7 +103,7 @@ function requestPitch(
   return new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve: resolve as (value: unknown) => void, reject, onProgress });
-    w.postMessage({ type: 'pitch', id, pcm, algo } satisfies AnalysisRequest, [pcm.buffer]);
+    w.postMessage({ type: 'pitch', id, pcm, algo, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
   });
 }
 

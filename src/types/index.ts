@@ -192,6 +192,27 @@ export interface AnalysisRecord {
 }
 
 /**
+ * 算法参数（实验性）：音高检测 / 共振峰提取 / 发声门限的 DSP 细节参数
+ * 设置 → 实验性功能 → 算法参数 可调，经 algoParams 单例同步到实时与离线管线
+ */
+export interface AlgoParams {
+  /** YIN 判定阈值（CMND 谷低于该值视为周期）：越高越宽容噪声、越易倍频错误 */
+  yinThreshold: number;
+  /** 音高搜索下限（Hz） */
+  pitchMinHz: number;
+  /** 音高搜索上限（Hz），至少比下限高 100 Hz */
+  pitchMaxHz: number;
+  /** LPC 预加重系数（0 = 关闭）：提升高频，抵消声道辐射特性 */
+  preEmphasis: number;
+  /** F1 候选搜索下限（Hz） */
+  f1MinHz: number;
+  /** F2 候选搜索上限（Hz） */
+  f2MaxHz: number;
+  /** 发声能量门限（dBFS）：低于该值的帧不做音高检测 */
+  voicedGateDb: number;
+}
+
+/**
  * 应用设置
  */
 export interface AppSettings {
@@ -306,6 +327,21 @@ export interface AppSettings {
   pitchAlgorithm: PitchAlgorithm;
   /** 音高算法对比卡（实验性）：分析页用 pYIN / MPM 重算录音并与当前算法对比 */
   pitchCompareEnabled: boolean;
+  /* ---------- 算法参数（实验性 → 算法参数，AlgoParams 的持久化展开） ---------- */
+  /** YIN 判定阈值 */
+  algoYinThreshold: number;
+  /** 音高搜索下限（Hz） */
+  algoPitchMinHz: number;
+  /** 音高搜索上限（Hz） */
+  algoPitchMaxHz: number;
+  /** LPC 预加重系数 */
+  algoPreEmphasis: number;
+  /** F1 候选搜索下限（Hz） */
+  algoF1MinHz: number;
+  /** F2 候选搜索上限（Hz） */
+  algoF2MaxHz: number;
+  /** 发声能量门限（dBFS） */
+  algoVoicedGateDb: number;
   /** 分析页是否显示语谱图卡片 */
   showSpectrogram: boolean;
   /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */

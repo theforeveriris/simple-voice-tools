@@ -10,6 +10,7 @@ import { rmsDb } from './pitch';
 import { detectPitch } from './pitchAlt';
 import { extractFormants } from './formants';
 import { runVqMetrics } from './analysisClient';
+import { getAlgoParams } from './algoParams';
 import { spectrumRowToBands, base64FromBytes } from './spectrogram';
 import { SPEC_BANDS, SPEC_MAX_ROWS, getBandRanges, getPitchAlgorithm } from '@/constants';
 import type { AnalysisRecord, RecordSeries, TestMode, VoiceStats } from '@/types';
@@ -642,9 +643,11 @@ class VoiceRecorder {
       }
     }
 
-    // 音高（每帧，算法跟随设置：yin / pyin / mpm，见 pitchAlt.ts）
-    const pitch = db > -55
-      ? detectPitch(this.timeBuf, this.audioContext.sampleRate, 60, 600, getPitchAlgorithm())
+    // 音高（每帧，算法跟随设置：yin / pyin / mpm，见 pitchAlt.ts；
+    // 搜索范围与发声门限为实验性可调参数，见 algoParams）
+    const { pitchMinHz, pitchMaxHz, voicedGateDb } = getAlgoParams();
+    const pitch = db > voicedGateDb
+      ? detectPitch(this.timeBuf, this.audioContext.sampleRate, pitchMinHz, pitchMaxHz, getPitchAlgorithm())
       : null;
     this.lastPitch = pitch ? { freq: pitch.freq, prob: pitch.prob } : null;
 

@@ -5,6 +5,8 @@
  * 适合绘制平滑的实时音高曲线。
  */
 
+import { getAlgoParams } from './algoParams';
+
 export interface PitchEstimate {
   /** 基频 Hz */
   freq: number;
@@ -67,7 +69,10 @@ export function detectPitchYin(
   }
 
   // 3. 找第一个低于阈值的局部极小值
-  const THRESHOLD = 0.14;
+  // 阈值（实验性可调，见 algoParams）；无周期性的绝对门限随阈值联动，
+  // 保持默认口径：0.14 + 0.31 = 0.45
+  const { yinThreshold } = getAlgoParams();
+  const APERIODIC_MARGIN = 0.31;
   let bestTau = -1;
   let bestVal = Infinity;
   for (let tau = tauMin + 1; tau < tauMax; tau++) {
@@ -75,7 +80,7 @@ export function detectPitchYin(
       bestVal = cmnd[tau];
       bestTau = tau;
     }
-    if (cmnd[tau] < THRESHOLD) {
+    if (cmnd[tau] < yinThreshold) {
       // 继续走到局部极小再停，避免取到下降沿
       while (tau + 1 < tauMax && cmnd[tau + 1] < cmnd[tau]) tau++;
       bestTau = tau;
@@ -84,7 +89,7 @@ export function detectPitchYin(
     }
   }
 
-  if (bestTau < 0 || bestVal > 0.45) return null; // 无明显周期性
+  if (bestTau < 0 || bestVal > yinThreshold + APERIODIC_MARGIN) return null; // 无明显周期性
 
   // 4. 抛物线插值细化
   const tau = bestTau;

@@ -2,9 +2,10 @@
  * 实验性功能（设置的子页面）
  * - 功能开关（语谱图 / 实时频谱 / 训练建议三态 + 对比页建议）
  * - 大模型配置（训练建议「基于大模型判断」的接口参数 + 提示词子页面）
+ * - 自定义音区边界（实验性）
+ * - 算法参数（实验性）：YIN 阈值 / 音高搜索范围 / 预加重 / F1·F2 搜索窗 / 发声门限
  * - 实时功能：实时元音落点 / F0 基频曲线 / 声谱图 / 声域图（VRP）
  *   + 实时音高算法选择（yin / pyin / mpm）
- * - 自定义音区边界（实验性）
  * - 导入音频离线分析
  * - GitHub 云备份（Device Flow）
  * （本地自动备份已移至 数据管理 子页面）
@@ -14,13 +15,14 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, SlidersHorizontal, Ruler, RotateCcw, LocateFixed, FileAudio,
-  Radar, AudioWaveform, Waves, LayoutGrid,
+  Radar, AudioWaveform, Waves, LayoutGrid, Cog,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { DEFAULT_BAND_BOUNDS } from '@/constants';
 import { analyzeAudioFile, importErrorKey } from '@/lib/audio/importAudio';
+import { ALGO_PARAM_DEFAULTS } from '@/lib/audio/algoParams';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -37,6 +39,29 @@ import { LlmConfigSection } from './LlmConfigSection';
 import { PromptPage } from './PromptPage';
 import { InfoTip } from './InfoTip';
 import { registerBackClose } from '@/lib/backNav';
+
+/** 算法参数的档位下拉（数字值 ↔ 字符串键；当前值不在档位内时补入，防导入的任意值显示为空） */
+function AlgoSelect({ value, options, onChange, format, className = 'w-40' }: {
+  value: number;
+  options: readonly number[];
+  onChange: (v: number) => void;
+  format: (v: number) => string;
+  className?: string;
+}) {
+  const opts = options.includes(value) ? options : [...options, value].sort((a, b) => a - b);
+  return (
+    <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
+      <SelectTrigger className={cn(className, 'border-0 bg-transparent px-0 text-sm shadow-none')}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+        {opts.map((v) => (
+          <SelectItem key={v} value={String(v)}>{format(v)}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export function LabsPage({
   settings,
@@ -224,6 +249,104 @@ export function LabsPage({
                 'flex items-center gap-1.5 px-1 py-2 text-xs font-medium transition-opacity',
                 settings.bandBounds ? 'text-accent hover:opacity-70' : 'cursor-default text-ink-2/50',
               )}
+            >
+              <RotateCcw size={14} />
+              {t('settings.bandResetAction')}
+            </button>
+          </SettingRow>
+        </SettingsSection>
+
+        {/* 算法参数（实验性）：改动即时生效于实时曲线；下次录音/导入用新参数重算 */}
+        <SettingsSection icon={Cog} title={t('settings.algoParams')}>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoYinThreshold')} text={t('settings.algoYinThresholdDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoYinThreshold}
+              options={[0.05, 0.08, 0.11, 0.14, 0.18, 0.24, 0.3, 0.38]}
+              onChange={(v) => update({ algoYinThreshold: v })}
+              format={(v) => v.toFixed(2)}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoPitchRange')} text={t('settings.algoPitchRangeDesc')} />}
+          >
+            <div className="flex items-center gap-2">
+              <AlgoSelect
+                className="w-28"
+                value={settings.algoPitchMinHz}
+                options={[40, 50, 60, 75, 90, 110, 140, 170, 200]}
+                onChange={(v) => update({
+                  algoPitchMinHz: v,
+                  // 下限抬高时同步抬升上限，保持至少 100 Hz 的搜索带宽
+                  ...(v + 100 > settings.algoPitchMaxHz ? { algoPitchMaxHz: v + 100 } : {}),
+                })}
+                format={(v) => `≥ ${v} Hz`}
+              />
+              <AlgoSelect
+                className="w-28"
+                value={settings.algoPitchMaxHz}
+                options={[300, 400, 500, 600, 750, 900, 1050, 1200]}
+                onChange={(v) => update({ algoPitchMaxHz: Math.max(v, settings.algoPitchMinHz + 100) })}
+                format={(v) => `≤ ${v} Hz`}
+              />
+            </div>
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoPreEmphasis')} text={t('settings.algoPreEmphasisDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoPreEmphasis}
+              options={[0, 0.9, 0.94, 0.96, 0.97, 0.98]}
+              onChange={(v) => update({ algoPreEmphasis: v })}
+              format={(v) => v.toFixed(2)}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoF1Min')} text={t('settings.algoF1MinDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoF1MinHz}
+              options={[100, 140, 180, 200, 240, 280, 320, 400]}
+              onChange={(v) => update({ algoF1MinHz: v })}
+              format={(v) => `${v} Hz`}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoF2Max')} text={t('settings.algoF2MaxDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoF2MaxHz}
+              options={[2000, 2400, 2800, 3400, 4000, 4600, 5000]}
+              onChange={(v) => update({ algoF2MaxHz: v })}
+              format={(v) => `${v} Hz`}
+            />
+          </SettingRow>
+          <SettingRow
+            label={<InfoTip label={t('settings.algoVoicedGate')} text={t('settings.algoVoicedGateDesc')} />}
+          >
+            <AlgoSelect
+              value={settings.algoVoicedGateDb}
+              options={[-70, -65, -60, -55, -50, -45, -40]}
+              onChange={(v) => update({ algoVoicedGateDb: v })}
+              format={(v) => `${v} dB`}
+            />
+          </SettingRow>
+          <SettingRow label={t('settings.algoReset')}>
+            <button
+              onClick={() => {
+                update({
+                  algoYinThreshold: ALGO_PARAM_DEFAULTS.yinThreshold,
+                  algoPitchMinHz: ALGO_PARAM_DEFAULTS.pitchMinHz,
+                  algoPitchMaxHz: ALGO_PARAM_DEFAULTS.pitchMaxHz,
+                  algoPreEmphasis: ALGO_PARAM_DEFAULTS.preEmphasis,
+                  algoF1MinHz: ALGO_PARAM_DEFAULTS.f1MinHz,
+                  algoF2MaxHz: ALGO_PARAM_DEFAULTS.f2MaxHz,
+                  algoVoicedGateDb: ALGO_PARAM_DEFAULTS.voicedGateDb,
+                });
+                toast.success(t('toast.algoResetDone'));
+              }}
+              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
             >
               <RotateCcw size={14} />
               {t('settings.bandResetAction')}
