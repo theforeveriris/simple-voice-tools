@@ -188,6 +188,10 @@ export interface AnalysisRecord {
 export interface AppSettings {
   /** 莫奈主题种子色相（0-360） */
   hue: number;
+  /** 莫奈主题强调色相（0-360）：按钮 / 选中态 / 图表主曲线；与 hue 相同 = 单色（默认），不同 = 双色调 */
+  accentHue: number;
+  /** 莫奈主题深色模式表面色相（0-360）：与 hue 相同 = 跟随（默认），不同 = 深浅两套铺底 */
+  darkHue: number;
   /** 主题深浅模式，system 跟随系统 */
   theme: ThemeMode;
   /** 界面语言 */

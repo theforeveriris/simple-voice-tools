@@ -56,7 +56,7 @@ function isDark(s: AppSettings): boolean {
 
 /** 恢复基准主题（当前设置所对应的色板，无染色） */
 function restoreBase(s: AppSettings): void {
-  const p = presetSpec(s.huePreset, s.hue, s.prideFlag);
+  const p = presetSpec(s.huePreset, s.hue, s.prideFlag, s.accentHue, s.darkHue);
   applyTheme(p.hue, isDark(s), p.accentHue, p.spec, s.prideFlag);
 }
 

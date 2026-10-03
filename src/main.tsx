@@ -14,7 +14,7 @@ import type { Locale, ThemeMode } from '@/types'
 const saved = (() => {
   try {
     const raw = localStorage.getItem('svt:settings:v1');
-    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; theme?: ThemeMode; language?: Locale; huePreset?: string; prideFlag?: string; aiLanguage?: string } } }) : null;
+    const parsed = raw ? (JSON.parse(raw) as { state?: { settings?: { hue?: number; accentHue?: number; darkHue?: number; theme?: ThemeMode; language?: Locale; huePreset?: string; prideFlag?: string; aiLanguage?: string } } }) : null;
     return parsed?.state?.settings ?? {};
   } catch {
     return {};
@@ -29,6 +29,8 @@ const savedPreset = presetSpec(
   isLegacyFlag ? 'pride' : saved.huePreset,
   saved.hue ?? 15,
   isLegacyFlag ? saved.huePreset : saved.prideFlag,
+  saved.accentHue ?? saved.hue ?? 15,
+  saved.darkHue ?? saved.hue ?? 15,
 );
 applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, savedPrideFlagOf(saved, isLegacyFlag))
 

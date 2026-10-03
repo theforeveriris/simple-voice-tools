@@ -134,6 +134,8 @@ export const THEME_PRESETS: { id: string; hue: number; label: string }[] = [
  */
 export const DEFAULT_SETTINGS: AppSettings = {
   hue: 15,
+  accentHue: 15,
+  darkHue: 15,
   theme: 'system',
   language: 'en',
   huePreset: 'monet',

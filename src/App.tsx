@@ -58,6 +58,8 @@ watchAuroraHours();
 function App() {
   const currentTab = useStore((s) => s.currentTab);
   const hue = useStore((s) => s.settings.hue);
+  const accentHue = useStore((s) => s.settings.accentHue);
+  const darkHue = useStore((s) => s.settings.darkHue);
   const huePreset = useStore((s) => s.settings.huePreset);
   const prideFlag = useStore((s) => s.settings.prideFlag);
   const theme = useStore((s) => s.settings.theme);
@@ -197,11 +199,12 @@ function App() {
       && typeof window !== 'undefined'
       && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-  // 应用莫奈主题色（含深浅模式；system 下监听系统切换；预设配色改写色相来源）
+  // 应用莫奈主题色（含深浅模式；system 下监听系统切换；预设配色改写色相来源；
+  // 莫奈预设下 accentHue / darkHue 与 hue 不同时走合成 spec 生成双色调 / 独立深色铺底）
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
-      const preset = presetSpec(huePreset, hue, prideFlag);
+      const preset = presetSpec(huePreset, hue, prideFlag, accentHue, darkHue);
       applyTheme(preset.hue, theme === 'dark' || (theme === 'system' && mq.matches), preset.accentHue, preset.spec, prideFlag);
     };
     apply();
@@ -209,7 +212,7 @@ function App() {
       mq.addEventListener('change', apply);
       return () => mq.removeEventListener('change', apply);
     }
-  }, [hue, huePreset, prideFlag, theme]);
+  }, [hue, accentHue, darkHue, huePreset, prideFlag, theme]);
 
   // 每日练习提醒：每分钟 + 回到前台时检查（到点且当天无录音 → 本地通知）
   const reminderEnabled = useStore((s) => s.settings.practiceReminderEnabled);

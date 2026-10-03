@@ -263,19 +263,37 @@ export function prefersDark(): boolean {
 
 /**
  * 预设配色的色相与规格
- * monet：用户主题色相（莫奈取色，无覆盖）；pride：按所选旗帜取规格
+ * monet：用户主题色相（莫奈取色，无覆盖）；pride：按所选旗帜取规格。
+ * 用户自定义的强调色相 / 深色色相（与主题色相不同时）经合成 spec 下发——
+ * buildTokens 只消费 darkHue，overrides / themeClass 均为空，其余令牌与原行为一致
+ * @param userAccentHue 强调色相（与 userHue 相同 = 单色，默认）
+ * @param userDarkHue 深色模式表面色相（与 userHue 相同 = 跟随，默认）
  */
 export function presetSpec(
   preset: string | undefined | null,
   userHue: number,
   prideFlag: string = 'transPride',
+  userAccentHue: number = userHue,
+  userDarkHue: number = userHue,
 ): { hue: number; accentHue: number; spec: ThemePresetSpec | null } {
   const spec = preset === 'pride'
     ? THEME_PRESETS[prideFlag] ?? THEME_PRESETS.transPride
     : (preset && preset !== 'pride' ? THEME_PRESETS[preset] : null) ?? null;
-  return spec
-    ? { hue: spec.hue, accentHue: spec.accentHue, spec }
-    : { hue: userHue, accentHue: userHue, spec: null };
+  if (spec) {
+    return { hue: spec.hue, accentHue: spec.accentHue, spec };
+  }
+  if (userAccentHue !== userHue || userDarkHue !== userHue) {
+    return {
+      hue: userHue,
+      accentHue: userAccentHue,
+      spec: {
+        hue: userHue,
+        accentHue: userAccentHue,
+        ...(userDarkHue !== userHue ? { darkHue: userDarkHue } : {}),
+      },
+    };
+  }
+  return { hue: userHue, accentHue: userAccentHue, spec: null };
 }
 
 /**

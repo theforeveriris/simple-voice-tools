@@ -61,6 +61,8 @@ function validAnalysisCards(v: unknown): boolean {
 /** 数值字段允许范围（越界夹取，防止脏文件写入极端值） */
 const NUMBER_RANGE: Partial<Record<keyof AppSettings, [number, number]>> = {
   hue: [0, 360],
+  accentHue: [0, 360],
+  darkHue: [0, 360],
   targetF0Min: [50, 500],
   targetF0Max: [50, 500],
   pitchAxisMin: [30, 200],

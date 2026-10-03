@@ -45,9 +45,19 @@ theme / 系统深浅变化）、外观页 `applyPreset`（立即重放）。
 `THEME_PRESETS: { monet: null, transPride, nonbinary, genderfluid }`，
 `ThemePresetSpec { hue, accentHue, themeClass?, darkHue?, overrides? }`：
 
-- **monet**：spec 为 null，完全跟随用户色相滑条（8 预设色相 + 自定义）；
+- **monet**：用户未自定义强调 / 深色色相时 spec 为 null，完全跟随主题色相滑条；
+  **强调色相（accentHue）或深色色相（darkHue）与主题色相不同时**，`presetSpec`
+  合成一个仅携带差异字段的 spec 下发（buildTokens 只消费 darkHue，overrides /
+  themeClass 为空，其余令牌与单色行为一致）——双色调与独立深色铺底由此实现，
+  `applyTheme` / `buildTokens` 签名不变。外观页拖动主题色相滑条时，尚未被独立
+  调整过的 accentHue / darkHue 一并跟随（等于旧 hue 才跟随），拖过即分离；
 - **骄傲旗三款**：`themeClass: 'theme-pride'` 共用一套渐变/毛玻璃 CSS，
   渐变按 `data-pride-flag` 区分，强调色与深浅铺底各自指定。
+
+外观页的预设与旗帜选择为**卡片网格**（`ThemeCard`：色板预览 + 名称 + 选中描边）：
+莫奈卡用 OKLCH 渐变实时预览当前色相，骄傲旗卡渲染当前旗帜条纹，旗帜三选一
+同为条纹卡片。`constants.THEME_PRESETS`（8 个命名色相）目前无 UI 消费，
+是预留数据。
 
 新增旗帜的完整步骤：
 
