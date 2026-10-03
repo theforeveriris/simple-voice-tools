@@ -40,7 +40,16 @@ export function buildSettingsPayload(settings: AppSettings): SettingsPayload {
 }
 
 /** 可选字符串字段（不在 DEFAULT_SETTINGS 中，单独白名单） */
-const OPTIONAL_STRING_KEYS = ['githubClientId', 'githubRepo', 'baselineRecordId', 'aiLanguage', 'aiGlossary'] as const;
+const OPTIONAL_STRING_KEYS = [
+  'githubClientId', 'githubRepo', 'baselineRecordId', 'aiLanguage', 'aiGlossary',
+  'llmBaseUrl', 'llmModelId', 'llmPromptOverride', 'llmActiveProfileId',
+] as const;
+
+/** 可选数值字段（不在 DEFAULT_SETTINGS 中）：键 → 允许范围（越界拒绝，防脏文件写入极端值） */
+const OPTIONAL_NUMBER_KEYS: Partial<Record<keyof AppSettings, [number, number]>> = {
+  llmPriceIn: [0, 1_000_000],
+  llmPriceOut: [0, 1_000_000],
+};
 
 /** 枚举字符串字段：导入时校验取值，非法值忽略（保持当前设置） */
 const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
@@ -138,6 +147,14 @@ export function parseSettingsPayload(json: string): Partial<AppSettings> {
     const v = incoming[key];
     if (typeof v === 'string') out[key] = v;
   }
+  // 可选数值字段
+  for (const [key, range] of Object.entries(OPTIONAL_NUMBER_KEYS) as [keyof AppSettings, [number, number]][]) {
+    const v = incoming[key];
+    if (typeof v === 'number' && isFinite(v) && v >= range[0] && v <= range[1]) out[key] = v;
+  }
+  // 大模型补充规则：字符串数组逐条接受
+  const er = incoming.llmExtraRules;
+  if (Array.isArray(er) && er.every((x) => typeof x === 'string')) out.llmExtraRules = er;
   // 自定义音区边界：四个有限数字
   const bb = incoming.bandBounds;
   if (Array.isArray(bb) && bb.length === 4 && bb.every((n) => typeof n === 'number' && isFinite(n))) {

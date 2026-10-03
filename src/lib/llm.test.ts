@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseLlmAdviceResult, buildSystemPrompt, extractDataLines } from './llm';
+import { parseLlmAdviceResult, buildSystemPrompt, extractDataLines, cachedLlmAdvice } from './llm';
+import { loadLlmResult } from './llmResultStore';
 
 const BASE = '内置分析标准 ## Analysis standard';
 
@@ -111,5 +112,40 @@ describe('extractDataLines', () => {
     const r = extractDataLines('data: {"x"');
     expect(r.payloads).toEqual([]);
     expect(r.rest).toBe('data: {"x"');
+  });
+});
+
+
+describe('cachedLlmAdvice（内存 + 持久化二级缓存）', () => {
+  it('同键只调用一次，命中返回同一结果', async () => {
+    let calls = 0;
+    const run = async () => {
+      calls++;
+      return { summary: 's1', assessments: [], advice: [] };
+    };
+    const [a, b] = await Promise.all([
+      cachedLlmAdvice('cache-test-1', run),
+      cachedLlmAdvice('cache-test-1', run),
+    ]);
+    expect(calls).toBe(1);
+    expect(a.summary).toBe('s1');
+    expect(b.summary).toBe('s1');
+  });
+
+  it('成功结果进入持久化存储（单测环境退化为内存），可跨“会话”命中', async () => {
+    await cachedLlmAdvice('cache-test-2', async () => ({ summary: 's2', assessments: [], advice: [] }));
+    const stored = await loadLlmResult('cache-test-2');
+    expect(stored?.summary).toBe('s2');
+  });
+
+  it('失败不缓存：同键重试会再次调用', async () => {
+    let calls = 0;
+    const failing = async () => {
+      calls++;
+      throw new Error('boom');
+    };
+    await expect(cachedLlmAdvice('cache-test-3', failing)).rejects.toThrow('boom');
+    await expect(cachedLlmAdvice('cache-test-3', failing)).rejects.toThrow('boom');
+    expect(calls).toBe(2);
   });
 });

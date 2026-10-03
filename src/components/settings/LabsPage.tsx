@@ -219,8 +219,8 @@ export function LabsPage({
         {/* 大模型配置（训练建议选「基于大模型判断」时使用） */}
         <LlmConfigSection settings={settings} update={update} onOpenPrompt={() => setPromptOpen(true)} />
 
-        {/* Token 用量（本机统计的大模型接口消耗） */}
-        <LlmUsageSection />
+        {/* Token 用量（本机统计的大模型接口消耗 + 单价折算） */}
+        <LlmUsageSection settings={settings} update={update} />
 
         {/* 自定义音区边界 */}
         <SettingsSection icon={Ruler} title={t('settings.bandCustom')}>

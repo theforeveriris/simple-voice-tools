@@ -14,6 +14,14 @@ const SAMPLE: AppSettings = {
   targetF0Max: 230,
   bandBounds: [90, 170, 185, 260],
   githubClientId: 'Iv23lixxxx',
+  llmBaseUrl: 'https://api.example.com/v1',
+  llmModelId: 'deepseek-chat',
+  llmExtraRules: ['优先评估共鸣', '不要比较不同模式'],
+  llmPromptOverride: '',
+  llmActiveProfileId: 'p_abc',
+  llmPriceIn: 2,
+  llmPriceOut: 8,
+  llmApiKey: 'sk-secret',
 };
 
 describe('buildSettingsPayload', () => {
@@ -36,6 +44,15 @@ describe('parseSettingsPayload', () => {
     expect(parsed.bandBounds).toEqual([90, 170, 185, 260]);
     expect(parsed.githubClientId).toBe('Iv23lixxxx');
     expect(parsed.mobileSpark).toBe(true);
+    // 大模型配置随导出往返（apiKey 除外）
+    expect(parsed.llmBaseUrl).toBe('https://api.example.com/v1');
+    expect(parsed.llmModelId).toBe('deepseek-chat');
+    expect(parsed.llmExtraRules).toEqual(['优先评估共鸣', '不要比较不同模式']);
+    expect(parsed.llmPromptOverride).toBe('');
+    expect(parsed.llmActiveProfileId).toBe('p_abc');
+    expect(parsed.llmPriceIn).toBe(2);
+    expect(parsed.llmPriceOut).toBe(8);
+    expect(parsed.llmApiKey).toBeUndefined();
   });
 
   it('拒绝非 JSON 与 kind 不符的内容', () => {
@@ -81,6 +98,18 @@ describe('parseSettingsPayload', () => {
     expect(parsed.hue).toBe(360);
     expect(parsed.targetF0Min).toBe(50);
     expect(parsed.targetF0Max).toBe(500);
+  });
+
+  it('llmApiKey 绝不导出；llmPrice 越界被拒；llmExtraRules 非字符串数组被忽略', () => {
+    const payload = buildSettingsPayload(SAMPLE);
+    expect(payload.settings.llmApiKey).toBeUndefined();
+    const bad = parseSettingsPayload(JSON.stringify({
+      kind: 'settings', version: 1,
+      settings: { llmPriceIn: -5, llmPriceOut: 9e9, llmExtraRules: [1, 2] },
+    }));
+    expect(bad.llmPriceIn).toBeUndefined();
+    expect(bad.llmPriceOut).toBeUndefined();
+    expect(bad.llmExtraRules).toBeUndefined();
   });
 
   it('bandBounds：非四元数组被忽略', () => {

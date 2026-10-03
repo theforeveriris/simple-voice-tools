@@ -14,6 +14,7 @@ import type { AdviceTarget } from '@/lib/advice';
 import { computeSustainedMetrics } from '@/lib/audio/sustained';
 import { LOCALES, getAiLocaleLabel, getLocale } from '@/i18n';
 import { recordLlmUsage, type LlmFeature, type LlmUsageReal } from '@/lib/llmUsage';
+import { loadLlmResult, saveLlmResult } from '@/lib/llmResultStore';
 
 /** 大模型接口配置（由设置解析而来） */
 export interface LlmConfig {
@@ -323,6 +324,30 @@ export async function llmChat(
   return content;
 }
 
+/** 连接测试超时：接口挂起时不能让按钮永远转圈 */
+const TEST_TIMEOUT_MS = 15_000;
+
+/** 最小连通性测试：返回模型回复摘要（供 toast 展示），失败/超时抛错 */
+export async function testLlmConnection(cfg: LlmConfig): Promise<string> {
+  let content: string;
+  try {
+    const signal = typeof AbortSignal.timeout === 'function'
+      ? AbortSignal.timeout(TEST_TIMEOUT_MS)
+      : undefined;
+    content = await llmChat(cfg, 'You are a connectivity test.', 'Reply with exactly: OK', 0, signal, 'test');
+  } catch (err: unknown) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new Error(`Request timeout (${TEST_TIMEOUT_MS / 1000}s)`);
+    }
+    throw err;
+  }
+  // 回复异常（空 / JSON 体 / 超长）时直接展示模型 ID，避免 toast 出现一大段文字
+  const trimmed = content.trim();
+  return trimmed && !trimmed.startsWith('{') && trimmed.length <= 40
+    ? trimmed
+    : cfg.modelId;
+}
+
 /** 判断错误是否为请求取消（AbortSignal 触发），调用方据此区分「已取消」与失败 */
 export function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError';
@@ -462,16 +487,6 @@ export async function fetchLlmAdvice(
     { temperature: 0.4, signal, onDelta, feature: 'advice' },
   );
   return parseLlmAdviceResult(content);
-}
-
-/** 最小连通性测试：返回模型回复摘要（供 toast 展示），失败抛错 */
-export async function testLlmConnection(cfg: LlmConfig): Promise<string> {
-  const content = await llmChat(cfg, 'You are a connectivity test.', 'Reply with exactly: OK', 0, undefined, 'test');
-  // 回复异常（空 / JSON 体 / 超长）时直接展示模型 ID，避免 toast 出现一大段文字
-  const trimmed = content.trim();
-  return trimmed && !trimmed.startsWith('{') && trimmed.length <= 40
-    ? trimmed
-    : cfg.modelId;
 }
 
 /** HTTP 错误摘要：状态码 + 接口返回的 error.message（截断） */
@@ -681,17 +696,33 @@ function hashStr(s: string): string {
 const adviceCache = new Map<string, Promise<LlmAdviceResult>>();
 
 /**
- * 同一配置 + 同一记录在会话内只请求一次；
- * 失败不缓存（下次取同 key 会重新请求，实现重试）
+ * 同一配置 + 同一记录只请求一次（会话内存 + kv 持久化二级缓存）：
+ * 内存命中直接返回；否则查持久化存储（应用重启后仍命中、不重新付费调用），
+ * 再未命中才真正调用并把成功结果落库。失败不缓存（下次取同 key 会重新请求）。
  */
 export function cachedLlmAdvice(key: string, run: () => Promise<LlmAdviceResult>): Promise<LlmAdviceResult> {
-  const hit = adviceCache.get(key);
+  return cachedWithStore(adviceCache, key, run);
+}
+
+/** 内存 + 持久化二级缓存的共用实现：p 立即进 map 保证并发去重，失败剔除 */
+function cachedWithStore(
+  map: Map<string, Promise<LlmAdviceResult>>,
+  key: string,
+  run: () => Promise<LlmAdviceResult>,
+): Promise<LlmAdviceResult> {
+  const hit = map.get(key);
   if (hit) return hit;
-  const p = run().catch((err: unknown) => {
-    adviceCache.delete(key);
-    throw err;
+  const p = (async () => {
+    const stored = await loadLlmResult(key).catch(() => null);
+    if (stored) return stored;
+    const result = await run();
+    saveLlmResult(key, result);
+    return result;
+  })();
+  map.set(key, p);
+  p.catch(() => {
+    map.delete(key);
   });
-  adviceCache.set(key, p);
   return p;
 }
 
@@ -713,16 +744,9 @@ export function weeklyReportKey(cfg: LlmConfig, records: AnalysisRecord[], promp
   ]);
 }
 
-/** 周报缓存（失败不缓存，可重试） */
+/** 周报缓存：同一实现（内存 + kv 持久化，失败不缓存可重试） */
 export function cachedWeeklyReport(key: string, run: () => Promise<LlmAdviceResult>): Promise<LlmAdviceResult> {
-  const hit = weeklyCache.get(key);
-  if (hit) return hit;
-  const p = run().catch((err: unknown) => {
-    weeklyCache.delete(key);
-    throw err;
-  });
-  weeklyCache.set(key, p);
-  return p;
+  return cachedWithStore(weeklyCache, key, run);
 }
 
 /** 缓存键：接口配置 / 模型 / 语言 / 靶标 / 基线 / 提示词定制 / 记录（id+备注）任一变化即失效 */

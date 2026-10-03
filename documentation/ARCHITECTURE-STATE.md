@@ -53,6 +53,8 @@ kv 仓库键清单：
 | `autoBackup:lastTs` | backup/local | 上次自动备份时间 |
 | `llm:usage:totals` | lib/llmUsage | 大模型 Token 用量聚合（按功能分组的计数器） |
 | `llm:usage:log` | lib/llmUsage | 大模型调用明细（最新在前，封顶 200 条） |
+| `llm:results` | lib/llmResultStore | 大模型成功结果按缓存键持久化（最新在前，封顶 50 条） |
+| `llm:profiles` | lib/llmProfiles | 大模型接口配置档案（含各档案 API Key） |
 
 约定：**凭据与句柄一律进 kv，不进 localStorage**（localStorage 会被设置导出、
 容易被顺手清掉，且句柄无法结构化克隆进 localStorage）。

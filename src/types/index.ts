@@ -384,6 +384,12 @@ export interface AppSettings {
   llmExtraRules?: string[];
   /** 大模型配置：整体覆写内置提示词（设置后不再使用内置分析标准） */
   llmPromptOverride?: string;
+  /** 大模型配置：当前应用的配置档案 id（档案与 Key 存 IDB kv，见 lib/llmProfiles.ts） */
+  llmActiveProfileId?: string;
+  /** 大模型配置：用量费用估算——每百万 tokens 输入单价（0/未填 = 不折算；货币单位自定） */
+  llmPriceIn?: number;
+  /** 大模型配置：用量费用估算——每百万 tokens 输出单价 */
+  llmPriceOut?: number;
   /** 练习提醒：每日本地通知开关（应用在后台运行时生效；当天已有记录不打扰） */
   practiceReminderEnabled: boolean;
   /** 练习提醒：提醒时间（HH:mm，24 小时制） */
