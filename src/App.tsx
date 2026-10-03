@@ -16,6 +16,7 @@ import { SettingsPage } from '@/components/pages/SettingsPage';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { applyTheme, presetSpec } from '@/lib/theme/monet';
+import { startAmbientLoop, watchAuroraHours } from '@/lib/theme/ambient';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
@@ -48,6 +49,11 @@ function tabFromHash(): ViewType {
     }
   }
 }
+
+// 氛围彩蛋：声音染色 / 音量呼吸的心跳引擎 + 凌晨极光（3–5 点）时段监视，
+// 模块级启动一次，随应用存活
+startAmbientLoop();
+watchAuroraHours();
 
 function App() {
   const currentTab = useStore((s) => s.currentTab);

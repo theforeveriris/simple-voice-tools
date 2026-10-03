@@ -205,6 +205,11 @@ export interface AppSettings {
   prideGlassBlur: number;
   /** 背景流动动画：渐变光斑缓慢漂移 */
   prideDrift: boolean;
+  /* ---------- 氛围彩蛋 ---------- */
+  /** 声音染色：麦克风活跃时界面色相随实时音高在蓝→粉弧上流动 */
+  voiceTint: boolean;
+  /** 音量呼吸：pride 渐变浓度随麦克风响度起伏（仅 pride 渐变主题下可见） */
+  volumeBreath: boolean;
   /** 是否显示图表网格辅助线 */
   showGrid: boolean;
   /** 单次录音最长时长（秒），0 = 不限制 */

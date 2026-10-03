@@ -233,8 +233,27 @@ export function AppearancePage({
                   onCheckedChange={(v) => applyPreset({ prideDrift: v })}
                 />
               </SettingRow>
+              {/* 音量呼吸：渐变浓度随麦克风响度起伏（pride 渐变专属彩蛋） */}
+              <SettingRow
+                label={<InfoTip label={t('settings.volumeBreath')} text={t('settings.volumeBreathDesc')} />}
+              >
+                <Switch
+                  checked={settings.volumeBreath}
+                  onCheckedChange={(v) => update({ volumeBreath: v })}
+                />
+              </SettingRow>
             </>
           )}
+
+          {/* 声音染色：界面色相随实时音高流动（莫奈 / pride 预设均可用） */}
+          <SettingRow
+            label={<InfoTip label={t('settings.voiceTint')} text={t('settings.voiceTintDesc')} />}
+          >
+            <Switch
+              checked={settings.voiceTint}
+              onCheckedChange={(v) => update({ voiceTint: v })}
+            />
+          </SettingRow>
         </SettingsSection>
 
         {/* 图表辅助选项 */}

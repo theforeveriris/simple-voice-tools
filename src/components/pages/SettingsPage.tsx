@@ -31,6 +31,8 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.theme' },
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.huePreset' },
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.hue' },
+  { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.voiceTint' },
+  { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.volumeBreath' },
   { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.showGrid' },
   { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.syncRange' },
   { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.mobileSpark' },

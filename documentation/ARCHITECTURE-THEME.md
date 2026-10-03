@@ -76,6 +76,28 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
 `.bg-surface-hi`（60% 无模糊，控制合成层数量）；页面与全屏浮层 `.bg-surface`
 透明让出背景。所有规则都在 `.theme-pride` 作用域下，莫奈主题零影响。
 
+## 氛围彩蛋（ambient.ts）
+
+三个环境效果共享一个 20Hz 心跳（`startAmbientLoop`，App.tsx 模块级启动一次），
+每 tick 读取 `recorder` 实时数据——录音（`isRecording()`）或监听练习
+（`isMonitoring()`）时麦克风视为活跃，其余时刻不产生任何样式写入：
+
+- **声音染色**（设置 → 外观 → 主题，`voiceTint`）：种子色相与强调色相同时
+  替换为「染色值」——实时音高（80–400 Hz 对数映射）在蓝 255° → 粉 335° 弧上
+  的位置经 EMA 平滑所得；明度 / 彩度规格沿用当前预设（`presetSpec().spec`），
+  pride 渐变背景不受影响（走 CSS）。复用 `applyTheme` 写入，Canvas 图表随
+  `app:themechange` 一同流动。性能设计：仅当色相变化越过 1.5°（最短弧）才
+  重写令牌，平稳发声时几乎零样式开销；静音段保持色相（取最近 0.5s 内最后
+  有声帧）；麦克风停止或开关关闭时恢复基准主题（同一 tick 内一次性）。
+- **音量呼吸**（设置 → 外观 → 骄傲旗参数，`volumeBreath`）：按最新帧
+  rmsDb（-50 → -10 dBFS 归一）快起慢落平滑后写 `--pride-breath`（1–1.5 倍率），
+  CSS 中与 `--pride-glow` 相乘决定渐变层透明度（另有 150ms transition 兜底
+  平滑）；仅 pride 渐变主题可见，退出活跃态时一次性复位为 1。
+- **凌晨极光**：`watchAuroraHours` 在本地时间 3:00–4:59 给 `<html>` 加
+  `aurora` 类（启动先判一次避免闪旗面 + 每分钟复查跨边界），index.css 中
+  极光规则置于旗帜规则之后（同特异性靠源顺序取胜，深色单独一组），
+  覆盖三旗渐变为极光配色。无设置项、无提示，只在深夜撞见。
+
 ## ⚠️ 已踩过的坑：backdrop-filter 与 fixed 包含块
 
 **任何**带 `backdrop-filter`（或 transform / filter / perspective）的元素会成为

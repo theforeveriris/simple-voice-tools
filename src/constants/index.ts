@@ -142,6 +142,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   prideSaturation: 1.12,
   prideGlassBlur: 18,
   prideDrift: true,
+  voiceTint: false,
+  volumeBreath: false,
   showGrid: true,
   maxDurationSec: 120,
   autoEnterAnalysis: true,

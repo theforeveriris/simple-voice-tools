@@ -126,6 +126,7 @@
  *   --pride-glow       渐变浓度（光斑层不透明度倍率）
  *   --pride-saturation 饱和度（saturate 倍率）
  *   --pride-glass-blur 毛玻璃模糊半径
+ *   --pride-breath     音量呼吸倍率（ambient.ts 按麦克风响度写入，平时恒 1）
  * 类名 theme-pride-static 表示关闭流动动画。 */
 
 html.theme-pride body::before {
@@ -134,8 +135,11 @@ html.theme-pride body::before {
   inset: -12%;
   z-index: -1;
   pointer-events: none;
-  opacity: var(--pride-glow, 1);
+  /* 音量呼吸（volumeBreath）：--pride-breath 由氛围彩蛋引擎按麦克风响度写入，
+     平时恒为 1；transition 让呼吸步进与浓度滑条都平滑过渡 */
+  opacity: calc(var(--pride-glow, 1) * var(--pride-breath, 1));
   filter: blur(48px) saturate(var(--pride-saturation, 1.12));
+  transition: opacity 150ms linear;
   animation: pride-drift 32s ease-in-out infinite alternate;
 }
 
@@ -202,6 +206,29 @@ html.theme-pride.dark[data-pride-flag='genderfluid'] body::before {
     radial-gradient(34% 30% at 56% 78%, rgb(206 158 226 / 0.22), transparent 74%),
     radial-gradient(42% 38% at 82% 92%, rgb(168 188 240 / 0.16), transparent 72%),
     radial-gradient(40% 36% at 14% 92%, rgb(248 176 206 / 0.15), transparent 72%);
+  filter: blur(64px) saturate(var(--pride-saturation, 1.12));
+}
+
+/* 凌晨极光（彩蛋）：本地时间 3–5 点由 ambient.ts 给 <html> 加 aurora 类，
+   覆盖所有旗帜的渐变为极光配色（绿 / 青 / 紫），无任何提示。
+   置于旗帜规则之后：与浅色旗面规则同特异性，靠源顺序取胜 */
+html.theme-pride.aurora body::before {
+  background:
+    radial-gradient(40% 36% at 15% 16%, rgb(148 226 188 / 0.55), transparent 70%),
+    radial-gradient(38% 34% at 86% 14%, rgb(142 208 226 / 0.50), transparent 70%),
+    radial-gradient(30% 28% at 50% 55%, rgb(255 255 255 / 0.50), transparent 75%),
+    radial-gradient(44% 40% at 80% 90%, rgb(176 160 226 / 0.42), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(118 214 178 / 0.40), transparent 72%),
+    radial-gradient(26% 24% at 62% 30%, rgb(150 232 214 / 0.24), transparent 75%);
+}
+
+html.theme-pride.dark.aurora body::before {
+  background:
+    radial-gradient(40% 36% at 15% 16%, rgb(108 220 168 / 0.24), transparent 70%),
+    radial-gradient(38% 34% at 86% 14%, rgb(106 188 222 / 0.20), transparent 70%),
+    radial-gradient(44% 40% at 80% 90%, rgb(176 160 226 / 0.20), transparent 72%),
+    radial-gradient(40% 36% at 14% 92%, rgb(84 200 156 / 0.16), transparent 72%),
+    radial-gradient(26% 24% at 62% 30%, rgb(120 226 198 / 0.14), transparent 75%);
   filter: blur(64px) saturate(var(--pride-saturation, 1.12));
 }
 
