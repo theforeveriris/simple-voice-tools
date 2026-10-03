@@ -10,6 +10,7 @@ import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
 import { setLocale, DEFAULT_LOCALE } from '@/i18n'
 import { hydrateAiLocale } from '@/i18n/aiLocale'
+import { getWallpaperHues } from '@/lib/theme/dynamic'
 import type { Locale, ThemeMode } from '@/types'
 
 // 渲染前先应用持久化的主题色板与深浅模式，避免首帧闪烁
@@ -24,6 +25,8 @@ const saved = (() => {
 })();
 const dark = saved.theme === 'dark'
   || ((saved.theme ?? 'system') === 'system' && prefersDark());
+// 首启判定必须在任何 updateSettings 之前（语言检测等会立即持久化设置）
+const firstRun = !localStorage.getItem('svt:settings:v1');
 // 旧版旗帜直接作为预设存储：收敛为 pride 预设（与 useStore 的迁移同一规则）
 const LEGACY_FLAGS = ['transPride', 'nonbinary', 'genderfluid'];
 const isLegacyFlag = LEGACY_FLAGS.includes(saved.huePreset ?? '');
@@ -37,6 +40,22 @@ const savedPreset = presetSpec(
 applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, savedPrideFlagOf(saved, isLegacyFlag))
 // 原生壳：状态栏/手势条底色对齐首帧主题（后续变化由 App 的主题 effect 接管）
 if (isNative) syncNativeSystemBars()
+
+// 原生壳 +「跟随壁纸」预设（含原生首启默认）：先用默认色相保证首帧，
+// 异步取壁纸色相后重应用——Material You 取色就位时界面整体转向壁纸色
+if (isNative) {
+  if (firstRun) {
+    useStore.getState().updateSettings({ huePreset: 'dynamic' })
+  }
+  if ((saved.huePreset ?? 'monet') === 'dynamic' || firstRun) {
+    void getWallpaperHues().then((hues) => {
+      if (!hues) return
+      const p = presetSpec('dynamic', hues.hue, savedPrideFlagOf(saved, isLegacyFlag), hues.accentHue, hues.darkHue)
+      applyTheme(p.hue, dark, p.accentHue, p.spec, savedPrideFlagOf(saved, isLegacyFlag))
+      syncNativeSystemBars()
+    })
+  }
+}
 
 /** 迁移后的旗帜：旧预设值优先，其次已存的 prideFlag */
 function savedPrideFlagOf(saved: { huePreset?: string; prideFlag?: string }, isLegacyFlag: boolean): string {

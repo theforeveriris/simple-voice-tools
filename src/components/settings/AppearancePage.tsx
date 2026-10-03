@@ -13,6 +13,8 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Image as ImageIcon, Palette, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
+import { cachedDynamicHues, getWallpaperHues } from '@/lib/theme/dynamic';
+import { isNative } from '@/lib/platform';
 import {
   getBgImageUrl,
   loadBgImage,
@@ -198,6 +200,18 @@ export function AppearancePage({
   /* ---- 自定义背景图：当前图片 objectURL 与选择/移除 ---- */
   const [bgUrl, setBgUrl] = useState<string | null>(getBgImageUrl());
   const bgFileRef = useRef<HTMLInputElement>(null);
+  // 「跟随壁纸」预设卡：展示当前壁纸主色相（原生壳内解析，失败/非原生显示当前主题色相）
+  const [dynamicHues, setDynamicHues] = useState(cachedDynamicHues());
+  useEffect(() => {
+    if (!isNative) return;
+    let alive = true;
+    void getWallpaperHues(true).then((hues) => {
+      if (alive && hues) setDynamicHues(hues);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   // 启动预加载（main.tsx 已发起）完成后刷新缩略图；loadBgImage 幂等，不重复加载
   useEffect(() => {
     let alive = true;
@@ -255,9 +269,9 @@ export function AppearancePage({
             </Select>
           </SettingRow>
           {/* 预设配色卡片：色板实时预览（莫奈跟随当前色相，骄傲旗跟随当前旗帜，
-              自定义图片显示当前背景图，未选图时为占位图标） */}
+              自定义图片显示当前背景图，未选图时为占位图标，跟随壁纸显示壁纸主色卡） */}
           <SettingRow label={t('settings.huePreset')} stacked>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className={cn('grid gap-2.5', isNative ? 'grid-cols-2' : 'grid-cols-3')}>
               <ThemeCard
                 active={preset === 'monet'}
                 onClick={() => setPreset('monet')}
@@ -285,6 +299,15 @@ export function AppearancePage({
                   </span>
                 )}
               </ThemeCard>
+              {isNative && (
+                <ThemeCard
+                  active={preset === 'dynamic'}
+                  onClick={() => setPreset('dynamic')}
+                  label={t('settings.presetDynamic')}
+                >
+                  <MonetSwatch hue={dynamicHues?.hue ?? settings.hue} />
+                </ThemeCard>
+              )}
             </div>
           </SettingRow>
           {(preset === 'monet' || preset === 'image') && (

@@ -43,6 +43,8 @@ export const ShareTarget = registerPlugin<ShareTargetPluginInterface>('ShareTarg
 interface SystemBarsPluginInterface {
   /** color = 系统栏区域底色（#RRGGBB）；dark = 底色偏深（图标转亮色） */
   setColors(opts: { color: string; dark: boolean }): Promise<void>;
+  /** Material You 壁纸取色（API 27+）；无数据时字段缺省 */
+  wallpaperColors(): Promise<{ primary?: string; secondary?: string; tertiary?: string }>;
 }
 
 /** 仅原生壳内可用 */

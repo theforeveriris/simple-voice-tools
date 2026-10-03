@@ -20,8 +20,9 @@ export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh' | 'ai';
  * monet：莫奈取色（跟随主题色相滑条）；
  * pride：骄傲旗主题（旗帜由 prideFlag 选择，氤氲渐变 + 毛玻璃，参数可调）；
  * image：自定义图片（背景层由图片接管，色板同莫奈逻辑）
+ * dynamic：跟随壁纸（Material You 取色，仅原生壳内可选）
  */
-export type HuePreset = 'monet' | 'pride' | 'image';
+export type HuePreset = 'monet' | 'pride' | 'image' | 'dynamic';
 
 /**
  * 骄傲旗主题的旗帜

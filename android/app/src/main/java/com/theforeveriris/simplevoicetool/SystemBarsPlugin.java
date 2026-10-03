@@ -1,12 +1,15 @@
 package com.theforeveriris.simplevoicetool;
 
 import android.app.Activity;
+import android.app.WallpaperColors;
+import android.app.WallpaperManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsetsController;
 
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -77,5 +80,38 @@ public class SystemBarsPlugin extends Plugin {
             }
             decor.setSystemUiVisibility(flags);
         }
+    }
+
+    /**
+     * Material You 壁纸取色（API 27+）：返回系统壁纸的主/次/三色（#RRGGBB）。
+     * Web 层据此把壁纸色相映射进应用的莫奈色板（跟随壁纸预设）。
+     * API 过低或壁纸无取色信息时返回空对象，由调用方回退默认配色。
+     */
+    @PluginMethod
+    public void wallpaperColors(PluginCall call) {
+        Activity activity = getActivity();
+        if (activity == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) {
+            call.resolve();
+            return;
+        }
+        try {
+            WallpaperManager wm = WallpaperManager.getInstance(activity);
+            WallpaperColors colors = wm.getWallpaperColors(WallpaperManager.FLAG_SYSTEM);
+            if (colors == null) {
+                call.resolve();
+                return;
+            }
+            JSObject ret = new JSObject();
+            ret.put("primary", argbToHex(colors.getPrimaryColor().toArgb()));
+            ret.put("secondary", argbToHex(colors.getSecondaryColor().toArgb()));
+            ret.put("tertiary", argbToHex(colors.getTertiaryColor().toArgb()));
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.resolve();
+        }
+    }
+
+    private static String argbToHex(int color) {
+        return String.format("#%06X", color & 0xFFFFFF);
     }
 }
