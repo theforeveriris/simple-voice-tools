@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
+import { loadBgImage } from '@/lib/theme/bgImage'
 import { initPwaInstall } from '@/lib/pwa'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
@@ -67,6 +68,9 @@ if (!localStorage.getItem('svt:settings:v1')) {
 
 // PWA：捕获安装事件（Service Worker 由 vite-plugin-pwa 注入注册）
 initPwaInstall()
+
+// 背景图片异步预加载：读取 IndexedDB 后经 opacity 过渡淡入，不阻塞首帧
+void loadBgImage()
 
 // 加载 IndexedDB 中的历史记录（含旧版 localStorage 迁移），完成后自动刷新界面
 void useHistoryStore.getState().hydrate();

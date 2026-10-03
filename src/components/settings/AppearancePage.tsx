@@ -7,13 +7,23 @@
  * - 图表辅助选项：网格辅助线、时间轴联动、移动端迷你基频（各带 Info 说明浮窗）
  */
 
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Palette, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, Palette, SlidersHorizontal } from 'lucide-react';
+import { toast } from 'sonner';
 import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
+import {
+  getBgImageUrl,
+  loadBgImage,
+  processImageFile,
+  removeBgImage,
+  saveBgImage,
+} from '@/lib/theme/bgImage';
 import { PRIDE_FLAGS } from '@/constants';
 import { t } from '@/i18n';
+import type { DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import type { AppSettings, HuePreset, PrideFlag, ThemeMode } from '@/types';
+import type { AppSettings, BgImageFocus, HuePreset, PrideFlag, ThemeMode } from '@/types';
 import {
   Select,
   SelectContent,
@@ -72,6 +82,47 @@ function MonetSwatch({ hue }: { hue: number }) {
       }}
       aria-hidden
     />
+  );
+}
+
+/** 九宫焦点：展示顺序（左上 → 右下）与各方向词条 */
+const BG_FOCUS_KEYS: BgImageFocus[] = [
+  'top-left', 'top', 'top-right',
+  'left', 'center', 'right',
+  'bottom-left', 'bottom', 'bottom-right',
+];
+const BG_FOCUS_LABEL: Record<BgImageFocus, DictKey> = {
+  'top-left': 'settings.bgPosTopLeft',
+  'top': 'settings.bgPosTop',
+  'top-right': 'settings.bgPosTopRight',
+  'left': 'settings.bgPosLeft',
+  'center': 'settings.bgPosCenter',
+  'right': 'settings.bgPosRight',
+  'bottom-left': 'settings.bgPosBottomLeft',
+  'bottom': 'settings.bgPosBottom',
+  'bottom-right': 'settings.bgPosBottomRight',
+};
+
+/** 毛玻璃强度行（pride 渐变与自定义背景图共用同一参数 prideGlassBlur） */
+function GlassRow({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <SettingRow label={<InfoTip label={t('settings.prideGlass')} text={t('settings.prideGlassDesc')} />}>
+      <div className="flex items-center gap-2.5">
+        <input
+          type="range"
+          min={0}
+          max={28}
+          step={2}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
+          aria-label={t('settings.prideGlass')}
+        />
+        <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">
+          {value === 0 ? t('settings.prideGlassOff') : `${value}px`}
+        </span>
+      </div>
+    </SettingRow>
   );
 }
 
@@ -141,6 +192,28 @@ export function AppearancePage({
     if (settings.accentHue === settings.hue) patch.accentHue = hue;
     if (settings.darkHue === settings.hue) patch.darkHue = hue;
     applyPreset(patch);
+  };
+
+  /* ---- 自定义背景图：当前图片 objectURL 与选择/移除 ---- */
+  const [bgUrl, setBgUrl] = useState<string | null>(getBgImageUrl());
+  const bgFileRef = useRef<HTMLInputElement>(null);
+  // 启动预加载（main.tsx 已发起）完成后刷新缩略图；loadBgImage 幂等，不重复加载
+  useEffect(() => {
+    let alive = true;
+    void loadBgImage().then(() => {
+      if (alive) setBgUrl(getBgImageUrl());
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const pickBgImage = async (file: File) => {
+    try {
+      await saveBgImage(await processImageFile(file));
+      setBgUrl(getBgImageUrl());
+    } catch {
+      toast.error(t('toast.bgImageFail'));
+    }
   };
 
   return (
@@ -288,25 +361,8 @@ export function AppearancePage({
                 onChange={(v) => applyPreset({ prideSaturation: v })}
                 format={(v) => `${Math.round(v * 100)}%`}
               />
-              <SettingRow
-                label={<InfoTip label={t('settings.prideGlass')} text={t('settings.prideGlassDesc')} />}
-              >
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="range"
-                    min={0}
-                    max={28}
-                    step={2}
-                    value={settings.prideGlassBlur}
-                    onChange={(e) => applyPreset({ prideGlassBlur: Number(e.target.value) })}
-                    className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
-                    aria-label={t('settings.prideGlass')}
-                  />
-                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">
-                    {settings.prideGlassBlur === 0 ? t('settings.prideGlassOff') : `${settings.prideGlassBlur}px`}
-                  </span>
-                </div>
-              </SettingRow>
+              {/* 毛玻璃强度（与自定义背景图共用） */}
+              <GlassRow value={settings.prideGlassBlur} onChange={(v) => applyPreset({ prideGlassBlur: v })} />
               <SettingRow label={t('settings.prideDrift')}>
                 <Switch
                   checked={settings.prideDrift}
@@ -334,6 +390,144 @@ export function AppearancePage({
               onCheckedChange={(v) => update({ voiceTint: v })}
             />
           </SettingRow>
+        </SettingsSection>
+
+        {/* 自定义背景：开启后背景层被图片接管（替换 pride 渐变 / 极光 / 纯色），
+            组件经毛玻璃透出图片；图片降采样后仅存本机 IndexedDB */}
+        <SettingsSection icon={ImageIcon} title={t('settings.bgImage')}>
+          <SettingRow
+            label={<InfoTip label={t('settings.bgImage')} text={t('settings.bgImageDesc')} />}
+          >
+            <Switch
+              checked={settings.bgImageEnabled}
+              onCheckedChange={(v) => update({ bgImageEnabled: v })}
+            />
+          </SettingRow>
+          {settings.bgImageEnabled && (
+            <>
+              {/* 选图 / 缩略图 / 移除 */}
+              <SettingRow label={t('settings.bgImagePick')} stacked>
+                <div className="flex items-center gap-2.5">
+                  {bgUrl && (
+                    <img
+                      src={bgUrl}
+                      alt=""
+                      className="h-10 w-16 rounded-lg border border-line/60 object-cover"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => bgFileRef.current?.click()}
+                    className="rounded-full bg-accent-soft px-3.5 py-1.5 text-xs font-semibold text-on-accent-soft transition-transform active:scale-95"
+                  >
+                    {t('settings.bgImagePick')}
+                  </button>
+                  {bgUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void removeBgImage().then(() => setBgUrl(getBgImageUrl()));
+                      }}
+                      className="rounded-full bg-surface-hi px-3.5 py-1.5 text-xs font-semibold text-ink-2 transition-transform active:scale-95"
+                    >
+                      {t('settings.bgImageRemove')}
+                    </button>
+                  )}
+                  <input
+                    ref={bgFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = ''; // 允许重复选择同一文件
+                      if (f) void pickBgImage(f);
+                    }}
+                  />
+                </div>
+              </SettingRow>
+              {/* 九宫焦点：cover 裁切的锚点 */}
+              <SettingRow label={t('settings.bgImageFocus')} stacked>
+                <div className="grid w-24 grid-cols-3 gap-1" role="group" aria-label={t('settings.bgImageFocus')}>
+                  {BG_FOCUS_KEYS.map((k) => {
+                    const active = settings.bgImageFocus === k;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => update({ bgImageFocus: k })}
+                        aria-pressed={active}
+                        aria-label={t(BG_FOCUS_LABEL[k])}
+                        className={cn(
+                          'grid h-7 place-items-center rounded-lg bg-surface-hi transition-all active:scale-90',
+                          active && 'ring-1 ring-accent',
+                        )}
+                      >
+                        <span className={cn('size-1.5 rounded-full', active ? 'bg-accent' : 'bg-ink-2/40')} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </SettingRow>
+              <PrideSlider
+                label={t('settings.bgImageBlur')}
+                min={0}
+                max={60}
+                step={2}
+                value={settings.bgImageBlur}
+                onChange={(v) => update({ bgImageBlur: v })}
+                format={(v) => `${v}px`}
+              />
+              {/* 压暗：深色模式在 CSS 内自动加深 1.5 倍 */}
+              <SettingRow
+                label={<InfoTip label={t('settings.bgImageDim')} text={t('settings.bgImageDimDesc')} />}
+              >
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="range"
+                    min={0}
+                    max={0.6}
+                    step={0.05}
+                    value={settings.bgImageDim}
+                    onChange={(e) => update({ bgImageDim: Number(e.target.value) })}
+                    className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
+                    aria-label={t('settings.bgImageDim')}
+                  />
+                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">
+                    {Math.round(settings.bgImageDim * 100)}%
+                  </span>
+                </div>
+              </SettingRow>
+              <PrideSlider
+                label={t('settings.bgImageSat')}
+                min={0.3}
+                max={2}
+                step={0.05}
+                value={settings.bgImageSaturation}
+                onChange={(v) => update({ bgImageSaturation: v })}
+                format={(v) => `${Math.round(v * 100)}%`}
+              />
+              <PrideSlider
+                label={t('settings.bgImageAlpha')}
+                min={0}
+                max={1}
+                step={0.05}
+                value={settings.bgImageOpacity}
+                onChange={(v) => update({ bgImageOpacity: v })}
+                format={(v) => `${Math.round(v * 100)}%`}
+              />
+              <SettingRow label={t('settings.bgImageDrift')}>
+                <Switch
+                  checked={settings.bgImageDrift}
+                  onCheckedChange={(v) => update({ bgImageDrift: v })}
+                />
+              </SettingRow>
+              {/* 莫奈 + 自定义背景时毛玻璃强度的去处（pride 预设下已在上方主题区） */}
+              {preset !== 'pride' && (
+                <GlassRow value={settings.prideGlassBlur} onChange={(v) => applyPreset({ prideGlassBlur: v })} />
+              )}
+            </>
+          )}
         </SettingsSection>
 
         {/* 图表辅助选项 */}

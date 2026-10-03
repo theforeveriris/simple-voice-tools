@@ -232,6 +232,46 @@ html.theme-pride.dark.aurora body::before {
   filter: blur(64px) saturate(var(--pride-saturation, 1.12));
 }
 
+/* ---------------- 自定义背景图片（bg-image 类由 applyBgImage 写入） ----------------
+ * 开启后 body::before 被图片整体接管：pride 渐变 / 极光 / 莫奈纯色均被覆盖。
+ * 规则置于全部渐变规则之后；html:root 与 :root.dark 把特异性提到与
+ * 旗帜 / 深色微光规则同档，靠源顺序取胜。深浅差异仅在压暗加深（CSS 内 ×1.5）。
+ * 参数（applyBgImage 写入）：--bg-image-url / pos / blur / sat / dim / alpha；
+ * 音量呼吸（--pride-breath）与存在感（alpha）相乘；bg-image-static 关闭漂移。 */
+html:root.bg-image body::before,
+html:root.dark.bg-image body::before {
+  content: '';
+  position: fixed;
+  inset: -12%;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--bg-image-url, none);
+  background-size: cover;
+  background-position: var(--bg-image-pos, 50% 50%);
+  opacity: calc(var(--bg-image-alpha, 0.8) * var(--pride-breath, 1));
+  filter: blur(var(--bg-image-blur, 32px)) saturate(var(--bg-image-sat, 1))
+    brightness(calc(1 - var(--bg-image-dim, 0.2)));
+  transition: opacity 150ms linear;
+  animation: pride-drift 32s ease-in-out infinite alternate;
+}
+
+/* 深色模式压暗自动加深 1.5 倍（dim 上限 0.6 × 1.5 = 0.9，明度最低 0.1） */
+html:root.dark.bg-image body::before {
+  filter: blur(var(--bg-image-blur, 32px)) saturate(var(--bg-image-sat, 1))
+    brightness(calc(1 - var(--bg-image-dim, 0.2) * 1.5));
+}
+
+html:root.bg-image.bg-image-static body::before,
+html:root.dark.bg-image.bg-image-static body::before {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:root.bg-image body::before {
+    animation: none;
+  }
+}
+
 @keyframes pride-drift {
   from { transform: translate3d(-3.2%, -2.2%, 0) scale(1); }
   to { transform: translate3d(3.2%, 3.2%, 0) scale(1.09); }
@@ -243,29 +283,36 @@ html.theme-pride.theme-pride-static body::before { animation: none; }
   html.theme-pride body::before { animation: none; }
 }
 
-/* 主视图（App 根容器）让出背景，让渐变直接透出；
+/* 主视图（App 根容器）让出背景，让渐变 / 自定义背景图直接透出；
    全屏浮层（对比 / 实时练习 / 说明）不能透明——透明会透出下层页面内容
-   （渐变层在堆叠最底，浮层与渐变之间还隔着页面），改为磨砂底 */
-html.theme-pride .app-root {
+   （背景层在堆叠最底，浮层与背景之间还隔着页面），改为磨砂底。
+   毛玻璃同时作用于 pride 渐变与自定义背景图（html.bg-image）两种状态，
+   莫奈主题未开背景图时不命中，卡片保持不透明 */
+html.theme-pride .app-root,
+html.bg-image .app-root {
   background-color: transparent;
 }
-html.theme-pride .bg-surface:not(.app-root) {
+html.theme-pride .bg-surface:not(.app-root),
+html.bg-image .bg-surface:not(.app-root) {
   background-color: rgb(var(--c-surface-rgb) / 0.78);
   backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 6px)) saturate(1.1);
   -webkit-backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 6px)) saturate(1.1);
 }
 
 /* 卡片毛玻璃：半透明 + 背景模糊，隐隐透出底层渐变（强度可调） */
-html.theme-pride .bg-card {
+html.theme-pride .bg-card,
+html.bg-image .bg-card {
   background-color: rgb(var(--c-card-rgb) / 0.55);
   backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
   -webkit-backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
 }
-html.theme-pride.dark .bg-card {
+html.theme-pride.dark .bg-card,
+html.bg-image.dark .bg-card {
   background-color: rgb(var(--c-card-rgb) / 0.45);
 }
 /* 卡内的输入框 / 药丸 / 分段控件：轻微透明保持同气质（不加模糊，控制模糊层数量） */
-html.theme-pride .bg-surface-hi {
+html.theme-pride .bg-surface-hi,
+html.bg-image .bg-surface-hi {
   background-color: rgb(var(--c-surface-hi-rgb) / 0.60);
 }
 
@@ -273,12 +320,14 @@ html.theme-pride .bg-surface-hi {
    必须排除 body：body 在 base 层被 @apply bg-background，backdrop-filter
    会把 body 变成所有 fixed 后代（底栏 / 多选操作条 / 渐变背景层）的包含块——
    底栏被挤到内容末尾、渐变层撑出横向滚动 */
-html.theme-pride .bg-background:not(body) {
+html.theme-pride .bg-background:not(body),
+html.bg-image .bg-background:not(body) {
   background-color: rgb(var(--c-card-rgb) / 0.72);
   backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 4px)) saturate(1.12);
   -webkit-backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 4px)) saturate(1.12);
 }
-html.theme-pride.dark .bg-background:not(body) {
+html.theme-pride.dark .bg-background:not(body),
+html.bg-image.dark .bg-background:not(body) {
   background-color: rgb(var(--c-card-rgb) / 0.62);
 }
 

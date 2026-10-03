@@ -49,6 +49,7 @@ const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   language: ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'ai'],
   specColormap: ['magma', 'gray', 'accent'],
   startTab: ['test', 'analysis', 'history', 'settings'],
+  bgImageFocus: ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'],
 };
 
 /** 对象字段校验：analysisCards 五个布尔齐全才接受 */
@@ -77,6 +78,10 @@ const NUMBER_RANGE: Partial<Record<keyof AppSettings, [number, number]>> = {
   prideGlow: [0.2, 1.6],
   prideSaturation: [0.3, 2],
   prideGlassBlur: [0, 32],
+  bgImageBlur: [0, 60],
+  bgImageDim: [0, 0.6],
+  bgImageSaturation: [0.3, 2],
+  bgImageOpacity: [0, 1],
 };
 
 /**

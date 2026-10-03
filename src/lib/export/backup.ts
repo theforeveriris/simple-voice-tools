@@ -7,13 +7,16 @@
  */
 
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
-import { idbPutAudio } from '@/lib/storage/idb';
+import { idbGetKV, idbPutAudio } from '@/lib/storage/idb';
+import { BG_IMAGE_KV, saveBgImage } from '@/lib/theme/bgImage';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { audioMimeOf, downloadBlob } from '@/lib/file';
 import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 
 const JSON_NAME = 'records.json';
+/** 背景图片在 ZIP 内的目录前缀（单文件 bg-image/bg-image.{ext}） */
+const BG_IMAGE_DIR = 'bg-image/';
 
 /** 备份/导出 JSON 的当前格式版本 */
 export const BACKUP_FORMAT_VERSION = 2;
@@ -68,7 +71,18 @@ export function extFor(blob: Blob): string {
   if (t.includes('mp4')) return '.m4a';
   if (t.includes('ogg')) return '.ogg';
   if (t.includes('wav')) return '.wav';
+  if (t.includes('webp')) return '.webp';
+  if (t.includes('jpeg') || t.includes('jpg')) return '.jpg';
+  if (t.includes('png')) return '.png';
   return '.bin';
+}
+
+/** 背景图片扩展名 → MIME（恢复时重建 Blob 用） */
+function imageMimeOf(name: string): string {
+  if (name.endsWith('.webp')) return 'image/webp';
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+  if (name.endsWith('.png')) return 'image/png';
+  return 'application/octet-stream';
 }
 
 export interface FullBackupZip {
@@ -102,6 +116,11 @@ export async function buildFullBackupZip(): Promise<FullBackupZip | null> {
     if (!blob) continue;
     files[`audio/${rec.id}${extFor(blob)}`] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }];
     audio++;
+  }
+  // 自定义背景图（数百 KB 级，直存）
+  const bg = await idbGetKV<Blob>(BG_IMAGE_KV);
+  if (bg) {
+    files[`${BG_IMAGE_DIR}bg-image${extFor(bg)}`] = [new Uint8Array(await bg.arrayBuffer()), { level: 0 }];
   }
   const zipped = zipSync(files);
   const d = new Date();
@@ -158,6 +177,11 @@ export async function importFullBackup(file: File): Promise<BackupImportResult> 
     if (!validIds.has(id)) continue;
     await idbPutAudio(id, new Blob([data], { type: audioMimeOf(name) }));
     audio++;
+  }
+  // 自定义背景图（可选条目，旧备份没有；恢复后立即生效）
+  const bgEntry = Object.entries(files).find(([name]) => name.startsWith(BG_IMAGE_DIR) && !name.endsWith('/'));
+  if (bgEntry) {
+    await saveBgImage(new Blob([bgEntry[1]], { type: imageMimeOf(bgEntry[0]) }));
   }
   return { records: added, audio };
 }

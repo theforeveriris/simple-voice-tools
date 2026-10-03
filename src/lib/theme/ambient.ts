@@ -103,7 +103,8 @@ function tick(): void {
   }
 
   /* ---- 音量呼吸 ---- */
-  if (s.volumeBreath && micActive && s.huePreset === 'pride') {
+  // 作用点：pride 渐变透明度与自定义背景图存在感（--pride-breath 由 CSS 相乘）
+  if (s.volumeBreath && micActive && (s.huePreset === 'pride' || s.bgImageEnabled)) {
     const live = recorder.getLive();
     const db = live.rmsDb.length > 0 ? live.rmsDb[live.rmsDb.length - 1] : -90;
     const norm = Math.min(1, Math.max(0, (db - DB_LOW) / (DB_HIGH - DB_LOW)));

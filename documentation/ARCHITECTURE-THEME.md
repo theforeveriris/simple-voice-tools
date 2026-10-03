@@ -84,7 +84,32 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
 
 毛玻璃分层：`.bg-card`（55% + blur）、`.bg-background`（弹层，72% + blur+4px）、
 `.bg-surface-hi`（60% 无模糊，控制合成层数量）；页面与全屏浮层 `.bg-surface`
-透明让出背景。所有规则都在 `.theme-pride` 作用域下，莫奈主题零影响。
+透明让出背景。所有规则都在 `.theme-pride` 作用域下，莫奈主题零影响；
+**自定义背景图开启时**（`html.bg-image`）同一组毛玻璃规则以并列选择器生效
+（莫奈 + 背景图的组合也获得毛玻璃，否则不透明卡片会把图片完全盖住）。
+
+## 自定义背景图片（bgImage.ts）
+
+开启 `bgImageEnabled` 后背景层（`body::before`）被图片**整体接管**：pride 渐变、
+凌晨极光、莫奈纯色均被覆盖，没有与渐变的混合模式。接管规则置于全部渐变规则
+之后，选择器用 `html:root.bg-image` / `html:root.dark.bg-image` 把特异性提到与
+旗帜 / 深色微光规则同档，靠源顺序取胜。
+
+- **参数全部走 CSS 变量**（`applyBgImage` 由 useStore 订阅 `syncModuleSettings`
+  调用）：`--bg-image-url`（objectURL）/ `--bg-image-pos`（九宫 → object-position）/
+  `--bg-image-blur` / `--bg-image-sat` / `--bg-image-dim` / `--bg-image-alpha`；
+  深浅差异只在压暗加深——深色规则内 `brightness(calc(1 - dim * 1.5))`，JS 不感知深浅；
+  透明度 = `alpha × --pride-breath`，**音量呼吸彩蛋零改动生效**（ambient 的呼吸
+  条件含 `bgImageEnabled`）；漂移复用 `pride-drift`（`bg-image-static` 单独关）。
+- **存储管线**：`processImageFile` 经 `createImageBitmap` 降采样长边 ≤2048px、
+  优先编码 WebP q0.8（不支持时回退 JPEG），数百 KB 级 Blob 存 IndexedDB kv
+  （键 `bg-image`）；`loadBgImage` 启动异步预加载（main.tsx），就绪后经 opacity
+  过渡淡入，首帧不等待。
+- **备份**：ZIP 完整备份（手动 / 本地自动 / WebDAV 共用 `buildFullBackupZip`）
+  打包 `bg-image/bg-image.{ext}` 条目，`importFullBackup` 恢复后立即生效；
+  设置导出 JSON 只带参数不带图；GitHub 云备份暂不含背景图。
+- **毛玻璃强度**共用 `prideGlassBlur` 设置，外观页在 pride 参数区与
+  背景图分区各有一处入口（按预设互斥显示）。
 
 ## 氛围彩蛋（ambient.ts）
 

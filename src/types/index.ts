@@ -35,6 +35,14 @@ export type PrideFlag = 'transPride' | 'nonbinary' | 'genderfluid';
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 /**
+ * 自定义背景图的焦点位置（cover 裁切锚点，映射到 object-position 百分比）
+ */
+export type BgImageFocus =
+  | 'top-left' | 'top' | 'top-right'
+  | 'left' | 'center' | 'right'
+  | 'bottom-left' | 'bottom' | 'bottom-right';
+
+/**
  * 语谱图伪彩色方案
  */
 export type SpecColormap = 'magma' | 'gray' | 'accent';
@@ -214,6 +222,21 @@ export interface AppSettings {
   voiceTint: boolean;
   /** 音量呼吸：pride 渐变浓度随麦克风响度起伏（仅 pride 渐变主题下可见） */
   volumeBreath: boolean;
+  /* ---------- 自定义背景图片 ---------- */
+  /** 自定义背景：开启后背景层被图片接管（pride 渐变 / 极光 / 纯色均不渲染），图片存 IndexedDB */
+  bgImageEnabled: boolean;
+  /** 背景图焦点位置（cover 裁切锚点，object-position）：九宫方向键 */
+  bgImageFocus: BgImageFocus;
+  /** 背景图模糊半径 px（0 = 清晰原图） */
+  bgImageBlur: number;
+  /** 背景图压暗比例（0–0.6）：浅色下直接生效，深色模式自动加深 1.5 倍 */
+  bgImageDim: number;
+  /** 背景图饱和度倍率（saturate 滤镜） */
+  bgImageSaturation: number;
+  /** 背景图存在感（0–1 不透明度）：音量呼吸彩蛋的乘数作用点 */
+  bgImageOpacity: number;
+  /** 背景图缓慢漂移动画（复用 pride-drift，遵循 prefers-reduced-motion） */
+  bgImageDrift: boolean;
   /** 是否显示图表网格辅助线 */
   showGrid: boolean;
   /** 单次录音最长时长（秒），0 = 不限制 */
