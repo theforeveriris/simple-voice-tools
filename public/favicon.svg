@@ -1,16 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Simple Voice Tool favicon：M3 声纹 + 角部光溢（与 app 图标同源） -->
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#B33A50"/>
-      <stop offset="1" stop-color="#8E2740"/>
-    </linearGradient>
+    <radialGradient id="glow" cx="0.82" cy="0.16" r="0.55">
+      <stop offset="0" stop-color="#FFC4C8" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#FFC4C8" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="64" height="64" rx="14" fill="url(#g)"/>
-  <g fill="#FFFAFA">
-    <rect x="7"  y="26" width="7" height="12" rx="3.5"/>
-    <rect x="18" y="18" width="7" height="28" rx="3.5"/>
-    <rect x="29" y="10" width="7" height="44" rx="3.5"/>
-    <rect x="40" y="18" width="7" height="28" rx="3.5"/>
-    <rect x="51" y="26" width="7" height="12" rx="3.5"/>
-  </g>
+  <rect width="128" height="128" fill="#943450"/>
+  <rect width="128" height="128" fill="url(#glow)"/>
+  <!-- 散景光斑 -->
+  <circle cx="103" cy="30" r="11" fill="#FFC1AC" opacity="0.22"/>
+  <circle cx="70" cy="14" r="7" fill="#FFCDE0" opacity="0.20"/>
+  <circle cx="90" cy="62" r="9" fill="#DEB8F4" opacity="0.18"/>
+  <circle cx="118" cy="58" r="6" fill="#FFE2EC" opacity="0.22"/>
+  <circle cx="58" cy="42" r="5" fill="#FFBDA8" opacity="0.14"/>
+  <!-- 星点 -->
+  <circle cx="82" cy="24" r="1.6" fill="#FFEBF2" opacity="0.7"/>
+  <circle cx="112" cy="44" r="1.3" fill="#FFEBF2" opacity="0.6"/>
+  <circle cx="66" cy="76" r="1.2" fill="#FFEBF2" opacity="0.5"/>
+  <!-- 声纹条（包络 0.26/0.46/0.36/0.66/0.52/0.84/0.42，按高度三级色调） -->
+  <rect x="21" y="47.5" width="8" height="33"  rx="4" fill="#ECACBC"/>
+  <rect x="34" y="34.5" width="8" height="59"  rx="4" fill="#D0748C"/>
+  <rect x="47" y="41"   width="8" height="46"  rx="4" fill="#ECACBC"/>
+  <rect x="60" y="22"   width="8" height="84"  rx="4" fill="#943450"/>
+  <rect x="73" y="30.5" width="8" height="67"  rx="4" fill="#D0748C"/>
+  <rect x="86" y="10"   width="8" height="108" rx="4" fill="#FFDEE6"/>
+  <rect x="99" y="37"   width="8" height="54"  rx="4" fill="#D0748C"/>
 </svg>
