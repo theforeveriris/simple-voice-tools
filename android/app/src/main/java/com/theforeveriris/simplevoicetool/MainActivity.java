@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // 必须在 super.onCreate 之前注册：bridge 初始化时才会计入插件
         registerPlugin(ShareTargetPlugin.class);
+        registerPlugin(SystemBarsPlugin.class);
         super.onCreate(savedInstanceState);
         // 冷启动即带分享 intent 的情形（应用未在后台时「分享到」）
         ShareTargetPlugin.handleIntent(this, getIntent());

@@ -5,7 +5,7 @@ import App from './App.tsx'
 import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
 import { loadBgImage } from '@/lib/theme/bgImage'
 import { initPwaInstall } from '@/lib/pwa'
-import { isNative } from '@/lib/platform'
+import { isNative, syncNativeSystemBars } from '@/lib/platform'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
 import { setLocale, DEFAULT_LOCALE } from '@/i18n'
@@ -35,6 +35,8 @@ const savedPreset = presetSpec(
   saved.darkHue ?? saved.hue ?? 15,
 );
 applyTheme(savedPreset.hue, dark, savedPreset.accentHue, savedPreset.spec, savedPrideFlagOf(saved, isLegacyFlag))
+// 原生壳：状态栏/手势条底色对齐首帧主题（后续变化由 App 的主题 effect 接管）
+if (isNative) syncNativeSystemBars()
 
 /** 迁移后的旗帜：旧预设值优先，其次已存的 prideFlag */
 function savedPrideFlagOf(saved: { huePreset?: string; prideFlag?: string }, isLegacyFlag: boolean): string {

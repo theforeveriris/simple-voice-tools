@@ -33,13 +33,36 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 改动 Web 代码 → `npm run cap:sync` → Android Studio 里重新 Run。
 改原生代码（manifest / 插件）→ Android Studio 里直接 Run（无需 sync）。
 
-## 构建发布 APK / AAB
+## 版本号（与 PWA 同源）
+
+`android/app/build.gradle` 直接读仓库根的 `package.json`：
+`versionName` = semver 原值，`versionCode` = `major*10000 + minor*100 + patch`
+（如 0.7.0 → 70000）。**改版本只改 package.json**，Android 侧自动跟随；
+只要 semver 正常递增，versionCode 单调递增（应用内更新覆盖安装的前提）。
+
+## CI/CD（GitHub Actions）
+
+`.github/workflows/android-release.yml`：
+
+- **推送到 main**：跑 vitest → vite build → cap sync → gradle assembleDebug，
+  APK 以 `SimpleVoiceTool-v{版本}-debug.apk` 传到 **`latest` 预发布**（滚动替换，
+  固定下载入口：`github.com/theforeveriris/simple-voice-tools/releases/latest`）。
+- **推送 `v*` 标签**（如 `git tag v0.8.0 && git push origin v0.8.0`）：同样流程，
+  但创建**正式 Release**。
+- 手动触发：Actions 页 `workflow_dispatch`。
+
+当前 CI 产出 **debug 签名** APK（可直接安装）。正式签名升级路径：生成 keystore 后
+`base64 -w0 keystore.jks` 存入 secrets `ANDROID_KEYSTORE`，密码/别名存
+`ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`，在 CI 中解码写文件并在
+`android/app/build.gradle` 挂 signingConfig，改跑 `assembleRelease`。
+
+## 本机构建发布 APK / AAB
 
 ```bash
 npm run cap:sync
 cd android
-./gradlew assembleDebug                 # 调试 APK：app/build/outputs/apk/debug/
-./gradlew assembleRelease               # 需先配置签名（见下）
+JAVA_HOME=<JDK21路径> ./gradlew assembleDebug    # 调试 APK：app/build/outputs/apk/debug/
+JAVA_HOME=<JDK21路径> ./gradlew assembleRelease  # 需先配置签名（见下）
 ```
 
 签名（发布用）：生成 keystore 后在 `android/key.properties`（勿提交）配置
@@ -62,6 +85,17 @@ storeFile/storePassword/keyAlias/keyPassword，并在 `android/app/build.gradle`
 - Web 侧：`src/lib/platform.ts` 的 `ShareTarget` 绑定 + `App.tsx` 的监听 effect，
   与 PWA share target 共用 `importSharedFile()`（`analyzeAudioFile` 管线）。
 - 缓存文件 24 小时后由插件自动清理。
+
+## 系统栏配色跟随主题（SystemBarsPlugin）
+
+Android 15 强制 edge-to-edge，`statusBarColor` 被忽略；WebView 被
+`adjustMarginsForEdgeToEdge` 收窄后，状态栏/手势条露出的区域显示 DecorView 背景
+（模板默认白色 → 曾出现「状态栏常驻白色」）。`SystemBarsPlugin.setColors
+({ color, dark })` 直接涂 DecorView（兼容旧版 setColor 途径），并根据底色亮度
+切换系统图标明暗。Web 侧 `syncNativeSystemBars()` 读 body 计算背景，在
+`main.tsx`（首帧）与 App 主题 effect（每次主题变化，含深浅切换 / 自定义色相 /
+骄傲旗）调用，因此状态栏与莫奈动态色板实时一致。
+
 
 ## 已知限制 / 后续可选
 

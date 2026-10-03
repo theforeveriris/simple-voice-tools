@@ -21,7 +21,7 @@ import { startAmbientLoop, watchAuroraHours } from '@/lib/theme/ambient';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { analyzeAudioFile, takeSharedFile, importErrorKey } from '@/lib/audio/importAudio';
 import { maybeAutoBackup } from '@/lib/backup/local';
-import { isNative, ShareTarget, type ShareTargetBatch } from '@/lib/platform';
+import { isNative, ShareTarget, syncNativeSystemBars, type ShareTargetBatch } from '@/lib/platform';
 import { missingKeys } from '@/i18n/aiLocale';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
@@ -208,6 +208,8 @@ function App() {
     const apply = () => {
       const preset = presetSpec(huePreset, hue, prideFlag, accentHue, darkHue);
       applyTheme(preset.hue, theme === 'dark' || (theme === 'system' && mq.matches), preset.accentHue, preset.spec, prideFlag);
+      // 原生壳：系统栏（状态栏/手势条）底色跟随主题（含深浅切换与自定义色相）
+      syncNativeSystemBars();
     };
     apply();
     if (theme === 'system') {

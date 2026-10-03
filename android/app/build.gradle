@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// 版本号与 PWA（package.json）同源同值：versionName = semver，
+// versionCode = major*10000 + minor*100 + patch（0.7.0 → 70000，随 semver 递增）
+def packageJson = new groovy.json.JsonSlurper().parseText(file('../../package.json').text)
+def pkgVersion = packageJson.version
+def pkgParts = pkgVersion.tokenize('.').collect { it.toInteger() }
+def pkgVersionCode = pkgParts[0] * 10000 + pkgParts[1] * 100 + pkgParts[2]
+
 android {
     namespace "com.theforeveriris.simplevoicetool"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +14,8 @@ android {
         applicationId "com.theforeveriris.simplevoicetool"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode pkgVersionCode
+        versionName pkgVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
