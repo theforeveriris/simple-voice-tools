@@ -838,6 +838,8 @@ export const zhTW = {
   'gh.progressFetchAudio': '下載音訊',
   'analysis.adviceLlmRun': '產生建議',
   'history.trendHintMetric': '圓點為各記錄在該日期的指標值 · 單擊查看數值，再次單擊開啟記錄',
+  'history.trendModeLabel': '模式',
+  'history.trendMetricLabel': '指標',
   'history.trendMetricF0': '基頻',
   'history.trendMetricMpt': 'MPT',
   'history.trendMetricCpps': 'CPPS',

@@ -839,6 +839,8 @@ export const zhCN = {
   'gh.progressFetchAudio': '下载音频',
   'analysis.adviceLlmRun': '生成建议',
   'history.trendHintMetric': '圆点为各记录在该日期的指标值 · 单击查看数值，再次单击打开记录',
+  'history.trendModeLabel': '模式',
+  'history.trendMetricLabel': '指标',
   'history.trendMetricF0': '基频',
   'history.trendMetricMpt': 'MPT',
   'history.trendMetricCpps': 'CPPS',

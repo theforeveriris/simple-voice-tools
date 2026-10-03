@@ -838,6 +838,8 @@ export const en = {
   'gh.progressFetchAudio': 'Downloading audio',
   'analysis.adviceLlmRun': 'Generate advice',
   'history.trendHintMetric': 'Dots show each recording\u2019s metric value by date \u00b7 click to inspect, click again to open',
+  'history.trendModeLabel': 'Mode',
+  'history.trendMetricLabel': 'Metric',
   'history.trendMetricF0': 'Pitch',
   'history.trendMetricMpt': 'MPT',
   'history.trendMetricCpps': 'CPPS',

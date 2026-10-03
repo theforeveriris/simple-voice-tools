@@ -483,37 +483,44 @@ export function HistoryPage() {
         ) : (
           <>
           <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
-            {/* 模式过滤：长音/滑音的基频与朗读不可比；右侧纵轴指标切换 */}
-            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {TREND_FILTERS.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setTrendFilter(f.id)}
-                    className={cn(
-                      'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
-                      trendFilter === f.id
-                        ? 'bg-accent text-on-accent'
-                        : 'bg-surface-hi text-ink-2 hover:text-ink',
-                    )}
-                  >
-                    {t(f.labelKey)}
-                  </button>
-                ))}
+            {/* 两套筛选地位平等（一个过滤记录、一个切纵轴）：同款分段控件 + 小标签，
+                窄屏整组换行而不是组内拆散 */}
+            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-ink-2">{t('history.trendModeLabel')}</span>
+                <div className="flex items-center rounded-full bg-surface-hi p-0.5" role="group" aria-label={t('history.trendModeLabel')}>
+                  {TREND_FILTERS.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setTrendFilter(f.id)}
+                      aria-pressed={trendFilter === f.id}
+                      className={cn(
+                        'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                        trendFilter === f.id ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
+                      )}
+                    >
+                      {t(f.labelKey)}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center rounded-full bg-surface-hi p-0.5">
-                {TREND_METRICS.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => setTrendMetric(m.id)}
-                    className={cn(
-                      'rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors',
-                      trendMetric === m.id ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
-                    )}
-                  >
-                    {t(m.labelKey)}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-ink-2">{t('history.trendMetricLabel')}</span>
+                <div className="flex items-center rounded-full bg-surface-hi p-0.5" role="group" aria-label={t('history.trendMetricLabel')}>
+                  {TREND_METRICS.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setTrendMetric(m.id)}
+                      aria-pressed={trendMetric === m.id}
+                      className={cn(
+                        'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                        trendMetric === m.id ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
+                      )}
+                    >
+                      {t(m.labelKey)}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             {trendRecords.length === 0 ? (

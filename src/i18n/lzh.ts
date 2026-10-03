@@ -839,6 +839,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'gh.progressFetchAudio': '受聲而下',
   'analysis.adviceLlmRun': '請生其議',
   'history.trendHintMetric': '點者各錄當日之指也 \u00b7 擊之以觀數，再擊啟其錄',
+  'history.trendModeLabel': '模式',
+  'history.trendMetricLabel': '指標',
   'history.trendMetricF0': '基頻',
   'history.trendMetricMpt': 'MPT',
   'history.trendMetricCpps': 'CPPS',

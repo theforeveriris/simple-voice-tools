@@ -135,10 +135,11 @@ function drawHeatmap(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
 
-  // 起点对齐到周起始日（含今天在内的最后 weeks 周）
+  // 起点对齐：末列 = 本周（含今天，列内未来天留空），向回推 weeks 周。
+  // 不可从 today-(weeks*7-1) 再对齐周起始——那会把末列整体推到本周之前，
+  // 最近一周的记录永远落在网格之外（打卡格全空的 bug）
   const today = startOfDay(Date.now());
-  const gridStart = today - (weeks * 7 - 1) * DAY_MS;
-  const firstCol = gridStart - weekOffset(gridStart, weekStart) * DAY_MS;
+  const firstCol = today - weekOffset(today, weekStart) * DAY_MS - (weeks - 1) * 7 * DAY_MS;
 
   const cells: CellLayout[] = [];
 

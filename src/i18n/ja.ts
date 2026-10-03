@@ -839,6 +839,8 @@ export const ja = {
   'gh.progressFetchAudio': '音声のダウンロード',
   'analysis.adviceLlmRun': 'アドバイスを生成',
   'history.trendHintMetric': '円は各記録のその日の指標値 \u00b7 クリックで数値表示、再度クリックで記録を開く',
+  'history.trendModeLabel': 'モード',
+  'history.trendMetricLabel': '指標',
   'history.trendMetricF0': '基本周波数',
   'history.trendMetricMpt': 'MPT',
   'history.trendMetricCpps': 'CPPS',
