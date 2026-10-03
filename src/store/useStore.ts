@@ -160,6 +160,10 @@ export const useStore = create<AppState>()(
           settings.prideFlag = settings.huePreset as AppSettings['prideFlag'];
           settings.huePreset = 'pride';
         }
+        // 旧版背景图开关迁移为第三预设：bgImageEnabled = true → huePreset = 'image'
+        if ((p as { bgImageEnabled?: unknown }).bgImageEnabled === true && settings.huePreset !== 'image') {
+          settings.huePreset = 'image';
+        }
         // 旧版把 API Key 存在 localStorage：一次性迁入 IDB kv，内存态保留可用
         const legacyKey = (p as { llmApiKey?: unknown }).llmApiKey;
         if (typeof legacyKey === 'string' && legacyKey) {

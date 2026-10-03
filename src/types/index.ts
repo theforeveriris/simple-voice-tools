@@ -18,9 +18,10 @@ export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'lzh' | 'ai';
 /**
  * 主题预设配色
  * monet：莫奈取色（跟随主题色相滑条）；
- * pride：骄傲旗主题（旗帜由 prideFlag 选择，氤氲渐变 + 毛玻璃，参数可调）
+ * pride：骄傲旗主题（旗帜由 prideFlag 选择，氤氲渐变 + 毛玻璃，参数可调）；
+ * image：自定义图片（背景层由图片接管，色板同莫奈逻辑）
  */
-export type HuePreset = 'monet' | 'pride';
+export type HuePreset = 'monet' | 'pride' | 'image';
 
 /**
  * 骄傲旗主题的旗帜
@@ -222,9 +223,7 @@ export interface AppSettings {
   voiceTint: boolean;
   /** 音量呼吸：pride 渐变浓度随麦克风响度起伏（仅 pride 渐变主题下可见） */
   volumeBreath: boolean;
-  /* ---------- 自定义背景图片 ---------- */
-  /** 自定义背景：开启后背景层被图片接管（pride 渐变 / 极光 / 纯色均不渲染），图片存 IndexedDB */
-  bgImageEnabled: boolean;
+  /* ---------- 自定义背景图片（huePreset = image 时生效） ---------- */
   /** 背景图焦点位置（cover 裁切锚点，object-position）：九宫方向键 */
   bgImageFocus: BgImageFocus;
   /** 背景图模糊半径 px（0 = 清晰原图） */

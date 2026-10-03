@@ -54,8 +54,9 @@ theme / 系统深浅变化）、外观页 `applyPreset`（立即重放）。
 - **骄傲旗三款**：`themeClass: 'theme-pride'` 共用一套渐变/毛玻璃 CSS，
   渐变按 `data-pride-flag` 区分，强调色与深浅铺底各自指定。
 
-外观页的预设与旗帜选择为**卡片网格**（`ThemeCard`：色板预览 + 名称 + 选中描边）：
-莫奈卡用 OKLCH 渐变实时预览当前色相，骄傲旗卡渲染当前旗帜条纹，旗帜三选一
+外观页的预设选择为**三张卡片**（`ThemeCard`：色板预览 + 名称 + 选中描边）：
+莫奈卡用 OKLCH 渐变实时预览当前色相，骄傲旗卡渲染当前旗帜条纹，
+自定义图片卡显示当前背景图缩略图（未选图时占位图标）；旗帜三选一
 同为条纹卡片。`constants.THEME_PRESETS`（8 个命名色相）目前无 UI 消费，
 是预留数据。
 
@@ -90,8 +91,10 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
 
 ## 自定义背景图片（bgImage.ts）
 
-开启 `bgImageEnabled` 后背景层（`body::before`）被图片**整体接管**：pride 渐变、
-凌晨极光、莫奈纯色均被覆盖，没有与渐变的混合模式。接管规则置于全部渐变规则
+预设配色第三选（`huePreset = 'image'`，外观页预设卡片之一）：背景层
+（`body::before`）被图片**整体接管**——pride 渐变、凌晨极光、莫奈纯色均被覆盖，
+没有与渐变的混合模式；色板（表面 / 强调 / 深色三个色相滑条）沿用莫奈逻辑，
+`presetSpec` 对 'image' 走与 monet 相同的用户色相分支。接管规则置于全部渐变规则
 之后，选择器用 `html:root.bg-image` / `html:root.dark.bg-image` 把特异性提到与
 旗帜 / 深色微光规则同档，靠源顺序取胜。
 

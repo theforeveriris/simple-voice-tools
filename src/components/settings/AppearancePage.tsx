@@ -1,9 +1,10 @@
 /**
  * 外观（设置的子页面，入口为主视图单行卡片）
- * - 主题：深浅模式、预设配色卡片（莫奈取色 / 骄傲旗，带色板预览）、
- *   莫奈三滑条（主题色相 / 强调色相 / 深色色相，强调与深色默认跟随主题色相）、
+ * - 主题：深浅模式、预设配色卡片（莫奈取色 / 骄傲旗 / 自定义图片，带色板预览）、
+ *   莫奈与图片预设共用三滑条（主题色相 / 强调色相 / 深色色相，强调与深色默认跟随主题色相）、
+ *   图片预设参数（选图 / 九宫焦点 / 模糊 / 压暗 / 饱和度 / 存在感 / 漂移 / 毛玻璃）、
  *   骄傲旗卡片选择 + 渐变与毛玻璃参数
- * - 氛围彩蛋：声音染色（莫奈 / pride 均可用）、音量呼吸（pride 渐变专属）
+ * - 氛围彩蛋：声音染色（莫奈 / pride / 图片均可用）、音量呼吸（pride 渐变 / 图片背景）
  * - 图表辅助选项：网格辅助线、时间轴联动、移动端迷你基频（各带 Info 说明浮窗）
  */
 
@@ -253,9 +254,10 @@ export function AppearancePage({
               </SelectContent>
             </Select>
           </SettingRow>
-          {/* 预设配色卡片：色板实时预览（莫奈跟随当前色相，骄傲旗跟随当前旗帜） */}
+          {/* 预设配色卡片：色板实时预览（莫奈跟随当前色相，骄傲旗跟随当前旗帜，
+              自定义图片显示当前背景图，未选图时为占位图标） */}
           <SettingRow label={t('settings.huePreset')} stacked>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-3 gap-2.5">
               <ThemeCard
                 active={preset === 'monet'}
                 onClick={() => setPreset('monet')}
@@ -270,9 +272,22 @@ export function AppearancePage({
               >
                 <FlagSwatch stripes={PRIDE_FLAGS.find((f) => f.id === settings.prideFlag)?.stripes ?? []} />
               </ThemeCard>
+              <ThemeCard
+                active={preset === 'image'}
+                onClick={() => setPreset('image')}
+                label={t('settings.bgImage')}
+              >
+                {bgUrl ? (
+                  <img src={bgUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="grid h-full w-full place-items-center bg-surface-hi text-ink-2">
+                    <ImageIcon size={14} />
+                  </span>
+                )}
+              </ThemeCard>
             </div>
           </SettingRow>
-          {preset === 'monet' && (
+          {(preset === 'monet' || preset === 'image') && (
             <>
               {/* 主题色相：莫奈取色种子色相（骄傲旗预设的色板由旗帜决定） */}
               <SettingRow label={t('settings.hue')}>
@@ -325,85 +340,9 @@ export function AppearancePage({
               </SettingRow>
             </>
           )}
-          {preset === 'pride' && (
-            <>
-              {/* 旗帜卡片（条纹预览，点选即换） */}
-              <SettingRow label={t('settings.prideFlag')} stacked>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {PRIDE_FLAGS.map((f) => (
-                    <ThemeCard
-                      key={f.id}
-                      active={settings.prideFlag === f.id}
-                      onClick={() => setPrideFlag(f.id)}
-                      label={t(f.labelKey as Parameters<typeof t>[0])}
-                    >
-                      <FlagSwatch stripes={f.stripes} />
-                    </ThemeCard>
-                  ))}
-                </div>
-              </SettingRow>
-              {/* 渐变与毛玻璃参数 */}
-              <PrideSlider
-                label={t('settings.prideGlow')}
-                min={0.2}
-                max={1.6}
-                step={0.05}
-                value={settings.prideGlow}
-                onChange={(v) => applyPreset({ prideGlow: v })}
-                format={(v) => `${Math.round(v * 100)}%`}
-              />
-              <PrideSlider
-                label={t('settings.prideSaturation')}
-                min={0.3}
-                max={2}
-                step={0.05}
-                value={settings.prideSaturation}
-                onChange={(v) => applyPreset({ prideSaturation: v })}
-                format={(v) => `${Math.round(v * 100)}%`}
-              />
-              {/* 毛玻璃强度（与自定义背景图共用） */}
-              <GlassRow value={settings.prideGlassBlur} onChange={(v) => applyPreset({ prideGlassBlur: v })} />
-              <SettingRow label={t('settings.prideDrift')}>
-                <Switch
-                  checked={settings.prideDrift}
-                  onCheckedChange={(v) => applyPreset({ prideDrift: v })}
-                />
-              </SettingRow>
-              {/* 音量呼吸：渐变浓度随麦克风响度起伏（pride 渐变专属彩蛋） */}
-              <SettingRow
-                label={<InfoTip label={t('settings.volumeBreath')} text={t('settings.volumeBreathDesc')} />}
-              >
-                <Switch
-                  checked={settings.volumeBreath}
-                  onCheckedChange={(v) => update({ volumeBreath: v })}
-                />
-              </SettingRow>
-            </>
-          )}
-
-          {/* 声音染色：界面色相随实时音高流动（莫奈 / pride 预设均可用） */}
-          <SettingRow
-            label={<InfoTip label={t('settings.voiceTint')} text={t('settings.voiceTintDesc')} />}
-          >
-            <Switch
-              checked={settings.voiceTint}
-              onCheckedChange={(v) => update({ voiceTint: v })}
-            />
-          </SettingRow>
-        </SettingsSection>
-
-        {/* 自定义背景：开启后背景层被图片接管（替换 pride 渐变 / 极光 / 纯色），
-            组件经毛玻璃透出图片；图片降采样后仅存本机 IndexedDB */}
-        <SettingsSection icon={ImageIcon} title={t('settings.bgImage')}>
-          <SettingRow
-            label={<InfoTip label={t('settings.bgImage')} text={t('settings.bgImageDesc')} />}
-          >
-            <Switch
-              checked={settings.bgImageEnabled}
-              onCheckedChange={(v) => update({ bgImageEnabled: v })}
-            />
-          </SettingRow>
-          {settings.bgImageEnabled && (
+          {/* 自定义图片预设：背景层由图片接管（替换 pride 渐变 / 极光 / 纯色），
+              色板沿用莫奈逻辑的三个色相滑条；图片压缩后仅存本机 IndexedDB */}
+          {preset === 'image' && (
             <>
               {/* 选图 / 缩略图 / 移除 */}
               <SettingRow label={t('settings.bgImagePick')} stacked>
@@ -522,12 +461,75 @@ export function AppearancePage({
                   onCheckedChange={(v) => update({ bgImageDrift: v })}
                 />
               </SettingRow>
-              {/* 莫奈 + 自定义背景时毛玻璃强度的去处（pride 预设下已在上方主题区） */}
-              {preset !== 'pride' && (
-                <GlassRow value={settings.prideGlassBlur} onChange={(v) => applyPreset({ prideGlassBlur: v })} />
-              )}
+              {/* 毛玻璃强度：卡片透过图片的磨砂程度 */}
+              <GlassRow value={settings.prideGlassBlur} onChange={(v) => applyPreset({ prideGlassBlur: v })} />
             </>
           )}
+          {preset === 'pride' && (
+            <>
+              {/* 旗帜卡片（条纹预览，点选即换） */}
+              <SettingRow label={t('settings.prideFlag')} stacked>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {PRIDE_FLAGS.map((f) => (
+                    <ThemeCard
+                      key={f.id}
+                      active={settings.prideFlag === f.id}
+                      onClick={() => setPrideFlag(f.id)}
+                      label={t(f.labelKey as Parameters<typeof t>[0])}
+                    >
+                      <FlagSwatch stripes={f.stripes} />
+                    </ThemeCard>
+                  ))}
+                </div>
+              </SettingRow>
+              {/* 渐变与毛玻璃参数 */}
+              <PrideSlider
+                label={t('settings.prideGlow')}
+                min={0.2}
+                max={1.6}
+                step={0.05}
+                value={settings.prideGlow}
+                onChange={(v) => applyPreset({ prideGlow: v })}
+                format={(v) => `${Math.round(v * 100)}%`}
+              />
+              <PrideSlider
+                label={t('settings.prideSaturation')}
+                min={0.3}
+                max={2}
+                step={0.05}
+                value={settings.prideSaturation}
+                onChange={(v) => applyPreset({ prideSaturation: v })}
+                format={(v) => `${Math.round(v * 100)}%`}
+              />
+              {/* 毛玻璃强度（与自定义背景图共用） */}
+              <GlassRow value={settings.prideGlassBlur} onChange={(v) => applyPreset({ prideGlassBlur: v })} />
+              <SettingRow label={t('settings.prideDrift')}>
+                <Switch
+                  checked={settings.prideDrift}
+                  onCheckedChange={(v) => applyPreset({ prideDrift: v })}
+                />
+              </SettingRow>
+              {/* 音量呼吸：渐变浓度随麦克风响度起伏（pride 渐变专属彩蛋） */}
+              <SettingRow
+                label={<InfoTip label={t('settings.volumeBreath')} text={t('settings.volumeBreathDesc')} />}
+              >
+                <Switch
+                  checked={settings.volumeBreath}
+                  onCheckedChange={(v) => update({ volumeBreath: v })}
+                />
+              </SettingRow>
+            </>
+          )}
+
+          {/* 声音染色：界面色相随实时音高流动（莫奈 / pride 预设均可用） */}
+          <SettingRow
+            label={<InfoTip label={t('settings.voiceTint')} text={t('settings.voiceTintDesc')} />}
+          >
+            <Switch
+              checked={settings.voiceTint}
+              onCheckedChange={(v) => update({ voiceTint: v })}
+            />
+          </SettingRow>
         </SettingsSection>
 
         {/* 图表辅助选项 */}

@@ -146,7 +146,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   prideDrift: true,
   voiceTint: false,
   volumeBreath: false,
-  bgImageEnabled: false,
   bgImageFocus: 'center',
   bgImageBlur: 32,
   bgImageDim: 0.2,

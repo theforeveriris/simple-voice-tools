@@ -60,14 +60,16 @@ export function getBgImageUrl(): string | null {
 /** 把背景图参数同步到 CSS 变量与开关类（不依赖深浅模式，压暗的深色加深在 CSS 内完成） */
 export function applyBgImage(s: AppSettings): void {
   const el = document.documentElement;
-  el.classList.toggle('bg-image', s.bgImageEnabled);
+  // 预设配色第三选：image = 背景层由图片接管（pride 渐变 / 莫奈纯色让位）
+  const active = s.huePreset === 'image';
+  el.classList.toggle('bg-image', active);
   el.classList.toggle('bg-image-static', !s.bgImageDrift);
   const style = el.style;
   style.setProperty('--bg-image-pos', FOCUS_POS[s.bgImageFocus] ?? FOCUS_POS.center);
   style.setProperty('--bg-image-blur', `${Math.round(s.bgImageBlur)}px`);
   style.setProperty('--bg-image-sat', String(s.bgImageSaturation));
   style.setProperty('--bg-image-dim', String(s.bgImageDim));
-  style.setProperty('--bg-image-alpha', s.bgImageEnabled ? String(s.bgImageOpacity) : '0');
+  style.setProperty('--bg-image-alpha', active ? String(s.bgImageOpacity) : '0');
 }
 
 /** 启动预加载：读取 IndexedDB 中的背景图（幂等；已加载时直接返回） */
