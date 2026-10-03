@@ -5,7 +5,7 @@ import App from './App.tsx'
 import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
 import { loadBgImage } from '@/lib/theme/bgImage'
 import { initPwaInstall } from '@/lib/pwa'
-import { isNative, syncNativeSystemBars } from '@/lib/platform'
+import { isNative, isTauri, syncNativeSystemBars } from '@/lib/platform'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
 import { setLocale, DEFAULT_LOCALE } from '@/i18n'
@@ -85,12 +85,12 @@ if (!localStorage.getItem('svt:settings:v1')) {
   setLocale(saved.language ?? DEFAULT_LOCALE)
 }
 
-// PWA：捕获安装事件（原生壳内无 Web 安装流程，跳过）
-if (!isNative) initPwaInstall()
+// PWA：捕获安装事件（原生/Tauri 壳内无 Web 安装流程，跳过）
+if (!isNative && !isTauri) initPwaInstall()
 
 // Service Worker：vite-plugin-pwa 的注入已在构建配置关闭（injectRegister: 'null'），
-// 改为手动注册——原生壳内无 SW 支持，跳过注册以避免壳内命中陈旧缓存
-if (!isNative) {
+// 改为手动注册——原生壳内无 SW 支持，Tauri 自定义协议下 SW 不可靠，均跳过
+if (!isNative && !isTauri) {
   void import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }))
 }
 

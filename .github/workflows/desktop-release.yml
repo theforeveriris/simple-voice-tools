@@ -1,0 +1,79 @@
+name: Desktop build & release
+
+# Tauri Windows 桌面包：推送到 main 构建 NSIS 安装包并更新「latest」预发布
+# （与安卓工作流共用同一个滚动 release）；推送 v* 标签创建正式 Release。
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test & build web
+        run: |
+          npx vitest run
+          npm run build
+
+      # 版本号单源 = package.json（安卓侧构建时直接读取，这里同步进 tauri.conf.json）
+      - name: Sync version from package.json
+        shell: bash
+        run: |
+          node - <<'EOF'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+          conf.version = pkg.version;
+          fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+          console.log('tauri version =', conf.version);
+          EOF
+
+      - name: Build Tauri app (NSIS installer)
+        run: npx tauri build
+
+      - name: Read version
+        id: ver
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Rename installer
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp src-tauri/target/release/bundle/nsis/*-setup.exe \
+             "dist/SimpleVoiceTool-v${{ steps.ver.outputs.version }}-setup.exe"
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'Latest build (main)' }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          files: dist/*.exe
+          overwrite_files: true
+          body: |
+            Simple Voice Tool v${{ steps.ver.outputs.version }}
+            - commit: ${{ github.sha }}
+            - Windows installer（NSIS，WebView2 运行时系统自带）

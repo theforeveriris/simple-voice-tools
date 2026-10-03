@@ -10,6 +10,9 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 /** 是否运行在原生壳内（Android WebView） */
 export const isNative = Capacitor.isNativePlatform();
 
+/** 是否运行在 Tauri 桌面壳内（Windows WebView2）——与浏览器同为 Web 环境，但无 SW/安装流 */
+export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+
 /* ------------------------------ 原生「分享到」接收 ------------------------------ */
 
 /** 原生侧拷入缓存目录的分享文件 */

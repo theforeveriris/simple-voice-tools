@@ -87,6 +87,7 @@
 | [documentation/ARCHITECTURE-SETTINGS.md](documentation/ARCHITECTURE-SETTINGS.md) | 架构：设置子页模式与新增步骤 |
 | [documentation/GUIDE-PWA.md](documentation/GUIDE-PWA.md) | 指南：PWA 更新流、Share Target、修复工具 |
 | [documentation/GUIDE-CAPACITOR.md](documentation/GUIDE-CAPACITOR.md) | 指南：Capacitor 安卓壳（构建/签名/原生分享/已知限制） |
+| [documentation/GUIDE-DESKTOP.md](documentation/GUIDE-DESKTOP.md) | 指南：Tauri Windows 桌面版（构建/CI/平台差异） |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | 音高检测原理：YIN 差分函数、CMND、抛物线插值 |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | 共振峰提取原理：预加重、抽取、LPC、多项式求根 |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | 能量分析原理：RMS、分贝换算、VAD 门限体系 |

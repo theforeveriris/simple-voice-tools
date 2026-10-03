@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cap:sync": "npm run build && npx cap sync android",
-    "cap:open": "npx cap open android"
+    "cap:open": "npx cap open android",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@capacitor/android": "^7.6.9",
@@ -40,6 +41,7 @@
   "devDependencies": {
     "@capacitor/cli": "^7.6.9",
     "@eslint/js": "^9.39.1",
+    "@tauri-apps/cli": "^2.12.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
