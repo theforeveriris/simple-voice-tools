@@ -328,8 +328,8 @@ export async function llmChat(
   return content;
 }
 
-/** 连接测试超时：接口挂起时不能让按钮永远转圈 */
-const TEST_TIMEOUT_MS = 15_000;
+/** 连接测试超时：接口挂起时不能让按钮永远转圈；30s 兼顾慢网络 / 推理模型首响应 / 自建服务冷启动 */
+const TEST_TIMEOUT_MS = 30_000;
 
 /** 最小连通性测试：返回模型回复摘要（供 toast 展示），失败/超时抛错 */
 export async function testLlmConnection(cfg: LlmConfig): Promise<string> {

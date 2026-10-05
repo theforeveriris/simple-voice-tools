@@ -86,6 +86,21 @@ jobs:
           cp "android/app/build/outputs/apk/${{ steps.sign.outputs.suffix }}/app-${{ steps.sign.outputs.suffix }}.apk" \
              "dist/SimpleVoiceTool-v${{ steps.ver.outputs.version }}-${{ steps.sign.outputs.suffix }}.apk"
 
+      # 「latest」滚动预发布只保留当前版本：清理本家族（*-release.apk）中版本
+      # 不同的旧资产。desktop 工作流对 *-setup.exe 同理——两个工作流各管各的
+      # 家族，同 push 并发触发时互不误删。正式 Release（v* 标签）不清理，全量留存。
+      - name: Prune old assets in "latest" release
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT: SimpleVoiceTool-v${{ steps.ver.outputs.version }}-release.apk
+        run: |
+          ids=$(gh release view latest --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | select(.name | endswith("-release.apk")) | select(.name != env.CURRENT) | .id' 2>/dev/null || true)
+          for id in $ids; do
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"
+          done
+
       # 生成正式签名 keystore 后：base64 -w0 svt-release.jks 存入 secrets.ANDROID_KEYSTORE，
       # 密码/别名存 ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS（见 documentation/GUIDE-CAPACITOR.md）；
       # 注意：debug→release 签名变更 = 应用身份变更，已装用户需卸载重装（先做 ZIP 备份）

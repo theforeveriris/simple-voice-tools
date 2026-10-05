@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 // 版本号与 PWA（package.json）同源同值：versionName = semver，
-// versionCode = major*10000 + minor*100 + patch（0.8.4 → 804，随 semver 递增）
+// versionCode = major*10000 + minor*100 + patch（0.8.5 → 805，随 semver 递增）
 def packageJson = new groovy.json.JsonSlurper().parseText(file('../../package.json').text)
 def pkgVersion = packageJson.version
 def pkgParts = pkgVersion.tokenize('.').collect { it.toInteger() }

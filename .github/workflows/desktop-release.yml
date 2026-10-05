@@ -65,6 +65,21 @@ jobs:
           cp src-tauri/target/release/bundle/nsis/*-setup.exe \
              "dist/SimpleVoiceTool-v${{ steps.ver.outputs.version }}-setup.exe"
 
+      # 与安卓工作流同理：「latest」只保留当前版本的安装包（各管各的家族，
+      # 并发触发互不误删）；正式 Release（v* 标签）不清理
+      - name: Prune old assets in "latest" release
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT: SimpleVoiceTool-v${{ steps.ver.outputs.version }}-setup.exe
+        run: |
+          ids=$(gh release view latest --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | select(.name | endswith("setup.exe")) | select(.name != env.CURRENT) | .id' 2>/dev/null || true)
+          for id in $ids; do
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"
+          done
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
