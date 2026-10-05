@@ -13,6 +13,8 @@
  *   data/records.json      记录（与本地导出 JSON 同格式）
  *   audio/{id}.{ext}       录音音频
  * 通过对比 git blob SHA（本地用 WebCrypto 计算）跳过未变化的文件。
+ * 开启云备份加密后，每个文件先 AES-GCM 加密再上传——确定性 IV 保证
+ * 同一明文密文稳定，SHA 跳过逻辑对密文依然成立（见 backup/crypto.ts）。
  * Token 存于 IndexedDB kv 仓库，不进 localStorage。
  */
 
@@ -20,6 +22,9 @@ import { strToU8 } from 'fflate';
 import { idbGetKV, idbPutKV, idbDeleteKV, idbPutAudio } from '@/lib/storage/idb';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { extFor, buildRecordsPayload, parseRecordsPayload } from '@/lib/export/backup';
+import {
+  isBackupEncryptionEnabled, encryptForBackup, isEncryptedBackup, decryptBackupEnvelope,
+} from '@/lib/backup/crypto';
 import { audioMimeOf } from '@/lib/file';
 import { t } from '@/i18n';
 
@@ -351,6 +356,11 @@ export async function pushBackup(
     if (!blob) continue;
     entries.push({ path: `${BACKUP_AUDIO_DIR}${rec.id}${extFor(blob)}`, data: new Uint8Array(await blob.arrayBuffer()) });
   }
+  // 云备份加密：逐文件加密后再算 blob SHA。未解锁时在联网前即抛 BackupLockedError，
+  // 由 UI 弹口令框后整体重试（此时尚无任何远端写入，重试是干净的）
+  if (await isBackupEncryptionEnabled()) {
+    for (const entry of entries) entry.data = await encryptForBackup(entry.data);
+  }
 
   const remoteShas = await fetchRemoteShas(token, owner, repoName);
   let done = 0;
@@ -403,7 +413,11 @@ export async function pullBackup(
   if (!remoteShas.has(BACKUP_JSON_PATH)) throw new Error(t('gh.errNoBackup', { repo: repoName }));
 
   onProgress?.(0, 1, t('gh.progressFetchRecords'));
-  const jsonBytes = await ghRaw(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/contents/${encodePath(BACKUP_JSON_PATH)}`, token);
+  const rawJson = await ghRaw(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/contents/${encodePath(BACKUP_JSON_PATH)}`, token);
+  // 旧备份为明文，新备份可能整文件加密——按 magic 判断后解密
+  const jsonBytes = isEncryptedBackup(new Uint8Array(rawJson))
+    ? await decryptBackupEnvelope(new Uint8Array(rawJson))
+    : rawJson;
   // 与 ZIP 恢复同一套格式/版本校验（v1/v2 可读，更新版本拒绝）
   const { records: incoming } = parseRecordsPayload(new TextDecoder().decode(jsonBytes));
   const added = useHistoryStore.getState().importRecords(incoming);
@@ -424,8 +438,9 @@ export async function pullBackup(
 
   let done = 0;
   await runPool(audioPaths, 4, async ({ path, id }) => {
-    const buf = await ghRaw(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/contents/${encodePath(path)}`, token);
-    await idbPutAudio(id, new Blob([buf], { type: audioMimeOf(path) }));
+    const raw = await ghRaw(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/contents/${encodePath(path)}`, token);
+    const bytes = isEncryptedBackup(new Uint8Array(raw)) ? await decryptBackupEnvelope(new Uint8Array(raw)) : raw;
+    await idbPutAudio(id, new Blob([bytes], { type: audioMimeOf(path) }));
     done++;
     onProgress?.(done, audioPaths.length, t('gh.progressFetchAudio'));
   });

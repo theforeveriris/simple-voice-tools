@@ -1,11 +1,14 @@
 /* ------------------------------ GitHub 云备份 ------------------------------ */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Cloud, Link2, Unlink, CloudUpload, CloudDownload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   disconnectGithub, getStoredLogin, getLastPush, pushBackup, pullBackup, DEFAULT_REPO,
 } from '@/lib/backup/github';
+import {
+  isBackupEncryptionEnabled, isBackupEncryptionUnlocked, BackupLockedError,
+} from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { localeTag } from '@/i18n';
@@ -13,6 +16,7 @@ import type { AppSettings } from '@/types';
 import { cn } from '@/lib/utils';
 import { SettingsSection, SettingRow } from './rows';
 import { ConnectGithubDialog } from './ConnectGithubDialog';
+import { BackupPassphraseDialog } from './BackupPassphraseDialog';
 
 /** GitHub 云备份区块：持有全部连接 / 推送 / 恢复状态，并挂载 Device Flow 连接对话框 */
 export function GithubBackupSection({
@@ -30,9 +34,31 @@ export function GithubBackupSection({
   const [ghProgress, setGhProgress] = useState('');
   const [ghLastPush, setGhLastPush] = useState<number | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
+  // 云备份加密：会话未解锁时先弹口令框，成功后继续被挂起的推/拉动作
+  const [passOpen, setPassOpen] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
 
   const clientId = settings.githubClientId?.trim() ?? '';
   const repoName = settings.githubRepo?.trim() || DEFAULT_REPO;
+
+  /** 云备份操作前置：加密开启且未解锁 → 弹口令框；解锁成功后执行挂起动作 */
+  const ensureUnlockedThen = (action: () => void) => {
+    void (async () => {
+      if ((await isBackupEncryptionEnabled()) && !isBackupEncryptionUnlocked()) {
+        pendingActionRef.current = action;
+        setPassOpen(true);
+        return;
+      }
+      action();
+    })();
+  };
+
+  const onPassUnlocked = () => {
+    const p = pendingActionRef.current;
+    pendingActionRef.current = null;
+    setPassOpen(false);
+    p?.();
+  };
 
   useEffect(() => {
     void (async () => {
@@ -61,6 +87,11 @@ export function GithubBackupSection({
 
   const onGhPush = () => {
     if (ghBusy || !ghLogin) return;
+    ensureUnlockedThen(doGhPush);
+  };
+
+  const doGhPush = () => {
+    if (ghBusy || !ghLogin) return;
     setGhBusy('push');
     setGhProgress('…');
     pushBackup(clientId, repoName, (done, total, phase) => {
@@ -81,6 +112,11 @@ export function GithubBackupSection({
 
   const onGhPull = () => {
     if (ghBusy || !ghLogin) return;
+    ensureUnlockedThen(doGhPull);
+  };
+
+  const doGhPull = () => {
+    if (ghBusy || !ghLogin) return;
     setGhBusy('pull');
     setGhProgress('…');
     pullBackup(clientId, repoName, (done, total, phase) => {
@@ -94,6 +130,12 @@ export function GithubBackupSection({
         }
       })
       .catch((err: unknown) => {
+        // 云端是加密备份但会话未解锁：弹口令框，解锁后重试（恢复按 id 去重，可安全重跑）
+        if (err instanceof BackupLockedError) {
+          pendingActionRef.current = doGhPull;
+          setPassOpen(true);
+          return;
+        }
         toast.error(err instanceof Error ? err.message : t('toast.zipFail'));
       })
       .finally(() => {
@@ -196,6 +238,17 @@ export function GithubBackupSection({
         open={connectOpen}
         onOpenChange={setConnectOpen}
         onConnected={onGhConnected}
+      />
+
+      {/* 云备份加密口令对话框（推/拉撞上锁定态时弹出） */}
+      <BackupPassphraseDialog
+        mode="unlock"
+        open={passOpen}
+        onOpenChange={(v) => {
+          setPassOpen(v);
+          if (!v) pendingActionRef.current = null;
+        }}
+        onDone={onPassUnlocked}
       />
     </>
   );

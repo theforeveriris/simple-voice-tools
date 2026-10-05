@@ -3,6 +3,8 @@
  * 复用完整备份管线：上传 / 下载单个 voice-backup-latest.zip（记录 + 全部录音音频），
  * 恢复走 importFullBackup（按 id 去重合并，音频仅补齐缺失）。
  * 凭据存于 IndexedDB kv 仓库，不进 localStorage。
+ * 开启云备份加密后，ZIP 整体 AES-GCM 加密后再上传，拉取时按 magic 检测并解密
+ * （见 backup/crypto.ts）。
  *
  * 注意：浏览器直连 WebDAV 要求服务器允许跨域（CORS），坚果云等部分服务商不支持；
  * 网络层失败会提示检查网络与跨域限制。
@@ -10,6 +12,9 @@
 
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import { buildFullBackupZip, importFullBackup, type BackupImportResult } from '@/lib/export/backup';
+import {
+  isBackupEncryptionEnabled, encryptForBackup, isEncryptedBackup, decryptBackupEnvelope,
+} from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 
 const KV_CONFIG = 'webdav:config';
@@ -88,15 +93,22 @@ export interface WebdavPushResult {
   audio: number;
 }
 
-/** 上传完整备份（记录 + 全部录音音频 ZIP），覆盖云端固定名文件 */
+/** 上传完整备份（记录 + 全部录音音频 ZIP），覆盖云端固定名文件；加密开启时整体加密 */
 export async function pushWebdavBackup(cfg: WebdavConfig): Promise<WebdavPushResult> {
   const built = await buildFullBackupZip();
   if (!built) throw new WebdavError(t('toast.nothingToExport'));
+  let body: BodyInit = built.blob;
+  let contentType = 'application/zip';
+  // 加密在联网前完成：未解锁时抛 BackupLockedError，由 UI 弹口令框后重试
+  if (await isBackupEncryptionEnabled()) {
+    body = await encryptForBackup(new Uint8Array(await built.blob.arrayBuffer()));
+    contentType = 'application/octet-stream';
+  }
   try {
     const res = await fetch(remoteUrl(cfg, WEBDAV_BACKUP_NAME), {
       method: 'PUT',
-      headers: { Authorization: authHeader(cfg), 'Content-Type': 'application/zip' },
-      body: built.blob,
+      headers: { Authorization: authHeader(cfg), 'Content-Type': contentType },
+      body,
     });
     if (!res.ok) fail(res.status);
   } catch (err) {
@@ -106,7 +118,7 @@ export async function pushWebdavBackup(cfg: WebdavConfig): Promise<WebdavPushRes
   return { records: built.records, audio: built.audio };
 }
 
-/** 从 WebDAV 拉取备份并合并到本地 */
+/** 从 WebDAV 拉取备份并合并到本地（加密包自动检测并解密） */
 export async function pullWebdavBackup(cfg: WebdavConfig): Promise<BackupImportResult> {
   let buf: ArrayBuffer;
   try {
@@ -119,6 +131,8 @@ export async function pullWebdavBackup(cfg: WebdavConfig): Promise<BackupImportR
   } catch (err) {
     netFail(err);
   }
-  const file = new File([buf], WEBDAV_BACKUP_NAME, { type: 'application/zip' });
+  const raw = new Uint8Array(buf);
+  const bytes = isEncryptedBackup(raw) ? await decryptBackupEnvelope(raw) : raw;
+  const file = new File([bytes], WEBDAV_BACKUP_NAME, { type: 'application/zip' });
   return importFullBackup(file);
 }

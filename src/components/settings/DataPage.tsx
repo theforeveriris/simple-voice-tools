@@ -29,6 +29,9 @@ import {
   getWebdavConfig, saveWebdavConfig, getWebdavLastPush,
   testWebdav, pushWebdavBackup, pullWebdavBackup, type WebdavConfig,
 } from '@/lib/backup/webdav';
+import {
+  isBackupEncryptionEnabled, isBackupEncryptionUnlocked, BackupLockedError,
+} from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { localeTag } from '@/i18n';
@@ -48,6 +51,8 @@ import {
 import { StorageUsage } from './StorageUsage';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
+import { BackupEncryptionSection } from './BackupEncryptionSection';
+import { BackupPassphraseDialog } from './BackupPassphraseDialog';
 
 export function DataPage({
   settings,
@@ -75,6 +80,28 @@ export function DataPage({
   const [webdavLoaded, setWebdavLoaded] = useState(false);
   const [webdavBusy, setWebdavBusy] = useState<'test' | 'push' | 'pull' | null>(null);
   const [webdavLast, setWebdavLast] = useState<number | null>(null);
+  // 云备份加密：会话未解锁时先弹口令框，成功后继续被挂起的推/拉动作
+  const [passOpen, setPassOpen] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
+  /** 云备份操作前置：加密开启且未解锁 → 弹口令框；解锁成功后执行挂起动作 */
+  const ensureUnlockedThen = (action: () => void) => {
+    void (async () => {
+      if ((await isBackupEncryptionEnabled()) && !isBackupEncryptionUnlocked()) {
+        pendingActionRef.current = action;
+        setPassOpen(true);
+        return;
+      }
+      action();
+    })();
+  };
+
+  const onPassUnlocked = () => {
+    const p = pendingActionRef.current;
+    pendingActionRef.current = null;
+    setPassOpen(false);
+    p?.();
+  };
 
   useEffect(() => {
     void (async () => {
@@ -116,6 +143,12 @@ export function DataPage({
         }
         await saveWebdavConfig(cfg);
       } catch (err) {
+        // 推/拉中撞上未解锁的加密包：弹口令框，解锁后重试原操作（恢复按 id 去重，可安全重跑）
+        if (err instanceof BackupLockedError) {
+          pendingActionRef.current = () => runWebdav(kind);
+          setPassOpen(true);
+          return;
+        }
         toast.error(err instanceof Error && err.message ? err.message : t('toast.webdavFail'));
       } finally {
         setWebdavBusy(null);
@@ -365,6 +398,9 @@ export function DataPage({
           )}
         </SettingsSection>
 
+        {/* 云备份加密（GitHub / WebDAV 上传内容 AES-GCM 加密） */}
+        <BackupEncryptionSection />
+
         {/* WebDAV 同步（自托管网盘 / NAS） */}
         <SettingsSection icon={Cloud} title={t('settings.webdav')}>
           <SettingRow
@@ -414,7 +450,7 @@ export function DataPage({
           </SettingRow>
           <SettingRow label={t('settings.webdavPush')}>
             <button
-              onClick={() => runWebdav('push')}
+              onClick={() => ensureUnlockedThen(() => runWebdav('push'))}
               disabled={webdavBusy != null || !webdavLoaded}
               className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
             >
@@ -424,7 +460,7 @@ export function DataPage({
           </SettingRow>
           <SettingRow label={t('settings.webdavPull')}>
             <button
-              onClick={() => runWebdav('pull')}
+              onClick={() => ensureUnlockedThen(() => runWebdav('pull'))}
               disabled={webdavBusy != null || !webdavLoaded}
               className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-50"
             >
@@ -549,6 +585,17 @@ export function DataPage({
             </AlertDialog>
           </SettingRow>
         </SettingsSection>
+
+        {/* 云备份加密口令对话框（推/拉撞上锁定态时弹出） */}
+        <BackupPassphraseDialog
+          mode="unlock"
+          open={passOpen}
+          onOpenChange={(v) => {
+            setPassOpen(v);
+            if (!v) pendingActionRef.current = null;
+          }}
+          onDone={onPassUnlocked}
+        />
       </motion.div>
     </div>
   );

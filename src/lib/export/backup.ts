@@ -11,6 +11,7 @@ import { idbGetKV, idbPutAudio } from '@/lib/storage/idb';
 import { BG_IMAGE_KV, saveBgImage } from '@/lib/theme/bgImage';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { audioMimeOf, downloadBlob } from '@/lib/file';
+import { isEncryptedBackup } from '@/lib/backup/crypto';
 import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 
@@ -153,10 +154,13 @@ export interface BackupImportResult {
 
 /**
  * 从 ZIP 备份恢复（记录按 id 去重合并，音频挂载到已存在的记录上）
- * @throws ZIP 损坏或缺少 records.json 时抛错
+ * @throws ZIP 损坏或缺少 records.json 时抛错；加密的云端备份包给出「走云恢复」指引
  */
 export async function importFullBackup(file: File): Promise<BackupImportResult> {
-  const files = unzipSync(new Uint8Array(await file.arrayBuffer()));
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  // 云端加密包（SVTENC1 信封）不是 zip：本地手动恢复没有口令输入流程，指引用户走云恢复
+  if (isEncryptedBackup(bytes)) throw new Error(t('backup.errEncryptedZip'));
+  const files = unzipSync(bytes);
   const jsonEntry = files[JSON_NAME] ?? files[`data/${JSON_NAME}`];
   if (!jsonEntry) throw new Error(t('backup.errNoJson'));
 
