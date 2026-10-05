@@ -40,12 +40,35 @@ jobs:
         run: npx cap sync android
 
       # runner 每次全新，debug keystore 若随机生成则每次签名都不同——
-      # 覆盖安装会因签名冲突失败。固定用仓库内的 ci-debug.keystore（仅 debug 用途，
-      # 正式发布签名走 secrets，见 documentation/GUIDE-CAPACITOR.md）
+      # 覆盖安装会因签名冲突失败。固定用仓库内的 ci-debug.keystore（仅 debug 用途）。
       - name: Use stable debug keystore
         run: |
           mkdir -p ~/.android
           cp android/ci-debug.keystore ~/.android/debug.keystore
+
+      # 正式签名：三个 secrets（ANDROID_KEYSTORE / ANDROID_KEYSTORE_PASSWORD /
+      # ANDROID_KEY_ALIAS）齐全时解码出 key.properties → assembleRelease；
+      # 未配置时回退 debug 构建（key.properties 已在 android/.gitignore）
+      - name: Prepare signing
+        id: sign
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ]; then
+            echo "$ANDROID_KEYSTORE" | base64 -d > android/app/upload-keystore.jks
+            printf 'storeFile=upload-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEYSTORE_PASSWORD" \
+              > android/key.properties
+            echo "task=assembleRelease" >> "$GITHUB_OUTPUT"
+            echo "suffix=release" >> "$GITHUB_OUTPUT"
+            echo "signed=release"
+          else
+            echo "task=assembleDebug" >> "$GITHUB_OUTPUT"
+            echo "suffix=debug" >> "$GITHUB_OUTPUT"
+            echo "signed=debug"
+          fi
 
       - name: Read version
         id: ver
@@ -55,18 +78,17 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew ${{ steps.sign.outputs.task }} --no-daemon
 
       - name: Rename APK
         run: |
           mkdir -p dist
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
-             "dist/SimpleVoiceTool-v${{ steps.ver.outputs.version }}-debug.apk"
+          cp "android/app/build/outputs/apk/${{ steps.sign.outputs.suffix }}/app-${{ steps.sign.outputs.suffix }}.apk" \
+             "dist/SimpleVoiceTool-v${{ steps.ver.outputs.version }}-${{ steps.sign.outputs.suffix }}.apk"
 
-      # 正式发布（打 v* 标签）时建议换成签名构建：
-      # 生成 keystore 后 base64 存入 secrets.ANDROID_KEYSTORE，
-      # 密码/别名存 ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS，
-      # 在 assembleDebug 旁加 assembleRelease + signingConfig。见 documentation/GUIDE-CAPACITOR.md
+      # 生成正式签名 keystore 后：base64 -w0 svt-release.jks 存入 secrets.ANDROID_KEYSTORE，
+      # 密码/别名存 ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS（见 documentation/GUIDE-CAPACITOR.md）；
+      # 注意：debug→release 签名变更 = 应用身份变更，已装用户需卸载重装（先做 ZIP 备份）
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -76,6 +98,5 @@ jobs:
           files: dist/*.apk
           overwrite_files: true
           body: |
-            Android build of Simple Voice Tool v${{ steps.ver.outputs.version }}
+            Android build of Simple Voice Tool v${{ steps.ver.outputs.version }}（${{ steps.sign.outputs.signed }}-signed）
             - commit: ${{ github.sha }}
-            - debug-signed APK（直接安装；正式签名见 documentation/GUIDE-CAPACITOR.md）

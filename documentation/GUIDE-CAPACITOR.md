@@ -51,14 +51,26 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
   但创建**正式 Release**。
 - 手动触发：Actions 页 `workflow_dispatch`。
 
-当前 CI 产出 **debug 签名** APK（可直接安装）。CI 使用仓库内固定的
-`android/ci-debug.keystore`（密码 android，仅 debug 用途）——保证每次 CI 构建的
-签名一致，可以直接覆盖安装而无需卸载。本机构建的 APK 用的是本机 debug keystore，
-与 CI 构建之间签名不同，互相覆盖安装前需先卸载（会丢数据，先做 ZIP 备份）。
-正式签名升级路径：生成 keystore 后
-`base64 -w0 keystore.jks` 存入 secrets `ANDROID_KEYSTORE`，密码/别名存
-`ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`，在 CI 中解码写文件并在
-`android/app/build.gradle` 挂 signingConfig，改跑 `assembleRelease`。
+**签名（当前为条件化）**：
+
+- 三个 secrets（`ANDROID_KEYSTORE` / `ANDROID_KEYSTORE_PASSWORD` /
+  `ANDROID_KEY_ALIAS`）**未配置**时：CI 用仓库内固定的 `android/ci-debug.keystore`
+  （密码 android，仅 debug 用途）产出 **debug 签名** APK——签名跨构建一致，
+  可直接覆盖安装。本机构建的 APK 用本机 debug keystore，与 CI 构建签名不同，
+  互相覆盖前需先卸载（会丢数据，先做 ZIP 备份）。
+- **配置 secrets 后**：CI 解码出 `android/app/upload-keystore.jks` +
+  `android/key.properties`（二者均在 android/.gitignore），`build.gradle` 挂上
+  signingConfig，改跑 `assembleRelease`，产出 **release 正式签名** APK
+  （`SimpleVoiceTool-v{版本}-release.apk`）。
+
+  正式签名升级步骤：本地 `keytool -genkeypair -v -keystore svt-release.jks
+  -storetype PKCS12 -alias svt-release -keyalg RSA -keysize 4096 -validity 10950`
+  （**keystore 自行保管，绝不入库**），`base64 -w0 svt-release.jks` 存入
+  secrets `ANDROID_KEYSTORE`，密码/别名存 `ANDROID_KEYSTORE_PASSWORD` /
+  `ANDROID_KEY_ALIAS`。⚠️ debug→release 是签名身份变更：已装 debug 版的用户
+  必须卸载重装（本地 IndexedDB 数据会清空，重装前先做 ZIP 完整备份、装好后恢复），
+  公告时机选在用户少的阶段。F-Droid 主库渠道由 F-Droid 自己的钥匙签名，
+  与本渠道（GitHub Releases / IzzyOnDroid）天然不同签名，互不通用。
 
 ## 本机构建发布 APK / AAB
 

@@ -7,6 +7,15 @@ def pkgVersion = packageJson.version
 def pkgParts = pkgVersion.tokenize('.').collect { it.toInteger() }
 def pkgVersionCode = pkgParts[0] * 10000 + pkgParts[1] * 100 + pkgParts[2]
 
+// 正式签名（可选）：android/key.properties 存在时启用（CI 从 secrets 解码生成，
+// 字段：storeFile / storePassword / keyAlias / keyPassword）。缺省时 release 构建
+// 回退 debug 签名（与 CI 的 ci-debug.keystore 一致），保证本地与回退路径始终可打包
+def keyPropsFile = rootProject.file('key.properties')
+def keyProps = new Properties()
+if (keyPropsFile.exists()) {
+    keyPropsFile.withInputStream { keyProps.load(it) }
+}
+
 android {
     namespace "com.theforeveriris.simplevoicetool"
     compileSdk rootProject.ext.compileSdkVersion
@@ -23,10 +32,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keyPropsFile.exists()) {
+                storeFile file(keyProps['storeFile'])
+                storePassword keyProps['storePassword']
+                keyAlias keyProps['keyAlias']
+                keyPassword keyProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keyPropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
