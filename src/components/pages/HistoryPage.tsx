@@ -21,6 +21,7 @@ import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { MiniSpark } from '@/components/charts/MiniSpark';
 import { TrendChart } from '@/components/charts/TrendChart';
+import { ChartTableToggle, TrendDataTable } from '@/components/charts/DataTableView';
 import { hasTrendMetricData, type TrendMetric } from '@/lib/trendMetric';
 import { WeeklyReportCard } from '@/components/history/WeeklyReportCard';
 import { DiaryHeatmap } from '@/components/charts/DiaryHeatmap';
@@ -328,6 +329,8 @@ export function HistoryPage() {
   const [trendFilter, setTrendFilter] = useState<'all' | TestMode>('all');
   const [trendMetric, setTrendMetric] = useState<TrendMetric>('f0');
   const [diaryMetric, setDiaryMetric] = useState<DiaryMetric>('count');
+  // 趋势图的数据表视图（无障碍 / 复制数据）
+  const [trendTableOn, setTrendTableOn] = useState(false);
   const contentReady = useDeferredMount();
 
   // 对比浮层的返回手势：系统返回 / 侧滑关闭对比，浮层内返回按钮走 history.back()
@@ -554,10 +557,19 @@ export function HistoryPage() {
                   <DiaryHeatmap records={trendRecords} metric={diaryMetric} />
                 </div>
                 <div className="mb-3 border-t border-black/[0.04]" />
-                <TrendChart records={trendRecords} connectLine={trendFilter !== 'all'} metric={trendMetric} onOpen={open} />
-                <p className="mt-1 text-center text-[10px] text-ink-2">
-                  {t(trendMetric === 'f0' ? 'history.trendHint' : 'history.trendHintMetric')}
-                </p>
+                <div className="mb-1 flex items-center justify-end">
+                  <ChartTableToggle on={trendTableOn} onToggle={() => setTrendTableOn((v) => !v)} />
+                </div>
+                {trendTableOn ? (
+                  <TrendDataTable records={trendRecords} metric={trendMetric} />
+                ) : (
+                  <>
+                    <TrendChart records={trendRecords} connectLine={trendFilter !== 'all'} metric={trendMetric} onOpen={open} />
+                    <p className="mt-1 text-center text-[10px] text-ink-2">
+                      {t(trendMetric === 'f0' ? 'history.trendHint' : 'history.trendHintMetric')}
+                    </p>
+                  </>
+                )}
               </>
             )}
           </div>

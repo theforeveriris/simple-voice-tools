@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import { SeriesChart } from '@/components/charts/SeriesChart';
 import { SpecChart } from '@/components/charts/SpecChart';
 import { TimeRangeSelector } from '@/components/charts/TimeRangeSelector';
+import { ChartTableToggle, SeriesDataTable } from '@/components/charts/DataTableView';
 import { computeInFormantTargetPct } from '@/lib/audio/recorder';
 import { getFormantTarget } from '@/constants';
 import { useStore } from '@/store/useStore';
@@ -49,15 +50,24 @@ export function AnalysisChart({
   onRangeChange: (r: [number, number]) => void;
   playhead?: number | null;
 }) {
+  // 数据表视图：与画布互斥切换，共用同一区间选择器（表格随区间联动）
+  const [showTable, setShowTable] = useState(false);
   return (
     <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
         <span className="text-xs font-medium tracking-wide text-ink-2">{title}</span>
-        {right}
+        <div className="flex items-center gap-2.5">
+          {right}
+          <ChartTableToggle on={showTable} onToggle={() => setShowTable((v) => !v)} />
+        </div>
       </div>
-      <div className={cn('relative', heightClass)}>
-        <SeriesChart kind={kind} series={record.series} range={range} playhead={playhead} ariaLabel={title} />
-      </div>
+      {showTable ? (
+        <SeriesDataTable kind={kind} series={record.series} range={range} heightClass={heightClass} />
+      ) : (
+        <div className={cn('relative', heightClass)}>
+          <SeriesChart kind={kind} series={record.series} range={range} playhead={playhead} ariaLabel={title} />
+        </div>
+      )}
       <TimeRangeSelector
         series={record.series}
         total={record.durationSec}
@@ -74,6 +84,8 @@ export function AnalysisChart({
 export function FormantCard({ record, range, onRangeChange, playhead }: RangedCardProps) {
   // 共振峰卡片视图：时域曲线 / 元音空间散点
   const [formantView, setFormantView] = useState<'curve' | 'scatter'>('curve');
+  // 曲线视图的数据表切换（散点视图无表格形态）
+  const [showTable, setShowTable] = useState(false);
   const formantTargetEnabled = useStore((s) => s.settings.formantTargetEnabled);
   // 目标区命中率（整条记录实时评估，改设置立即重算）
   const formantHitPct = useMemo(
@@ -92,6 +104,9 @@ export function FormantCard({ record, range, onRangeChange, playhead }: RangedCa
             </div>
           ) : (
             <span className="hidden text-[10px] text-ink-2 sm:inline">{t('analysis.scatterRefHint')}</span>
+          )}
+          {formantView === 'curve' && (
+            <ChartTableToggle on={showTable} onToggle={() => setShowTable((v) => !v)} />
           )}
           <div className="flex items-center rounded-full bg-surface-hi p-0.5 text-[11px]">
             <button
@@ -115,15 +130,19 @@ export function FormantCard({ record, range, onRangeChange, playhead }: RangedCa
           </div>
         </div>
       </div>
-      <div className={cn('relative', formantView === 'scatter' ? 'h-[210px] sm:h-[280px]' : 'h-[150px] sm:h-[200px]')}>
-        <SeriesChart
-          kind={formantView === 'scatter' ? 'vowelSpace' : 'formant'}
-          series={record.series}
-          range={range}
-          playhead={playhead}
-          ariaLabel={t('analysis.titleFormant')}
-        />
-      </div>
+      {formantView === 'curve' && showTable ? (
+        <SeriesDataTable kind="formant" series={record.series} range={range} heightClass="h-[150px] sm:h-[200px]" />
+      ) : (
+        <div className={cn('relative', formantView === 'scatter' ? 'h-[210px] sm:h-[280px]' : 'h-[150px] sm:h-[200px]')}>
+          <SeriesChart
+            kind={formantView === 'scatter' ? 'vowelSpace' : 'formant'}
+            series={record.series}
+            range={range}
+            playhead={playhead}
+            ariaLabel={t('analysis.titleFormant')}
+          />
+        </div>
+      )}
       <TimeRangeSelector
         series={record.series}
         total={record.durationSec}
