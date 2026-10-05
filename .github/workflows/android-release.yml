@@ -93,12 +93,17 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         env:
           GH_TOKEN: ${{ github.token }}
-          CURRENT: SimpleVoiceTool-v${{ steps.ver.outputs.version }}-release.apk
         run: |
-          ids=$(gh release view latest --repo "$GITHUB_REPOSITORY" --json assets \
-            --jq '.assets[] | select(.name | endswith("-release.apk")) | select(.name != env.CURRENT) | .id' 2>/dev/null || true)
-          for id in $ids; do
-            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"
+          current="SimpleVoiceTool-v${{ steps.ver.outputs.version }}-release.apk"
+          # 清理尽力而为：列表拉取失败 → 管道为空；单次删除失败 → 仅告警，
+          # 任何一步都不允许判死构建（v0.9.0 曾因 jq env 兼容性在此挂掉）
+          gh release view latest --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | .name + "\t" + (.id | tostring)' 2>/dev/null | while IFS=$'\t' read -r name id; do
+            case "$name" in *-release.apk) ;; *) continue ;; esac
+            [ "$name" = "$current" ] && continue
+            case "$id" in ''|*[!0-9]*) continue ;; esac
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id" \
+              || echo "prune: skip asset $name (delete failed)"
           done
 
       # 生成正式签名 keystore 后：base64 -w0 svt-release.jks 存入 secrets.ANDROID_KEYSTORE，

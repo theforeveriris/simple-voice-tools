@@ -72,12 +72,16 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          CURRENT: SimpleVoiceTool-v${{ steps.ver.outputs.version }}-setup.exe
         run: |
-          ids=$(gh release view latest --repo "$GITHUB_REPOSITORY" --json assets \
-            --jq '.assets[] | select(.name | endswith("setup.exe")) | select(.name != env.CURRENT) | .id' 2>/dev/null || true)
-          for id in $ids; do
-            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"
+          current="SimpleVoiceTool-v${{ steps.ver.outputs.version }}-setup.exe"
+          # 清理尽力而为：任何失败都不允许判死构建（与安卓工作流同理）
+          gh release view latest --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | .name + "\t" + (.id | tostring)' 2>/dev/null | while IFS=$'\t' read -r name id; do
+            case "$name" in *-setup.exe) ;; *) continue ;; esac
+            [ "$name" = "$current" ] && continue
+            case "$id" in ''|*[!0-9]*) continue ;; esac
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id" \
+              || echo "prune: skip asset $name (delete failed)"
           done
 
       - name: Upload to GitHub Release
