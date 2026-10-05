@@ -100,7 +100,8 @@ jobs:
           listing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest" \
             --jq '.assets[] | .name + "\t" + (.id | tostring)' 2>&1) || true
           echo "$listing" | while IFS=$'\t' read -r name id; do
-            case "$name" in *-release.apk) ;; *) continue ;; esac
+            # 安卓工作流管辖 latest 里全部 .apk（含历史 debug 包）；非当前版本即残留
+            case "$name" in *.apk) ;; *) continue ;; esac
             [ "$name" = "$current" ] && continue
             case "$id" in ''|*[!0-9]*) continue ;; esac
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id" \
