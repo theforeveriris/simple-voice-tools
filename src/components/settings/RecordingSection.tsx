@@ -26,10 +26,12 @@ export function RecordingSection({
   useI18n();
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
 
-  // 枚举麦克风设备（授权过一次后才能拿到名称）
+  // 枚举麦克风设备（授权过一次后才能拿到名称）。未授权时浏览器返回的
+  // 默认设备 deviceId 为空字符串——Radix SelectItem 禁止空 value（会直接抛错，
+  // 见 v0.8.4），且这些设备本就无法具体选择，过滤后仅保留「系统默认」一项
   useEffect(() => {
     navigator.mediaDevices?.enumerateDevices?.().then((devices) => {
-      setMics(devices.filter((d) => d.kind === 'audioinput'));
+      setMics(devices.filter((d) => d.kind === 'audioinput' && d.deviceId));
     }).catch(() => undefined);
   }, []);
 
