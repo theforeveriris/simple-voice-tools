@@ -74,14 +74,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           current="SimpleVoiceTool-v${{ steps.ver.outputs.version }}-setup.exe"
-          # 清理尽力而为：任何失败都不允许判死构建（与安卓工作流同理）
-          gh release view latest --repo "$GITHUB_REPOSITORY" --json assets \
-            --jq '.assets[] | .name + "\t" + (.id | tostring)' 2>/dev/null | while IFS=$'\t' read -r name id; do
+          # 注意：gh release view --json 的 assets[].id 是 GraphQL 节点 ID（RA_…），
+          # 不能用于 REST DELETE——改用 REST 端点拿数字 id（与安卓工作流同理）
+          listing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest" \
+            --jq '.assets[] | .name + "\t" + (.id | tostring)' 2>&1) || true
+          echo "$listing" | while IFS=$'\t' read -r name id; do
             case "$name" in *-setup.exe) ;; *) continue ;; esac
             [ "$name" = "$current" ] && continue
             case "$id" in ''|*[!0-9]*) continue ;; esac
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id" \
-              || echo "prune: skip asset $name (delete failed)"
+              || echo "::warning::prune: delete failed for $name (id=$id)"
           done
 
       - name: Upload to GitHub Release

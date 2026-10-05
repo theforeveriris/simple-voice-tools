@@ -95,18 +95,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           current="SimpleVoiceTool-v${{ steps.ver.outputs.version }}-release.apk"
-          listing=$(gh release view latest --repo "$GITHUB_REPOSITORY" --json assets \
+          # 注意：gh release view --json 的 assets[].id 是 GraphQL 节点 ID（RA_…），
+          # 不能用于 REST DELETE——改用 REST 端点拿数字 id
+          listing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest" \
             --jq '.assets[] | .name + "\t" + (.id | tostring)' 2>&1) || true
-          echo "::notice::prune: listing_len=${#listing} head=${listing:0:100}"
           echo "$listing" | while IFS=$'\t' read -r name id; do
             case "$name" in *-release.apk) ;; *) continue ;; esac
             [ "$name" = "$current" ] && continue
             case "$id" in ''|*[!0-9]*) continue ;; esac
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id" \
-              && echo "::notice::prune: deleted $name (id=$id)" \
               || echo "::warning::prune: delete failed for $name (id=$id)"
           done
-          echo "::notice::prune: loop done"
 
       # 生成正式签名 keystore 后：base64 -w0 svt-release.jks 存入 secrets.ANDROID_KEYSTORE，
       # 密码/别名存 ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS（见 documentation/GUIDE-CAPACITOR.md）；
