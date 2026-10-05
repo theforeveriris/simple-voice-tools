@@ -24,6 +24,7 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { computeStats } from '@/lib/audio/recorder';
 import { downloadText, recordToFrameCsv } from '@/lib/export/csv';
+import { recordToPitchTier, recordToFormant } from '@/lib/export/praat';
 import { exportShareImage } from '@/lib/export/shareCard';
 import { exportInteractiveHtml } from '@/lib/export/interactiveHtml';
 import { t } from '@/i18n';
@@ -85,6 +86,8 @@ export function AnalysisPage() {
   // 交互 HTML 报告：含音频与否的选择弹窗（无音频记录直接导出）
   const [htmlDialogOpen, setHtmlDialogOpen] = useState(false);
   const [htmlBusy, setHtmlBusy] = useState(false);
+  // 帧数据导出（CSV / Praat PitchTier / Praat Formant）三选一弹窗
+  const [exportOpen, setExportOpen] = useState(false);
 
   const fullRange = useMemo<[number, number]>(() => [0, record?.durationSec ?? 0], [record?.durationSec]);
   const getRange = (kind: RangedKind): [number, number] =>
@@ -157,6 +160,18 @@ export function AnalysisPage() {
     toast.success(t('toast.frameCsvExported'));
   };
 
+  /** Praat 对象导出（PitchTier = 基频曲线；Formant = 逐帧 F1/F2） */
+  const onExportPraat = (kind: 'pitchTier' | 'formant') => {
+    const stem = `voice-${record.id.slice(0, 8)}`;
+    if (kind === 'pitchTier') {
+      downloadText(`${stem}.PitchTier`, recordToPitchTier(record));
+    } else {
+      downloadText(`${stem}.Formant`, recordToFormant(record));
+    }
+    toast.success(t('toast.praatExported'));
+    setExportOpen(false);
+  };
+
   /** 交互 HTML 报告导出（withAudio 决定是否内嵌录音） */
   const onExportHtml = async (withAudio: boolean) => {
     if (htmlBusy) return;
@@ -208,10 +223,10 @@ export function AnalysisPage() {
               <Share2 size={16} />
             </button>
             <button
-              onClick={onExportCsv}
+              onClick={() => setExportOpen(true)}
               className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
               aria-label={t('analysis.csvAria')}
-              title={t('analysis.csvTitle')}
+              title={t('analysis.exportDataTitle')}
             >
               <FileSpreadsheet size={16} />
             </button>
@@ -343,6 +358,39 @@ export function AnalysisPage() {
             >
               <span className="block text-sm font-medium text-ink">{t('html.withoutAudio')}</span>
               <span className="mt-0.5 block text-xs text-ink-2">{t('html.withoutAudioDesc')}</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 帧数据导出：CSV / Praat PitchTier / Praat Formant */}
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>{t('analysis.exportDataTitle')}</DialogTitle>
+            <DialogDescription>{t('analysis.exportDataDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={onExportCsv}
+              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+            >
+              <span className="block text-sm font-medium text-ink">{t('analysis.exportCsv')}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportCsvDesc')}</span>
+            </button>
+            <button
+              onClick={() => onExportPraat('pitchTier')}
+              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+            >
+              <span className="block text-sm font-medium text-ink">{t('analysis.exportPitchTier')}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportPitchTierDesc')}</span>
+            </button>
+            <button
+              onClick={() => onExportPraat('formant')}
+              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+            >
+              <span className="block text-sm font-medium text-ink">{t('analysis.exportFormant')}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportFormantDesc')}</span>
             </button>
           </div>
         </DialogContent>
