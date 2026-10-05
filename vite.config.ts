@@ -16,6 +16,19 @@ export default defineConfig(({ command }) => ({
   base: './',
   build: {
     outDir: 'docs',
+    // 主包分包：vendor 依赖与应用代码分离。应用代码每次发版都变，
+    // 而 vendor 块在版本间通常不变——SW 预缓存增量更新时只需重新下载
+    // 应用块，vendor 块命中旧缓存；浏览器解析执行也更快。
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('framer-motion')) return 'motion';
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('scheduler') || id.includes('use-sync-external-store')) return 'react';
+          return 'vendor';
+        },
+      },
+    },
   },
   // 版本号 / 构建日期注入（设置 → 应用 → 版本与更新 展示）
   define: {
