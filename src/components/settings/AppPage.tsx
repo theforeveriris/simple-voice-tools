@@ -1,7 +1,8 @@
 /**
  * 应用（设置的子页面）
  * - 安装：PWA 一键安装（浏览器支持时）或手动安装指引；分享应用
- * - 版本与更新：当前版本（构建时注入）、检查更新（Service Worker）、
+ * - 版本与更新：当前版本（构建时注入）、检查更新（Web 走 Service Worker，
+ *   原生壳比对 GitHub Releases 最新 APK、浏览器下载覆盖安装）、
  *   未读的「本次更新内容」卡片、清除缓存并重置（修复工具）
  * - 运行状态：运行方式 / Service Worker / 持久化存储 / 网络，附诊断信息一键复制
  */
@@ -17,6 +18,7 @@ import {
   getServiceWorkerStatus, isStoragePersisted, resetAppRuntime, isStandalone,
   type SwStatus,
 } from '@/lib/pwa';
+import { checkNativeAppUpdate, openApkDownload, type NativeUpdateInfo } from '@/lib/appUpdate';
 import { t, localeTag } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isNative } from '@/lib/platform';
@@ -55,6 +57,8 @@ export function AppPage({
   useI18n();
   const install = usePwaInstall();
   const [checking, setChecking] = useState(false);
+  // 原生壳：检查更新发现的新版本（PWA 端发现即自动刷新，无需状态）
+  const [nativeUpdate, setNativeUpdate] = useState<NativeUpdateInfo | null>(null);
   // 运行状态（挂载读取；检查更新完成后刷新）
   const [sw, setSw] = useState<SwStatus>('none');
   const [persisted, setPersisted] = useState(false);
@@ -83,6 +87,17 @@ export function AppPage({
     setChecking(true);
     void (async () => {
       try {
+        if (isNative) {
+          // 原生壳：比对 GitHub Releases 的最新 APK；更新 = 浏览器下载后覆盖安装
+          const result = await checkNativeAppUpdate();
+          if (result === 'unavailable') toast.info(t('toast.updateUnavailable'));
+          else if (result === 'latest') toast.success(t('toast.updateLatest'));
+          else {
+            setNativeUpdate(result.update);
+            toast.success(t('toast.updateFound'));
+          }
+          return;
+        }
         const result = await checkForAppUpdate();
         if (result === 'unavailable') toast.info(t('toast.updateUnavailable'));
         else if (result === 'found') toast.success(t('toast.updateFound'));
@@ -90,7 +105,7 @@ export function AppPage({
       } finally {
         // found 分支页面会刷新；unavailable/latest 恢复按钮并刷新 SW 状态
         setChecking(false);
-        void getServiceWorkerStatus().then(setSw);
+        if (!isNative) void getServiceWorkerStatus().then(setSw);
       }
     })();
   };
@@ -230,19 +245,42 @@ export function AppPage({
           <SettingRow label={t('settings.versionLabel')} desc={__BUILD_DATE__}>
             <span className="text-xs font-semibold tabular-nums text-ink">v{__APP_VERSION__}</span>
           </SettingRow>
-          {/* 检查更新走 Service Worker；原生壳的更新由应用商店/重新安装接管 */}
-          {!isNative && (
+          {/* 检查更新：Web 走 Service Worker；原生壳比对 GitHub Releases 的最新 APK */}
+          <SettingRow
+            label={
+              <InfoTip
+                label={t('settings.checkUpdate')}
+                text={isNative ? t('settings.checkUpdateNativeDesc') : t('settings.checkUpdateDesc')}
+              />
+            }
+          >
+            <button
+              type="button"
+              onClick={onCheckUpdate}
+              disabled={checking}
+              className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-60"
+            >
+              {checking ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              {checking ? t('settings.checkUpdateBusy') : t('settings.checkUpdate')}
+            </button>
+          </SettingRow>
+          {/* 原生壳：发现新版本 → 提供下载入口（浏览器下载 APK 后覆盖安装） */}
+          {isNative && nativeUpdate && (
             <SettingRow
-              label={<InfoTip label={t('settings.checkUpdate')} text={t('settings.checkUpdateDesc')} />}
+              label={
+                <InfoTip
+                  label={t('settings.updateFound', { version: nativeUpdate.version })}
+                  text={t('settings.updateFoundDesc')}
+                />
+              }
             >
               <button
                 type="button"
-                onClick={onCheckUpdate}
-                disabled={checking}
-                className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-60"
+                onClick={() => openApkDownload(nativeUpdate)}
+                className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
               >
-                {checking ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                {checking ? t('settings.checkUpdateBusy') : t('settings.checkUpdate')}
+                <Download size={14} />
+                {t('settings.updateDownload')}
               </button>
             </SettingRow>
           )}
