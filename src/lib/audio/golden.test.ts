@@ -70,8 +70,8 @@ function synthVowel(opts: SynthVowelOptions): Float32Array {
     }
     src[i] = s;
   }
-  // 滤波：共振器级联
-  let out = src;
+  // 滤波：共振器级联（out 收窄为 ArrayBufferLike 基类型，接住 resonate 的返回）
+  let out: Float32Array = src;
   for (const [f, bw] of formants) out = resonate(out, f, bw);
   // 归一化峰值
   let peak = 0;
