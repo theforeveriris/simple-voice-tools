@@ -108,7 +108,9 @@ describe('trendTable', () => {
       modeOf: (m) => MODE_LABEL[m] ?? m,
     });
     expect(td.headers).toEqual(['d', 'm', 'F0', 'P10–P90']);
-    expect(td.rows[0]).toEqual(['1/1 08:00', '朗读', '180.3', '140–231']);
+    // 时间列格式固定但数值随时区变化（recordTime 用本地时区）——断言结构而非字面量
+    expect(td.rows[0][0]).toMatch(/^\d{1,2}\/\d{1,2} \d{2}:\d{2}$/);
+    expect(td.rows[0].slice(1)).toEqual(['朗读', '180.3', '140–231']);
     expect(td.rows[1][2]).toBe(''); // avgF0 = 0 → null → 空
   });
 
