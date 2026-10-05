@@ -958,6 +958,8 @@ export const zhTW = {
   'settings.general': '一般',
   'settings.startTab': '啟動預設頁籤',
   'settings.diaryWeekStart': '日記週起始日',
+  'settings.splashScreen': '啟動畫面',
+  'settings.splashScreenDesc': '啟動時顯示品牌啟動畫面，觀感與安裝的 PWA 一致；關閉後直接進入應用。',
   'settings.weekMonday': '週一',
   'settings.weekSunday': '週日',
 

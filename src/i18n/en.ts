@@ -958,6 +958,8 @@ export const en = {
   'settings.general': 'General',
   'settings.startTab': 'Start tab',
   'settings.diaryWeekStart': 'Diary week starts on',
+  'settings.splashScreen': 'Splash screen',
+  'settings.splashScreenDesc': 'Show the branded launch screen on startup, matching the installed PWA. Turn off to go straight to the app.',
   'settings.weekMonday': 'Monday',
   'settings.weekSunday': 'Sunday',
 

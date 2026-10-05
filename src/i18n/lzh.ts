@@ -959,6 +959,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.general': '通用',
   'settings.startTab': '啟時之頁',
   'settings.diaryWeekStart': '日記週之首',
+  'settings.splashScreen': '啓動之屏',
+  'settings.splashScreenDesc': '啓動之時，先示品牌之屏，觀同所裝之 PWA；閉之則徑入應用。',
   'settings.weekMonday': '週一',
   'settings.weekSunday': '週日',
 

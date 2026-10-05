@@ -314,6 +314,8 @@ export interface AppSettings {
   analysisCards: AnalysisCards;
   /** 启动时默认进入的页签 */
   startTab: ViewType;
+  /** 原生壳启动页（PWA 同款观感，默认开启；设置 → 配置 可关） */
+  splashScreen: boolean;
   /** 用声日记热力图周起始日：1 = 周一（默认），0 = 周日 */
   diaryWeekStart: 0 | 1;
   /** GitHub 云备份：用户自己的 OAuth App / GitHub App Client ID（仅存本地） */

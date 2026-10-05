@@ -959,6 +959,8 @@ export const ja = {
   'settings.general': '一般',
   'settings.startTab': '起動時のページ',
   'settings.diaryWeekStart': '日記の週の開始日',
+  'settings.splashScreen': 'スプラッシュ画面',
+  'settings.splashScreenDesc': '起動時にブランドのスプラッシュ画面を表示します（インストールした PWA と同じ見た目）。オフにすると直接アプリに入ります。',
   'settings.weekMonday': '月曜',
   'settings.weekSunday': '日曜',
 

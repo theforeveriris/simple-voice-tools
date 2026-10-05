@@ -37,7 +37,7 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 
 `android/app/build.gradle` 直接读仓库根的 `package.json`：
 `versionName` = semver 原值，`versionCode` = `major*10000 + minor*100 + patch`
-（如 0.8.2 → 802）。**改版本只改 package.json**，Android 侧自动跟随；
+（如 0.8.3 → 803）。**改版本只改 package.json**，Android 侧自动跟随；
 只要 semver 正常递增，versionCode 单调递增（应用内更新覆盖安装的前提）。
 
 ## CI/CD（GitHub Actions）
@@ -120,10 +120,14 @@ Android 15 强制 edge-to-edge，`statusBarColor` 被忽略；WebView 被
   `@capacitor/filesystem`（shareCard / file.ts 两处调用点）。
 - **本地自动备份**（File System Access）：Android WebView 不支持，功能自动隐藏；
   需要时换 `@capacitor/filesystem`。
-- **应用图标 / 启动图**：当前为 Capacitor 模板默认。生成自有图标：
-  `npm i -D @capacitor/assets`，按其约定放 `assets/icon-only.png`（1024²，
-  可用 `public/icon-512.png` 放大）与 `assets/splash.png`，然后
-  `npx capacitor-assets generate --android`。
+- **应用图标 / 启动页**：图标已替换为自有设计（与 `src-tauri/icons` 同源，见
+  `feat(icons)` 提交）。启动页为 Web 层实现（`SplashScreen.tsx`，最短驻留 +
+  淡出，设置 → 配置 可关），原生侧只保留纯色窗口底（`launch_background`，
+  API 31+ 另在 `values-v31` 统一系统启动画面底色）；旧的图片式 `splash.png`
+  已移除。若要恢复图片式原生启动图：`npm i -D @capacitor/assets`，按约定放
+  `assets/icon-only.png` 与 `assets/splash.png`，`npx capacitor-assets
+  generate --android`，并把 `styles.xml` 的 windowBackground 指回
+  `@drawable/splash`。
 - **PWA 与原生数据不互通**：两侧 IndexedDB 独立，迁移走设置里的 ZIP 备份/恢复。
 - **aiLocale 的 AI 翻译 / 大模型建议**：纯 HTTP，无需额外配置，直接可用。
 

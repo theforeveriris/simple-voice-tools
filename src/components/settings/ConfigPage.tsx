@@ -24,7 +24,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
 } from '@/components/ui';
+import { isNative } from '@/lib/platform';
 
 export function ConfigPage({
   settings,
@@ -177,6 +179,15 @@ export function ConfigPage({
               </SelectContent>
             </Select>
           </SettingRow>
+          {/* 启动页：仅原生壳有意义（浏览器/PWA 由系统生成启动画面） */}
+          {isNative && (
+            <SettingRow label={<InfoTip label={t('settings.splashScreen')} text={t('settings.splashScreenDesc')} />}>
+              <Switch
+                checked={settings.splashScreen}
+                onCheckedChange={(v) => update({ splashScreen: v })}
+              />
+            </SettingRow>
+          )}
         </SettingsSection>
       </motion.div>
     </div>

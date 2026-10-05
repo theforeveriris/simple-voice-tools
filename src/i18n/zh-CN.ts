@@ -960,6 +960,8 @@ export const zhCN = {
   'settings.general': '通用',
   'settings.startTab': '启动默认页签',
   'settings.diaryWeekStart': '日记周起始日',
+  'settings.splashScreen': '启动页',
+  'settings.splashScreenDesc': '启动时显示品牌启动页，观感与安装的 PWA 一致；关闭后直接进入应用。',
   'settings.weekMonday': '周一',
   'settings.weekSunday': '周日',
 

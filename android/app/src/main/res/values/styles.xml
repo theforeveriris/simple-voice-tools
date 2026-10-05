@@ -17,6 +17,8 @@
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <!-- 纯色底（不再用图片 splash.png）：品牌启动页由 Web 层 SplashScreen 渲染，
+             设置可关；此处底色保证 web 层加载期间无突兀闪屏 -->
+        <item name="android:background">@color/launch_background</item>
     </style>
 </resources>

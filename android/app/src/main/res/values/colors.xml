@@ -4,4 +4,6 @@
          启动 splash 与系统栏区域尽量贴近应用配色 -->
     <color name="colorPrimary">#FBF2F2</color>
     <color name="colorPrimaryDark">#FBF2F2</color>
+    <!-- 启动窗口底色：与 manifest background_color 同值（PWA 启动画面同款浅粉） -->
+    <color name="launch_background">#FBF2F2</color>
 </resources>

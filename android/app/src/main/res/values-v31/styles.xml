@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- API 31+：系统启动画面固定展示应用图标（系统行为，不可去除），此处统一底色 -->
+<resources>
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:windowSplashScreenBackground">@color/launch_background</item>
+    </style>
+</resources>

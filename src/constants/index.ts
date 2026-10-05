@@ -204,6 +204,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoReplay: false,
   analysisCards: { pitch: true, formant: true, energy: true, spec: true, vrp: true },
   startTab: 'test',
+  splashScreen: true,
   diaryWeekStart: 1,
 };
 

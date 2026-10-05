@@ -10,6 +10,7 @@ import { Capacitor } from '@capacitor/core';
 import { BottomBar } from '@/components/layout/BottomBar';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
+import { SplashScreen } from '@/components/layout/SplashScreen';
 import { TestPage } from '@/components/pages/TestPage';
 import { AnalysisPage } from '@/components/pages/AnalysisPage';
 import { HistoryPage } from '@/components/pages/HistoryPage';
@@ -339,6 +340,9 @@ function App() {
         theme={isDark ? 'dark' : 'light'}
         toastOptions={{ style: { borderRadius: '8px' } }}
       />
+
+      {/* 原生壳启动页：浏览器/PWA 的启动画面由系统按 manifest 生成，这里只补壳内 */}
+      {isNative && <SplashScreen />}
 
       <main ref={mainRef} className="mx-auto w-full max-w-5xl px-5 pt-7 pb-36">
         {/*
