@@ -12,7 +12,7 @@
  * （本地自动备份已移至 数据管理 子页面）
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, SlidersHorizontal, Ruler, RotateCcw, LocateFixed, FileAudio,
@@ -36,11 +36,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
 import { SettingsSection, SettingRow } from './rows';
 import { GithubBackupSection } from './GithubBackupSection';
-import { LlmConfigSection } from './LlmConfigSection';
-import { LlmUsageSection } from './LlmUsageSection';
-import { PromptPage } from './PromptPage';
 import { InfoTip } from './InfoTip';
-import { registerBackClose } from '@/lib/backNav';
 
 /** 算法参数的档位下拉（数字值 ↔ 字符串键；当前值不在档位内时补入，防导入的任意值显示为空） */
 function AlgoSelect({ value, options, onChange, format, className = 'w-40' }: {
@@ -84,26 +80,11 @@ export function LabsPage({
   const [f0LiveOpen, setF0LiveOpen] = useState(false);
   const [specLiveOpen, setSpecLiveOpen] = useState(false);
   const [vrpLiveOpen, setVrpLiveOpen] = useState(false);
-  // 自定义提示词（大模型配置的二级子页面）
-  const [promptOpen, setPromptOpen] = useState(false);
   // 导入音频离线分析
   const [importBusy, setImportBusy] = useState(false);
   const [importPct, setImportPct] = useState(0);
   const [importDragOver, setImportDragOver] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
-
-  // 二级子页面（提示词）的返回手势：在语言子页之上再压一层 history
-  useEffect(() => {
-    if (!promptOpen) return;
-    return registerBackClose(() => setPromptOpen(false));
-  }, [promptOpen]);
-
-  // 二级子页面（提示词）独占整个视图；hooks 已全部调用，可安全提前返回
-  if (promptOpen) {
-    return (
-      <PromptPage settings={settings} update={update} onBack={() => window.history.back()} />
-    );
-  }
 
   /* ------------------------------ 自定义音区边界（实验性） ------------------------------ */
 
@@ -215,12 +196,6 @@ export function LabsPage({
             />
           </SettingRow>
         </SettingsSection>
-
-        {/* 大模型配置（训练建议选「基于大模型判断」时使用） */}
-        <LlmConfigSection settings={settings} update={update} onOpenPrompt={() => setPromptOpen(true)} />
-
-        {/* Token 用量（本机统计的大模型接口消耗 + 单价折算） */}
-        <LlmUsageSection settings={settings} update={update} />
 
         {/* 自定义音区边界 */}
         <SettingsSection icon={Ruler} title={t('settings.bandCustom')}>

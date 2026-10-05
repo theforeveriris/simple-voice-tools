@@ -1,13 +1,18 @@
 /**
- * 大模型接口配置档案（多套 baseUrl / API Key / 模型一键切换）
- * 档案整体存 IndexedDB kv（llm:profiles）——API Key 属敏感凭据，与 llm-api-key
- * 同理不进 localStorage / 设置导出。应用档案 = 把值写回设置里的
- * llmBaseUrl / llmApiKey / llmModelId 三个活动字段（llmActiveProfileId 只作选中态
- * 记录），现有消费方（resolveLlmConfig 等）零改动。
+ * 大模型接口配置档案（多套 baseUrl / API Key / 模型，v0.9.0 方案 A：档案即数据源）。
+ *
+ * 档案整体存 IndexedDB kv（llm:profiles）——API Key 属敏感凭据，不进
+ * localStorage / 设置导出。活动配置 = 设置里的 llmActiveProfileId 指针（随设置
+ * 持久化），消费方经 activeLlmConfigFrom() / useActiveLlmConfig() 解析；
+ * 旧的三字段（llmBaseUrl / llmApiKey / llmModelId）仅在启动迁移时读取一次
+ * （见 useStore 尾部），此后不再消费。
  * 内存快照 + 订阅（useSyncExternalStore），写操作经串行队列落 kv。
  */
 
+import { useSyncExternalStore } from 'react';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
+import type { LlmConfig } from '@/lib/llm';
+import { t } from '@/i18n';
 
 export interface LlmProfile {
   id: string;
@@ -20,6 +25,7 @@ export interface LlmProfile {
 const KV_PROFILES = 'llm:profiles';
 
 let profiles: LlmProfile[] | null = null;
+let loaded: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 let queue: Promise<void> = Promise.resolve();
 
@@ -33,30 +39,39 @@ function notify(): void {
   for (const fn of listeners) fn();
 }
 
+function validProfile(p: unknown): p is LlmProfile {
+  const o = p as LlmProfile;
+  return !!o && typeof o === 'object'
+    && typeof o.id === 'string' && typeof o.name === 'string'
+    && typeof o.baseUrl === 'string' && typeof o.apiKey === 'string'
+    && typeof o.modelId === 'string';
+}
+
 async function ensureLoaded(): Promise<void> {
   if (profiles != null) return;
-  try {
-    const raw = await idbGetKV<LlmProfile[]>(KV_PROFILES);
-    profiles = Array.isArray(raw)
-      ? raw.filter((p): p is LlmProfile =>
-        !!p && typeof p === 'object'
-        && typeof p.id === 'string' && typeof p.name === 'string'
-        && typeof p.baseUrl === 'string' && typeof p.apiKey === 'string'
-        && typeof p.modelId === 'string')
-      : [];
-  } catch {
-    profiles = []; // IndexedDB 不可用：本会话内仍可保存/切换（内存态）
-  }
+  loaded ??= (async () => {
+    try {
+      const raw = await idbGetKV<LlmProfile[]>(KV_PROFILES);
+      profiles = Array.isArray(raw) ? raw.filter(validProfile) : [];
+    } catch {
+      profiles = []; // IndexedDB 不可用：本会话内仍可保存/切换（内存态）
+    }
+  })();
+  await loaded;
+}
+
+/** 等待档案加载完成并返回快照（启动迁移等一次性读取用） */
+export async function profilesReady(): Promise<LlmProfile[]> {
+  await ensureLoaded();
+  return profiles!;
 }
 
 /** useSyncExternalStore 订阅入口：首次订阅时触发加载；快照引用稳定不触发重渲染 */
 export function subscribeProfiles(fn: () => void): () => void {
   listeners.add(fn);
-  if (profiles == null) {
-    void enqueue(async () => {
-      await ensureLoaded();
-    }).then(notify);
-  }
+  void enqueue(async () => {
+    await ensureLoaded();
+  }).then(notify);
   return () => listeners.delete(fn);
 }
 
@@ -69,33 +84,77 @@ function genId(): string {
   return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** 把当前活动配置存为新档案（名称已由调用方 trim；失败静默） */
-export function saveProfile(
-  name: string,
-  cfg: { baseUrl: string; apiKey: string; modelId: string },
-): void {
-  void enqueue(async () => {
-    await ensureLoaded();
-    profiles = [...profiles!, { id: genId(), name, ...cfg }];
-    try {
-      await idbPutKV(KV_PROFILES, profiles);
-    } catch {
-      /* kv 不可用时保留内存态 */
-    }
-    notify();
-  });
+async function persist(): Promise<void> {
+  try {
+    await idbPutKV(KV_PROFILES, profiles!);
+  } catch {
+    /* 落盘失败保持内存态，下次写操作重试 */
+  }
 }
 
-/** 删除档案（失败静默） */
-export function deleteProfile(id: string): void {
-  void enqueue(async () => {
-    await ensureLoaded();
-    profiles = profiles!.filter((p) => p.id !== id);
-    try {
-      await idbPutKV(KV_PROFILES, profiles);
-    } catch {
-      /* 同上 */
-    }
-    notify();
-  });
+function commit(next: LlmProfile[]): void {
+  profiles = next;
+  void enqueue(persist);
+  notify();
+}
+
+/** 新建档案并返回 id（调用方负责把 llmActiveProfileId 指向它） */
+export function addProfile(
+  name: string,
+  cfg: { baseUrl: string; apiKey: string; modelId: string },
+): string {
+  const p: LlmProfile = { id: genId(), name, ...cfg };
+  commit([...(profiles ?? []), p]);
+  return p.id;
+}
+
+/** 修改档案字段（id 不可变） */
+export function updateProfile(id: string, patch: Partial<Omit<LlmProfile, 'id'>>): void {
+  if (!profiles) return;
+  commit(profiles.map((p) => (p.id === id ? { ...p, ...patch, id } : p)));
+}
+
+/** 复制档案（名称追加「副本」后缀），返回新 id */
+export function duplicateProfile(id: string): string | null {
+  const src = profiles?.find((p) => p.id === id);
+  if (!src) return null;
+  const copy: LlmProfile = {
+    ...src,
+    id: genId(),
+    name: `${src.name} · ${t('settings.llmProfileCopySuffix')}`,
+  };
+  commit([...profiles!, copy]);
+  return copy.id;
+}
+
+/** 删除档案；返回是否存在（活动指针的清理由调用方负责） */
+export function deleteProfile(id: string): boolean {
+  if (!profiles?.some((p) => p.id === id)) return false;
+  commit(profiles.filter((p) => p.id !== id));
+  return true;
+}
+
+/** 按指针解析活动配置；指针缺失 / 档案不存在 / 字段不全 → null */
+export function activeLlmConfigFrom(
+  list: LlmProfile[],
+  activeId: string | undefined,
+): LlmConfig | null {
+  const p = activeId ? list.find((x) => x.id === activeId) : undefined;
+  if (!p) return null;
+  const baseUrl = p.baseUrl.trim().replace(/\/+$/, '');
+  const apiKey = p.apiKey.trim();
+  const modelId = p.modelId.trim();
+  if (!baseUrl || !apiKey || !modelId) return null;
+  return { baseUrl, apiKey, modelId };
+}
+
+/** React 订阅：档案列表（null = 尚未加载完成） */
+export function useLlmProfiles(): LlmProfile[] | null {
+  return useSyncExternalStore(subscribeProfiles, getProfilesSnapshot, getProfilesSnapshot);
+}
+
+/** React 订阅：活动配置（随档案与指针变化实时更新） */
+export function useActiveLlmConfig(activeId: string | undefined): LlmConfig | null {
+  const list = useLlmProfiles();
+  return list ? activeLlmConfigFrom(list, activeId) : null;
 }

@@ -57,8 +57,8 @@ function chatEndpoint(baseUrl: string): string {
   return `${baseUrl}/chat/completions`;
 }
 
-/** 要求模型以当前界面语言回答（AI 语言用其语言名） */
-function languageName(): string {
+/** 要求模型以当前界面语言回答（AI 语言用其语言名；AI 助手复用） */
+export function languageName(): string {
   return LOCALES.find((l) => l.id === getLocale())?.label
     ?? getAiLocaleLabel()
     ?? '简体中文';
@@ -394,13 +394,28 @@ export async function llmChatStream(
   user: string,
   opts: LlmStreamOptions = {},
 ): Promise<string> {
-  const { temperature = 0.3, signal, onDelta, feature } = opts;
+  return llmChatStreamMessages(cfg, [{ role: 'user', content: user }], { ...opts, system });
+}
+
+/**
+ * 多轮流式 chat（AI 助手）：turns 为不含 system 的对话历史（user / assistant
+ * 交替），流式解析与单轮共用同一条路径。
+ */
+export async function llmChatStreamMessages(
+  cfg: LlmConfig,
+  turns: { role: 'user' | 'assistant'; content: string }[],
+  opts: LlmStreamOptions & { system?: string } = {},
+): Promise<string> {
+  const { temperature = 0.3, signal, onDelta, feature, system = '' } = opts;
   const body = {
     model: cfg.modelId,
     temperature,
     stream: true,
     stream_options: { include_usage: true },
-    messages: chatMessages(system, user),
+    messages: [
+      ...(system ? [{ role: 'system', content: system }] : []),
+      ...turns,
+    ],
   };
   // 数据透明：请求体（不含 API Key，其在 Authorization 头）留档供 设置 → 数据 面板查看
   void recordLlmRequest(feature, cfg, body, true);
@@ -418,7 +433,7 @@ export async function llmChatStream(
     const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
     const content = data.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
-    trackUsage(feature, cfg, system, user, content, extractUsage(data));
+    trackUsage(feature, cfg, system, turns.map((t) => t.content).join('\n'), content, extractUsage(data));
     onDelta?.(content);
     return content;
   }
@@ -462,7 +477,7 @@ export async function llmChatStream(
     void reader.cancel().catch(() => {});
   }
   if (!content.trim()) throw new Error('Empty response');
-  trackUsage(feature, cfg, system, user, content, usage);
+  trackUsage(feature, cfg, system, turns.map((t) => t.content).join('\n'), content, usage);
   return content;
 }
 

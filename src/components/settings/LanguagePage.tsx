@@ -71,11 +71,11 @@ export function LanguagePage({
   };
 
   /** 生成（全量）/ 补全（仅缺失词条）：交给后台任务管理器，换页不中断 */
-  const onGenerate = (missingOnly: boolean) => {
+  const onGenerate = async (missingOnly: boolean) => {
     if (busy) return;
     const label = draft.trim();
     if (!label) return;
-    if (!startAITask(label, missingOnly)) {
+    if (!(await startAITask(label, missingOnly))) {
       toast.info(t('toast.aiTaskBusy'));
       return;
     }

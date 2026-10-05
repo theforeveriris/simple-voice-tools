@@ -18,6 +18,7 @@ import { setAlgoParams } from '@/lib/audio/algoParams';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
+import { addProfile, profilesReady } from '@/lib/llmProfiles';
 import { t } from '@/i18n';
 import { useHistoryStore } from './useHistoryStore';
 
@@ -214,7 +215,7 @@ useStore.subscribe((state, prev) => {
   if (state.settings !== prev.settings) syncModuleSettings(state.settings);
 });
 
-// 大模型 API Key 启动时从 IDB kv 恢复到内存态（设置输入框 / resolveLlmConfig 消费）；
+// 大模型 API Key 启动时从 IDB kv 恢复到内存态（v0.9.0 起仅供下方迁移读取）；
 // 内存已有值（如迁移刚写入）时不覆盖
 void (async () => {
   try {
@@ -224,5 +225,20 @@ void (async () => {
     }
   } catch {
     /* IndexedDB 不可用时保持为空，由设置页提示补全 */
+  }
+  // v0.9.0 迁移：旧「三字段活动配置」→ 档案（方案 A：档案即数据源）。
+  // 仅在还没有任何档案时执行一次；迁移后旧字段保留但不再消费。
+  try {
+    const list = await profilesReady();
+    if (list.length > 0) return;
+    const s = useStore.getState().settings;
+    const baseUrl = s.llmBaseUrl?.trim() ?? '';
+    const apiKey = s.llmApiKey?.trim() ?? '';
+    const modelId = s.llmModelId?.trim() ?? '';
+    if (!baseUrl && !apiKey && !modelId) return;
+    const id = addProfile(t('settings.llmProfileMigrated'), { baseUrl, apiKey, modelId });
+    useStore.getState().updateSettings({ llmActiveProfileId: id });
+  } catch {
+    /* 迁移失败不阻塞启动：档案页会提示补全 */
   }
 })();

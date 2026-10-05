@@ -15,7 +15,8 @@ import {
   type TranslateProgress,
 } from './aiLocale';
 import { useStore } from '@/store/useStore';
-import { resolveLlmConfig, type LlmConfig } from '@/lib/llm';
+import { type LlmConfig } from '@/lib/llm';
+import { activeLlmConfigFrom, profilesReady } from '@/lib/llmProfiles';
 
 export interface AITaskLogEntry {
   at: number;
@@ -88,10 +89,11 @@ export function cancelAITask(): void {
  * 启动翻译任务（全量或增量补全）。
  * @returns false = 已有任务在进行（本次未启动）
  */
-export function startAITask(label: string, missingOnly: boolean): boolean {
+export async function startAITask(label: string, missingOnly: boolean): Promise<boolean> {
   if (state.status === 'running') return false;
   const settings = useStore.getState().settings;
-  const cfg: LlmConfig | null = resolveLlmConfig(settings);
+  // v0.9.0：配置从活动档案解析（IDB 异步加载）
+  const cfg: LlmConfig | null = activeLlmConfigFrom(await profilesReady(), settings.llmActiveProfileId);
   if (!cfg) {
     toast.error(t('toast.aiNeedLlm'));
     return false;

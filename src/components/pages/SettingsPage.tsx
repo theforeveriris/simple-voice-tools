@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { DatabaseBackup, FlaskConical, Info, Languages, Palette, Settings2, Smartphone, ChevronRight, Search, X } from 'lucide-react';
+import { Bot, DatabaseBackup, FlaskConical, Info, Languages, Palette, Settings2, Smartphone, ChevronRight, Search, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -20,12 +20,13 @@ import { AppearancePage } from '@/components/settings/AppearancePage';
 import { LanguagePage } from '@/components/settings/LanguagePage';
 import { AppPage } from '@/components/settings/AppPage';
 import { ConfigPage } from '@/components/settings/ConfigPage';
+import { LlmPage } from '@/components/settings/LlmPage';
 import { AboutTab } from '@/components/settings/AboutTab';
 import { cn } from '@/lib/utils';
 import type { DictKey } from '@/i18n';
 
 /** 设置项搜索索引：点击结果直达对应子页面 */
-type SubPage = 'appearance' | 'language' | 'app' | 'config' | 'data' | 'labs';
+type SubPage = 'appearance' | 'language' | 'app' | 'config' | 'data' | 'labs' | 'llm';
 const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] = [
   // 外观
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.theme' },
@@ -76,7 +77,7 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceMode' },
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceOnCompare' },
   { page: 'labs', sectionKey: 'settings.llmSection', labelKey: 'settings.llmBaseUrl' },
-  { page: 'labs', sectionKey: 'settings.llmSection', labelKey: 'settings.llmProfiles' },
+  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmProfiles' },
   { page: 'labs', sectionKey: 'settings.llmUsageTitle', labelKey: 'settings.llmUsageTitle' },
   { page: 'labs', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandBounds' },
   { page: 'labs', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandReset' },
@@ -95,6 +96,10 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoCppsSmooth' },
   { page: 'labs', sectionKey: 'vowelLive.title', labelKey: 'vowelLive.title' },
   { page: 'labs', sectionKey: 'settings.importAudio', labelKey: 'settings.importAudio' },
+  // 大模型
+  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmModelConfig' },
+  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmPromptEntry' },
+  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'assistant.entry' },
   { page: 'labs', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghClientId' },
   { page: 'labs', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghPush' },
   { page: 'labs', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghPull' },
@@ -111,6 +116,7 @@ export function SettingsPage() {
   const [languageOpen, setLanguageOpen] = useState(false);
   const [appOpen, setAppOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const [llmOpen, setLlmOpen] = useState(false);
   const [labsOpen, setLabsOpen] = useState(false);
   const [dataOpen, setDataOpen] = useState(false);
 
@@ -118,7 +124,7 @@ export function SettingsPage() {
 
   // 子页面返回手势：任一子页打开时压入一条 history（系统返回 / 侧滑 → 关闭回主视图）；
   // 子页头的返回按钮调 history.back() 走同一链路。切页签卸载本组件时清理。
-  const anySubOpen = appearanceOpen || languageOpen || appOpen || configOpen || labsOpen || dataOpen;
+  const anySubOpen = appearanceOpen || languageOpen || appOpen || configOpen || llmOpen || labsOpen || dataOpen;
   useEffect(() => {
     if (!anySubOpen) return;
     return registerBackClose(() => {
@@ -126,6 +132,7 @@ export function SettingsPage() {
       setLanguageOpen(false);
       setAppOpen(false);
       setConfigOpen(false);
+      setLlmOpen(false);
       setLabsOpen(false);
       setDataOpen(false);
     });
@@ -146,6 +153,9 @@ export function SettingsPage() {
   }
   if (configOpen) {
     return <ConfigPage settings={settings} update={update} onBack={subBack()} />;
+  }
+  if (llmOpen) {
+    return <LlmPage settings={settings} update={update} onBack={subBack()} />;
   }
   if (labsOpen) {
     return <LabsPage settings={settings} update={update} onBack={subBack()} />;
@@ -251,6 +261,7 @@ export function SettingsPage() {
                       else if (e.page === 'language') setLanguageOpen(true);
                       else if (e.page === 'app') setAppOpen(true);
                       else if (e.page === 'config') setConfigOpen(true);
+                      else if (e.page === 'llm') setLlmOpen(true);
                       else if (e.page === 'data') setDataOpen(true);
                       else setLabsOpen(true);
                     }}
@@ -271,6 +282,7 @@ export function SettingsPage() {
               {entry(t('settings.language'), Languages, () => setLanguageOpen(true))}
               {entry(t('settings.app'), Smartphone, () => setAppOpen(true))}
               {entry(t('settings.config'), Settings2, () => setConfigOpen(true))}
+              {entry(t('settings.llmPage'), Bot, () => setLlmOpen(true))}
               {entry(t('settings.data'), DatabaseBackup, () => setDataOpen(true))}
               {entry(t('settings.labs'), FlaskConical, () => setLabsOpen(true))}
             </>

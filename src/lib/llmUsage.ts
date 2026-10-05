@@ -8,9 +8,9 @@
 
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 
-export type LlmFeature = 'advice' | 'weekly' | 'translate' | 'test';
+export type LlmFeature = 'advice' | 'weekly' | 'translate' | 'test' | 'assistant';
 
-export const LLM_FEATURES: readonly LlmFeature[] = ['advice', 'weekly', 'translate', 'test'];
+export const LLM_FEATURES: readonly LlmFeature[] = ['advice', 'weekly', 'translate', 'test', 'assistant'];
 
 /** 服务商返回的真实用量 */
 export interface LlmUsageReal {

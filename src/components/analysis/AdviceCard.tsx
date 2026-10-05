@@ -1,7 +1,7 @@
 /**
  * 训练建议卡（实验性）
  * adviceMode = rules：本地规则引擎生成（lib/advice.ts）；
- * adviceMode = llm：调用 设置 → 实验性功能 → 大模型配置 的接口（lib/llm.ts）。
+ * adviceMode = llm：调用 设置 → 大模型 中使用中档案的接口（lib/llm.ts）。
  * 传入两条记录时（对比页）按 A / B 分组给规则建议，
  * 大模型则合并两份统计生成对比性建议。
  */
@@ -12,9 +12,10 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { buildAdvice, type AdviceTarget } from '@/lib/advice';
 import {
-  cachedLlmAdvice, fetchLlmAdvice, isAbortError, llmAdviceKey, resolveLlmConfig,
-  type LlmAdviceResult,
+  cachedLlmAdvice, fetchLlmAdvice, isAbortError, llmAdviceKey,
+  type LlmAdviceResult, type LlmConfig,
 } from '@/lib/llm';
+import { useActiveLlmConfig } from '@/lib/llmProfiles';
 import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 import { LlmResultView, StreamPreview } from '@/components/analysis/LlmResultView';
@@ -25,9 +26,8 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   const targetEnabled = useStore((s) => s.settings.targetEnabled);
   const targetMin = useStore((s) => s.settings.targetF0Min);
   const targetMax = useStore((s) => s.settings.targetF0Max);
-  const baseUrl = useStore((s) => s.settings.llmBaseUrl);
-  const apiKey = useStore((s) => s.settings.llmApiKey);
-  const modelId = useStore((s) => s.settings.llmModelId);
+  const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
+  const cfg = useActiveLlmConfig(activeProfileId);
   const extraRules = useStore((s) => s.settings.llmExtraRules);
   const promptOverride = useStore((s) => s.settings.llmPromptOverride);
   const baselineId = useStore((s) => s.settings.baselineRecordId);
@@ -36,7 +36,6 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   );
   if (adviceMode === 'none') return null;
   const target: AdviceTarget = { enabled: targetEnabled, min: targetMin, max: targetMax };
-  const cfg = resolveLlmConfig({ llmBaseUrl: baseUrl, llmApiKey: apiKey, llmModelId: modelId });
   // 基线 Δ 只在单记录（分析页）且非自身时附带
   const baseline =
     records.length === 1 && baselineRecord && baselineRecord.id !== records[0].id
@@ -122,7 +121,7 @@ function LlmAdvice({
 }: {
   records: AnalysisRecord[];
   target: AdviceTarget;
-  cfg: ReturnType<typeof resolveLlmConfig>;
+  cfg: LlmConfig | null;
   baseline: AnalysisRecord | null;
   prompt: { extraRules?: string[]; promptOverride?: string };
 }) {

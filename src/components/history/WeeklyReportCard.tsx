@@ -2,16 +2,17 @@
  * AI 周报卡（历史页 · 趋势视图底部）
  * 聚合最近 7 天记录（按模式分组）发给大模型，生成一段周总结：
  * 练习一致性 → 音高 vs 目标 → 共鸣 → 嗓音健康 → 下周建议。
- * 依赖 设置 → 实验性功能 → 大模型配置；同一周内会话级缓存。
+ * 依赖 设置 → 大模型 中使用中档案的接口；同一周内会话级缓存。
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { CalendarRange, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import {
-  cachedWeeklyReport, fetchWeeklyReport, isAbortError, resolveLlmConfig, weekRecords, weeklyReportKey,
+  cachedWeeklyReport, fetchWeeklyReport, isAbortError, weekRecords, weeklyReportKey,
   type LlmAdviceResult, type LlmPromptOptions,
 } from '@/lib/llm';
+import { useActiveLlmConfig } from '@/lib/llmProfiles';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AnalysisRecord } from '@/types';
@@ -28,12 +29,10 @@ interface ReportState {
 export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
   useI18n();
   const adviceMode = useStore((s) => s.settings.adviceMode);
-  const baseUrl = useStore((s) => s.settings.llmBaseUrl);
-  const apiKey = useStore((s) => s.settings.llmApiKey);
-  const modelId = useStore((s) => s.settings.llmModelId);
+  const activeProfileId = useStore((s) => s.settings.llmActiveProfileId);
+  const cfg = useActiveLlmConfig(activeProfileId);
   const extraRules = useStore((s) => s.settings.llmExtraRules);
   const promptOverride = useStore((s) => s.settings.llmPromptOverride);
-  const cfg = resolveLlmConfig({ llmBaseUrl: baseUrl, llmApiKey: apiKey, llmModelId: modelId });
   const prompt: LlmPromptOptions = { extraRules, promptOverride };
 
   const [nonce, setNonce] = useState(0);

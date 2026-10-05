@@ -22,6 +22,7 @@ const FEATURE_KEY: Record<LlmFeature, DictKey> = {
   weekly: 'settings.llmUsageFeatureWeekly',
   translate: 'settings.llmUsageFeatureTranslate',
   test: 'settings.llmUsageFeatureTest',
+  assistant: 'settings.llmUsageFeatureAssistant',
 };
 
 /** token 数紧凑格式：<1000 原样，否则 K（一位小数） */

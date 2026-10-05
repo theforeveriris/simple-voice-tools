@@ -37,7 +37,7 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 
 `android/app/build.gradle` 直接读仓库根的 `package.json`：
 `versionName` = semver 原值，`versionCode` = `major*10000 + minor*100 + patch`
-（如 0.8.5 → 805）。**改版本只改 package.json**，Android 侧自动跟随；
+（如 0.9.0 → 900）。**改版本只改 package.json**，Android 侧自动跟随；
 只要 semver 正常递增，versionCode 单调递增（应用内更新覆盖安装的前提）。
 
 ## CI/CD（GitHub Actions）
