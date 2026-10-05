@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 长按图标快捷方式：对齐 PWA manifest shortcuts（测试录音 / 历史 / 设置）。
+     intent 以 VIEW + 自定义 scheme 打开 MainActivity，路由由 AppShortcutPlugin
+     交给 Web 层落到对应页签；图标为「圆底 + 线稿」矢量，文案按系统语言取 strings。 -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="record"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_record"
+        android:shortcutShortLabel="@string/shortcut_record_short"
+        android:shortcutLongLabel="@string/shortcut_record_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="simplevoicetool://open/#/test"
+            android:targetPackage="com.theforeveriris.simplevoicetool"
+            android:targetClass="com.theforeveriris.simplevoicetool.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="history"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_history"
+        android:shortcutShortLabel="@string/shortcut_history_short"
+        android:shortcutLongLabel="@string/shortcut_history_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="simplevoicetool://open/#/history"
+            android:targetPackage="com.theforeveriris.simplevoicetool"
+            android:targetClass="com.theforeveriris.simplevoicetool.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="settings"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_settings"
+        android:shortcutShortLabel="@string/shortcut_settings_short"
+        android:shortcutLongLabel="@string/shortcut_settings_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="simplevoicetool://open/#/settings"
+            android:targetPackage="com.theforeveriris.simplevoicetool"
+            android:targetClass="com.theforeveriris.simplevoicetool.MainActivity" />
+    </shortcut>
+</shortcuts>

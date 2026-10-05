@@ -31,6 +31,18 @@
                 <data android:mimeType="audio/*" />
             </intent-filter>
 
+            <!-- 应用快捷方式（长按图标，见 res/xml/shortcuts.xml）与
+                 simplevoicetool:// 深链接：路由经 AppShortcutPlugin 交给 Web 层 -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="simplevoicetool" />
+            </intent-filter>
+
         </activity>
 
         <provider

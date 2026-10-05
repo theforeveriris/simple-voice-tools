@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_record_short">開始錄音</string>
+    <string name="shortcut_record_long">開始一次錄音測試</string>
+    <string name="shortcut_history_short">歷史記錄</string>
+    <string name="shortcut_history_long">查看歷史與趨勢</string>
+    <string name="shortcut_settings_short">設定</string>
+    <string name="shortcut_settings_long">開啟設定</string>
+</resources>

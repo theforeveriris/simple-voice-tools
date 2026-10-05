@@ -4,4 +4,12 @@
     <string name="title_activity_main">Simple Voice Tool</string>
     <string name="package_name">com.theforeveriris.simplevoicetool</string>
     <string name="custom_url_scheme">com.theforeveriris.simplevoicetool</string>
+
+    <!-- 应用快捷方式标签（默认英文，其余语言见 values-zh-rCN / values-zh-rTW / values-ja） -->
+    <string name="shortcut_record_short">Record</string>
+    <string name="shortcut_record_long">Start a recording test</string>
+    <string name="shortcut_history_short">History</string>
+    <string name="shortcut_history_long">View history and trends</string>
+    <string name="shortcut_settings_short">Settings</string>
+    <string name="shortcut_settings_long">Open settings</string>
 </resources>

@@ -53,6 +53,21 @@ interface SystemBarsPluginInterface {
 /** 仅原生壳内可用 */
 export const SystemBars = registerPlugin<SystemBarsPluginInterface>('SystemBars');
 
+/* ------------------------------ 原生 app shortcuts 深链接 ------------------------------ */
+
+interface AppShortcutsPluginInterface {
+  /** 取走暂存的快捷方式路由（"#/history" 形式）；冷启动一次性，无则 route 为 null */
+  getInitialRoute(): Promise<{ route: string | null }>;
+  /** 热启动（应用在后台时长按快捷方式）实时推送 */
+  addListener(
+    eventName: 'shortcutRoute',
+    listener: (data: { route: string }) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+}
+
+/** 仅原生壳内可用；与 ShareTarget 相同约定：先 addListener 再取初始路由 */
+export const AppShortcuts = registerPlugin<AppShortcutsPluginInterface>('AppShortcuts');
+
 /** 从 CSS 颜色串取亮度（0-255）；解析失败返回 null */
 function luminanceOf(cssColor: string): number | null {
   const m = cssColor.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);

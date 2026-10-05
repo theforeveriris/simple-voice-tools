@@ -1,17 +1,17 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
+import App, { TABS } from './App.tsx'
 import { applyTheme, prefersDark, presetSpec } from '@/lib/theme/monet'
 import { loadBgImage } from '@/lib/theme/bgImage'
 import { initPwaInstall } from '@/lib/pwa'
-import { isNative, isTauri, syncNativeSystemBars } from '@/lib/platform'
+import { AppShortcuts, isNative, isTauri, syncNativeSystemBars } from '@/lib/platform'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
 import { setLocale, DEFAULT_LOCALE } from '@/i18n'
 import { hydrateAiLocale } from '@/i18n/aiLocale'
 import { getWallpaperHues } from '@/lib/theme/dynamic'
-import type { Locale, ThemeMode } from '@/types'
+import type { Locale, ThemeMode, ViewType } from '@/types'
 
 // 渲染前先应用持久化的主题色板与深浅模式，避免首帧闪烁
 const saved = (() => {
@@ -92,6 +92,22 @@ if (!isNative && !isTauri) initPwaInstall()
 // 改为手动注册——原生壳内无 SW 支持，Tauri 自定义协议下 SW 不可靠，均跳过
 if (!isNative && !isTauri) {
   void import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }))
+}
+
+// 原生 app shortcuts：冷启动取暂存路由、热启动收事件，落到对应页签
+// （与 PWA manifest shortcuts 同一套 #/hash 语义；setTab 会同步 location.hash）
+if (isNative) {
+  const applyShortcutRoute = (route: string | null | undefined) => {
+    if (!route) return;
+    const tab = route.replace(/^#\/?/, '') as ViewType;
+    if (!TABS.includes(tab)) return;
+    useStore.getState().setTab(tab);
+  };
+  void AppShortcuts.getInitialRoute()
+    .then(({ route }) => applyShortcutRoute(route))
+    .catch(() => {});
+  void AppShortcuts.addListener('shortcutRoute', ({ route }) => applyShortcutRoute(route))
+    .catch(() => {});
 }
 
 // 背景图片异步预加载：读取 IndexedDB 后经 opacity 过渡淡入，不阻塞首帧

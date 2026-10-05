@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_record_short">録音開始</string>
+    <string name="shortcut_record_long">録音テストを開始</string>
+    <string name="shortcut_history_short">履歴</string>
+    <string name="shortcut_history_long">履歴と推移を見る</string>
+    <string name="shortcut_settings_short">設定</string>
+    <string name="shortcut_settings_long">設定を開く</string>
+</resources>

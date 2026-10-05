@@ -28,7 +28,8 @@ import { t } from '@/i18n';
 import { checkPracticeReminder } from '@/lib/reminder';
 import type { ViewType } from '@/types';
 
-const TABS: ViewType[] = ['test', 'analysis', 'history', 'settings'];
+/** 页签清单（含顺序）：同时供 manifest shortcuts / 原生 app shortcuts 的深链校验使用 */
+export const TABS: ViewType[] = ['test', 'analysis', 'history', 'settings'];
 
 /** 由 location.hash 解析页签（#/history 形式），未知或缺失时回退测试页 */
 function tabFromHash(): ViewType {
