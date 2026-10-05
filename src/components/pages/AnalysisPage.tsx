@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { FileCode2, FileSpreadsheet, Pencil, Share2 } from 'lucide-react';
+import { FileCode2, FileSpreadsheet, Pencil, RefreshCw, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
@@ -39,6 +39,7 @@ import { SustainedCard } from '@/components/analysis/SustainedCard';
 import { AdviceCard } from '@/components/analysis/AdviceCard';
 import { StatsTable } from '@/components/analysis/StatsTables';
 import { PitchAlgorithmCard } from '@/components/analysis/PitchAlgorithmCard';
+import { ReanalyzeDialog } from '@/components/analysis/ReanalyzeDialog';
 import { AnalysisChart, FormantCard, SpecCard, VrpCard } from '@/components/analysis/ChartCards';
 import { NoteDialog } from '@/components/analysis/NoteDialog';
 import { EmptyState } from '@/components/analysis/EmptyState';
@@ -79,6 +80,8 @@ export function AnalysisPage() {
   const [ownRanges, setOwnRanges] = useState<Partial<Record<RangedKind, [number, number]>>>({});
   const [noteOpen, setNoteOpen] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  // 用当前算法参数重算（先预览新旧对比，确认后才覆盖）
+  const [reanalyzeOpen, setReanalyzeOpen] = useState(false);
   // 交互 HTML 报告：含音频与否的选择弹窗（无音频记录直接导出）
   const [htmlDialogOpen, setHtmlDialogOpen] = useState(false);
   const [htmlBusy, setHtmlBusy] = useState(false);
@@ -178,6 +181,16 @@ export function AnalysisPage() {
     else void onExportHtml(false);
   };
 
+  /** 用当前参数重算：无录音音频直接提示；有则打开重算对话框（内部跑管线出对比） */
+  const onReanalyzeClick = async () => {
+    const audio = await useHistoryStore.getState().getAudio(record.id);
+    if (!audio) {
+      toast.info(t('analysis.reanalyzeNeedAudio'));
+      return;
+    }
+    setReanalyzeOpen(true);
+  };
+
   return (
     <div className="flex flex-col gap-3.5">
       <HeroSummary
@@ -210,6 +223,14 @@ export function AnalysisPage() {
               title={t('analysis.htmlTitle')}
             >
               <FileCode2 size={16} />
+            </button>
+            <button
+              onClick={() => void onReanalyzeClick()}
+              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
+              aria-label={t('analysis.reanalyzeAria')}
+              title={t('analysis.reanalyzeAria')}
+            >
+              <RefreshCw size={15} />
             </button>
             <button
               onClick={() => setNoteOpen(true)}
@@ -295,6 +316,9 @@ export function AnalysisPage() {
       </>)}
 
       <NoteDialog record={record} open={noteOpen} onOpenChange={setNoteOpen} />
+
+      {/* 用当前参数重算：新旧统计对比后确认覆盖 */}
+      <ReanalyzeDialog record={record} open={reanalyzeOpen} onOpenChange={setReanalyzeOpen} />
 
       {/* 交互 HTML 报告：是否内嵌录音音频 */}
       <Dialog open={htmlDialogOpen} onOpenChange={setHtmlDialogOpen}>

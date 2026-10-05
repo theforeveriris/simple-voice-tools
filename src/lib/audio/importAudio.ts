@@ -186,8 +186,8 @@ export async function analyzeAudioFile(
   return { record, audio: opts.saveAudio === false ? null : file, truncated };
 }
 
-/** 语谱行解码：把 Worker 返回的扁平量化行切成行视图并编码 base64（行率 1，导入序列本身按 30fps 存储） */
-function specData(flat: Uint8Array, rows: number): { bands: number; data: string } | undefined {
+/** 语谱行解码：把 Worker 返回的扁平量化行切成行视图并编码 base64（行率 1，导入序列本身按 30fps 存储）；重算共用 */
+export function specData(flat: Uint8Array, rows: number): { bands: number; data: string } | undefined {
   if (rows <= 0 || flat.length < rows * SPEC_BANDS) return undefined;
   const arr: Uint8Array[] = [];
   for (let r = 0; r < rows; r++) {

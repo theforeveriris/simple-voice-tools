@@ -189,6 +189,10 @@ export interface AnalysisRecord {
   note?: string;
   /** 语谱图量化数据（可选，旧记录/无音频记录可能缺失） */
   spec?: RecordSpec;
+  /** 用当前算法参数重算的时间（epoch 毫秒）；从未重算的记录无此字段 */
+  reanalyzedAt?: number;
+  /** 重算时的算法参数指纹（algoParamsFingerprint）；与当前指纹不一致 = 参数已变、可重算 */
+  paramsFp?: string;
 }
 
 /**
