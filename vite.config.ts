@@ -75,8 +75,14 @@ export default defineConfig(({ command }) => ({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-        // 长按图标快捷入口：hash 深链直达历史 / 设置页（App 启动时解析 location.hash）
+        // 长按图标快捷入口：hash 深链直达对应页签（App 启动时解析 location.hash）
         shortcuts: [
+          {
+            name: '开始录音',
+            short_name: '录音',
+            url: './index.html#/test',
+            icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
           {
             name: '历史记录',
             short_name: '历史',
