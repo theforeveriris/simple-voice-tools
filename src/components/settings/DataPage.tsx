@@ -51,6 +51,7 @@ import {
 import { StorageUsage } from './StorageUsage';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
+import { PrivacyPanel } from './PrivacyPanel';
 import { BackupEncryptionSection } from './BackupEncryptionSection';
 import { BackupPassphraseDialog } from './BackupPassphraseDialog';
 
@@ -290,6 +291,9 @@ export function DataPage({
           </button>
           <p className="text-base font-semibold text-ink">{t('settings.data')}</p>
         </div>
+
+        {/* 数据去向（隐私边界 + AI 请求日志） */}
+        <PrivacyPanel />
 
         {/* 存储用量 */}
         <SettingsSection icon={HardDrive} title={t('settings.storageUsage')}>

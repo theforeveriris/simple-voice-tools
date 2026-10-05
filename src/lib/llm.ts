@@ -14,6 +14,7 @@ import type { AdviceTarget } from '@/lib/advice';
 import { computeSustainedMetrics } from '@/lib/audio/sustained';
 import { LOCALES, getAiLocaleLabel, getLocale } from '@/i18n';
 import { recordLlmUsage, type LlmFeature, type LlmUsageReal } from '@/lib/llmUsage';
+import { recordLlmRequest } from '@/lib/llmRequestLog';
 import { loadLlmResult, saveLlmResult } from '@/lib/llmResultStore';
 
 /** 大模型接口配置（由设置解析而来） */
@@ -310,10 +311,13 @@ export async function llmChat(
   signal?: AbortSignal,
   feature?: LlmFeature,
 ): Promise<string> {
+  const body = { model: cfg.modelId, temperature, messages: chatMessages(system, user) };
+  // 数据透明：请求体（不含 API Key，其在 Authorization 头）留档供 设置 → 数据 面板查看
+  void recordLlmRequest(feature, cfg, body, false);
   const res = await fetch(chatEndpoint(cfg.baseUrl), {
     method: 'POST',
     headers: chatHeaders(cfg),
-    body: JSON.stringify({ model: cfg.modelId, temperature, messages: chatMessages(system, user) }),
+    body: JSON.stringify(body),
     signal,
   });
   if (!res.ok) throw new Error(await describeHttpError(res));
@@ -391,16 +395,19 @@ export async function llmChatStream(
   opts: LlmStreamOptions = {},
 ): Promise<string> {
   const { temperature = 0.3, signal, onDelta, feature } = opts;
+  const body = {
+    model: cfg.modelId,
+    temperature,
+    stream: true,
+    stream_options: { include_usage: true },
+    messages: chatMessages(system, user),
+  };
+  // 数据透明：请求体（不含 API Key，其在 Authorization 头）留档供 设置 → 数据 面板查看
+  void recordLlmRequest(feature, cfg, body, true);
   const res = await fetch(chatEndpoint(cfg.baseUrl), {
     method: 'POST',
     headers: chatHeaders(cfg),
-    body: JSON.stringify({
-      model: cfg.modelId,
-      temperature,
-      stream: true,
-      stream_options: { include_usage: true },
-      messages: chatMessages(system, user),
-    }),
+    body: JSON.stringify(body),
     signal,
   });
   if (!res.ok) throw new Error(await describeHttpError(res));
