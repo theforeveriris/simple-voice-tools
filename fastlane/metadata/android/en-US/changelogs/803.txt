@@ -1,0 +1,1 @@
+PWA-style splash screen on Android (toggle in settings).

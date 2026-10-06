@@ -1,0 +1,1 @@
+Per-profile protocol (OpenAI/Anthropic), context size and streaming toggle; visible thinking; the assistant can reference your test history.

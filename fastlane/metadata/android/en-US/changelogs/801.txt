@@ -1,0 +1,1 @@
+Added the record entry to PWA app shortcuts.

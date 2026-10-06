@@ -1,0 +1,1 @@
+Connection test timeout raised to 30s.

@@ -1,0 +1,39 @@
+<p>Simple Voice Tool is a serious voice measurement, analysis and training tracker built on the Web Audio API. Speak into your microphone and get pitch, formant and energy analysis in real time — fully offline, nothing leaves your device.</p>
+<p><b>Measure</b></p>
+<ul>
+<li>Real-time pitch curve with male / female / transition band coloring and live note readout</li>
+<li>Three test modes: free reading, sustained vowel (auto-stop, Jitter) and glissando (voice range profile)</li>
+<li>F1/F2 formants with vowel-space scatter and target zones for resonance training</li>
+</ul>
+<p><b>Analyze</b></p>
+<ul>
+<li>Voice quality: Jitter, Shimmer, HNR and CPPS</li>
+<li>Shared time axis with zoom and crosshair readouts; accessible data-table views (copy as TSV)</li>
+<li>Re-analyze saved recordings with updated algorithm parameters — no need to re-record</li>
+<li>Import external audio through the same offline pipeline</li>
+</ul>
+<p><b>Track</b></p>
+<ul>
+<li>Trend charts (average F0, range, MPT, CPPS) and a GitHub-style practice heatmap</li>
+<li>Pairwise comparison with delta tables and pitch overlay</li>
+<li>Training targets with achievement rate and baseline comparison</li>
+<li>Optional daily practice reminders</li>
+</ul>
+<p><b>Privacy first</b></p>
+<ul>
+<li>Records, audio and analysis stay in local storage (IndexedDB)</li>
+<li>Full ZIP backup &amp; restore; optional encrypted cloud backup to your own GitHub repo / WebDAV / local folder</li>
+<li>A data-transparency panel shows exactly what goes where</li>
+</ul>
+<p><b>Optional AI — bring your own key</b></p>
+<ul>
+<li>Training advice, weekly reports and a chat assistant via your own OpenAI-compatible or Anthropic endpoint</li>
+<li>Only aggregate statistics are sent — never audio or raw curves; every request is inspectable in the app</li>
+<li>Fully functional offline without any AI features</li>
+</ul>
+<p><b>Everywhere</b></p>
+<ul>
+<li>Installable as a PWA; shipped as an Android APK and a Windows installer</li>
+<li>Keyboard shortcuts; 5 languages (English, 简体中文, 繁體中文, 日本語, Literary Chinese)</li>
+</ul>
+<p>License: MIT — https://github.com/theforeveriris/simple-voice-tools</p>
