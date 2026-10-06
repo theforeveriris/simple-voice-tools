@@ -8,7 +8,7 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 
 ## Get the app
 
-[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/res/badges/button.png" alt="Get it on Obtainium" height="80">](https://apps.obtainium.imranr.dev/redirect.html?r=https%3A%2F%2Fgithub.com%2Ftheforeveriris%2Fsimple-voice-tools)
+[<img src=".github/assets/obtainium-badge.png" alt="Get it on Obtainium" height="56">](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522github.com%252Ftheforeveriris%252Fsimple-voice-tools%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252Ftheforeveriris%252Fsimple-voice-tools%2522%252C%2522author%2522%253A%2522theforeveriris%2522%252C%2522name%2522%253A%2522simple-voice-tools%2522%257D)
 
 - **Android APK**: grab the latest `SimpleVoiceTool-v*-release.apk` from [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest) and install it directly (release-signed, with in-app update notices)
 - **Obtainium**: if you use [Obtainium](https://github.com/ImranR98/Obtainium), tap the badge above to add this repo and pick up new versions automatically
