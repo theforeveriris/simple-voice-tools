@@ -45,7 +45,7 @@ function accentColors(): { accent: string; accent2: string } {
 function reportLabels() {
   return {
     title: t('share.shareTitle'),
-    footer: t('share.footer'),
+    footer: t('report.footer'),
     zoomHint: t('html.zoomHint'),
     duration: t('analysis.rowDuration'),
     avgF0: t('analysis.rowAvgF0'),

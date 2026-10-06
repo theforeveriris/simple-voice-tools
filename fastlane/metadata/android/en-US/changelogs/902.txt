@@ -1,0 +1,1 @@
+Share card redesign: four styles (theme/dark/light/aurora), a QR code to the repo in the corner, and the privacy tagline removed from the canvas.

@@ -5,9 +5,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
-// docs/ 为构建产物（vite outDir，GitHub Pages 约定），不参与 lint
+// docs/ 为构建产物（vite outDir，GitHub Pages 约定），不参与 lint；
+// android app build/ 与 tauri target/ 内有 gradle/rust 生成的 js 资源，同样排除
 export default defineConfig([
-  globalIgnores(['dist', 'docs']),
+  globalIgnores(['dist', 'docs', 'android/app/build', 'src-tauri/target']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

@@ -25,7 +25,8 @@ import { useHistoryStore } from '@/store/useHistoryStore';
 import { computeStats } from '@/lib/audio/recorder';
 import { downloadText, recordToFrameCsv } from '@/lib/export/csv';
 import { recordToPitchTier, recordToFormant } from '@/lib/export/praat';
-import { exportShareImage } from '@/lib/export/shareCard';
+import { ShareCardSheet } from '@/components/share/ShareCardSheet';
+import { renderShareCard, shareImageFilename } from '@/lib/export/shareCard';
 import { exportInteractiveHtml } from '@/lib/export/interactiveHtml';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -80,7 +81,7 @@ export function AnalysisPage() {
   const [sharedRange, setSharedRange] = useState<[number, number]>([0, record?.durationSec ?? 0]);
   const [ownRanges, setOwnRanges] = useState<Partial<Record<RangedKind, [number, number]>>>({});
   const [noteOpen, setNoteOpen] = useState(false);
-  const [shareBusy, setShareBusy] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   // 用当前算法参数重算（先预览新旧对比，确认后才覆盖）
   const [reanalyzeOpen, setReanalyzeOpen] = useState(false);
   // 交互 HTML 报告：含音频与否的选择弹窗（无音频记录直接导出）
@@ -142,19 +143,6 @@ export function AnalysisPage() {
   const showBaseline = baselineRecord && baselineRecord.id !== record.id
     && (baselineRecord.stats.avgF0 > 0 || record.stats.avgF0 > 0);
 
-  const onShare = async () => {
-    if (shareBusy) return;
-    setShareBusy(true);
-    try {
-      const outcome = await exportShareImage(record);
-      if (outcome === 'downloaded') toast.success(t('toast.shareDownloaded'));
-    } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') toast.error(t('toast.shareFail'));
-    } finally {
-      setShareBusy(false);
-    }
-  };
-
   const onExportCsv = () => {
     downloadText(`voice-frames-${record.id.slice(0, 8)}.csv`, recordToFrameCsv(record));
     toast.success(t('toast.frameCsvExported'));
@@ -214,8 +202,7 @@ export function AnalysisPage() {
         actions={
           <>
             <button
-              onClick={onShare}
-              disabled={shareBusy}
+              onClick={() => setShareOpen(true)}
               className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
               aria-label={t('analysis.shareAria')}
               title={t('analysis.shareTitle')}
@@ -398,6 +385,13 @@ export function AnalysisPage() {
 
       {/* 回放音频源（页面级，播放头位置由 rAF 循环同步到各图表） */}
       <audio {...playback.audioProps} />
+
+      <ShareCardSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        render={(style) => renderShareCard(record, style)}
+        filename={shareImageFilename(record)}
+      />
     </div>
   );
 }

@@ -7,9 +7,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, TrendingUp, Share2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { BAND_COLORS, getBandRanges, bandOf } from '@/constants';
-import { exportShareCompareImage } from '@/lib/export/shareCard';
+import { ShareCardSheet } from '@/components/share/ShareCardSheet';
+import { renderShareCompareCard, shareCompareFilename } from '@/lib/export/shareCard';
 import { chartPalette, collectVowelPoints, drawVowelSpaceFrame, drawVowelPoints, drawVowelCentroid, drawVowelRefs, vowelXY } from '@/components/charts/chartPainters';
 import { AdviceCard } from '@/components/analysis/AdviceCard';
 import { t } from '@/i18n';
@@ -161,20 +161,7 @@ export function CompareSheet({
   const showGrid = useStore((s) => s.settings.showGrid);
   const adviceMode = useStore((s) => s.settings.adviceMode);
   const adviceOnCompare = useStore((s) => s.settings.adviceOnCompare);
-  const [shareBusy, setShareBusy] = useState(false);
-
-  const onShare = async () => {
-    if (shareBusy) return;
-    setShareBusy(true);
-    try {
-      const outcome = await exportShareCompareImage(a, b);
-      if (outcome === 'downloaded') toast.success(t('toast.shareDownloaded'));
-    } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') toast.error(t('toast.shareFail'));
-    } finally {
-      setShareBusy(false);
-    }
-  };
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -245,9 +232,8 @@ export function CompareSheet({
           </h1>
           <div className="flex items-center gap-1">
             <button
-              onClick={onShare}
-              disabled={shareBusy}
-              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent disabled:opacity-50"
+              onClick={() => setShareOpen(true)}
+              className="grid size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-hi hover:text-accent"
               aria-label={t('compare.shareAria')}
               title={t('compare.shareTitle')}
             >
@@ -351,6 +337,13 @@ export function CompareSheet({
           </div>
         )}
       </div>
+
+      <ShareCardSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        render={(style) => renderShareCompareCard(a, b, style)}
+        filename={shareCompareFilename(a)}
+      />
     </motion.div>
   );
 }

@@ -1,14 +1,24 @@
 /**
  * 分析报告分享图（PNG）
  * Canvas 手绘 1080×1350（4:5 竖版）品牌报告卡：
- * 应用署名 + 平均基频大字 + 音域标尺 + 迷你音高曲线 + 关键统计，
- * 跟随当前主题色板。优先走系统分享（Web Share API），不支持时下载。
+ * 应用署名 + 平均基频大字 + 音域标尺 + 迷你音高曲线 + 关键统计。
+ * 支持四种样式（主题 / 暗色 / 浅色 / 极光），右下角带指向仓库的二维码；
+ * 优先走系统分享（Web Share API），不支持时下载。
  */
 
+import { encode as qrEncode } from 'uqr';
 import { BAND_COLORS, getBandRanges, bandOf, freqToNote } from '@/constants';
 // 该文件内 t 已被主题色板局部变量占用，i18n 翻译函数以 ti 引用
 import { t as ti } from '@/i18n';
 import type { AnalysisRecord, PitchBand } from '@/types';
+
+/** 分享图样式：themed 跟随当前主题，其余为固定风格（accent 延续主题维持品牌感） */
+export type ShareCardStyle = 'themed' | 'dark' | 'light' | 'aurora';
+
+export const SHARE_CARD_STYLES: ShareCardStyle[] = ['themed', 'dark', 'light', 'aurora'];
+
+/** 二维码指向的仓库地址 */
+const REPO_URL = 'https://github.com/theforeveriris/simple-voice-tools';
 
 /** 从文档根读取当前主题色（CSS 变量） */
 function readTheme(): {
@@ -25,6 +35,59 @@ function readTheme(): {
     accent2: v('--c-accent2', '#8B5BD6'),
     line: v('--c-line', '#E5E3EC'),
   };
+}
+
+interface Palette {
+  card: string; surface: string; ink: string; ink2: string;
+  accent: string; accent2: string; line: string;
+  /** P10–P90 括条颜色（深浅样式不同） */
+  bracket: string;
+  /** 背景：纯色或 [顶部, 底部] 竖向渐变 */
+  bg: string | [string, string];
+}
+
+function resolvePalette(style: ShareCardStyle): Palette {
+  const t = readTheme();
+  switch (style) {
+    case 'dark':
+      return {
+        card: '#17151D', surface: '#211E2B', ink: '#F2F0F7', ink2: '#A9A4B8',
+        accent: t.accent, accent2: t.accent2, line: '#34303F',
+        bracket: 'rgba(255,255,255,0.28)', bg: '#17151D',
+      };
+    case 'light':
+      return {
+        card: '#FBF9F4', surface: '#F2EFE7', ink: '#2B2822', ink2: '#6E6A5E',
+        accent: t.accent, accent2: t.accent2, line: '#E7E3D8',
+        bracket: 'rgba(40,38,52,0.32)', bg: '#FBF9F4',
+      };
+    case 'aurora':
+      // 极光：主题双 accent 的竖向渐变铺底，前景用白系保证对比
+      return {
+        card: '#1B1826', surface: 'rgba(255,255,255,0.10)', ink: '#FAF8FF',
+        ink2: 'rgba(255,255,255,0.68)', accent: '#FFFFFF', accent2: '#FFE08A',
+        line: 'rgba(255,255,255,0.24)', bracket: 'rgba(255,255,255,0.38)',
+        bg: [t.accent, t.accent2],
+      };
+    default:
+      return {
+        card: t.card, surface: t.surface, ink: t.ink, ink2: t.ink2,
+        accent: t.accent, accent2: t.accent2, line: t.line,
+        bracket: 'rgba(40,38,52,0.32)', bg: t.card,
+      };
+  }
+}
+
+function paintBackground(ctx: CanvasRenderingContext2D, p: Palette): void {
+  if (typeof p.bg === 'string') {
+    ctx.fillStyle = p.bg;
+  } else {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, p.bg[0]);
+    g.addColorStop(1, p.bg[1]);
+    ctx.fillStyle = g;
+  }
+  ctx.fillRect(0, 0, W, H);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -55,20 +118,47 @@ function posPct(f: number): number {
   return (Math.log(Math.max(MIN, Math.min(MAX, f)) / MIN) / Math.log(MAX / MIN)) * 100;
 }
 
+/** 右下角二维码（指向仓库）+ 左下仓库署名；白底模块保证任何样式下可扫 */
+function drawFooterQr(ctx: CanvasRenderingContext2D, p: Palette): void {
+  const modulePx = 4; // 每模块 4px（35 模块 → 140px）
+  const inset = 14;
+  const { size, data } = qrEncode(REPO_URL, { ecc: 'M' });
+  const backing = size * modulePx + inset * 2;
+  const x = W - PAD - backing;
+  const y = H - 60 - backing;
+  ctx.fillStyle = '#FFFFFF';
+  roundRect(ctx, x, y, backing, backing, 22);
+  ctx.fill();
+  ctx.strokeStyle = p.line;
+  ctx.lineWidth = 2;
+  roundRect(ctx, x, y, backing, backing, 22);
+  ctx.stroke();
+  ctx.fillStyle = '#1B1826';
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (data[r * size + c]) {
+        ctx.fillRect(x + inset + c * modulePx, y + inset + r * modulePx, modulePx + 0.4, modulePx + 0.4);
+      }
+    }
+  }
+  ctx.fillStyle = p.ink2;
+  ctx.font = '400 22px "Inter Tight", system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('github.com/theforeveriris/simple-voice-tools', PAD, y + backing / 2);
+}
+
 /** 绘制完整报告卡 */
-function drawCard(record: AnalysisRecord): HTMLCanvasElement {
+function drawCard(record: AnalysisRecord, t: Palette): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D unavailable');
-  const t = readTheme();
   const stats = record.stats;
   const band = bandOf(stats.avgF0);
 
-  // 背景（卡片色）
-  ctx.fillStyle = t.card;
-  ctx.fillRect(0, 0, W, H);
+  paintBackground(ctx, t);
 
   /* 页眉 */
   ctx.fillStyle = t.accent;
@@ -138,7 +228,7 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
   // P10–P90 括条
   const px0 = rulerX + (posPct(stats.p10F0) / 100) * rulerW;
   const px1 = rulerX + (posPct(stats.p90F0) / 100) * rulerW;
-  ctx.fillStyle = 'rgba(40,38,52,0.32)';
+  ctx.fillStyle = t.bracket;
   roundRect(ctx, px0, rulerY + 3, Math.max(8, px1 - px0), rulerH - 6, (rulerH - 6) / 2);
   ctx.fill();
   // 平均基频游标
@@ -191,11 +281,7 @@ function drawCard(record: AnalysisRecord): HTMLCanvasElement {
     ctx.fillText(value, x, y + 44);
   });
 
-  /* 页脚 */
-  ctx.fillStyle = t.ink2;
-  ctx.font = '400 24px "Inter Tight", system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(ti('share.footer'), W / 2, H - PAD + 20);
+  drawFooterQr(ctx, t);
 
   return canvas;
 }
@@ -256,20 +342,8 @@ function drawMiniPitch(
   ctx.restore();
 }
 
-/**
- * 生成并分享/下载报告图
- * 支持 Web Share API（移动端分享面板）时优先分享，否则下载 PNG。
- */
-export async function exportShareImage(record: AnalysisRecord): Promise<'shared' | 'downloaded'> {
-  const canvas = drawCard(record);
-  const d = new Date(record.createdAt);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const filename = `voice-report-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.png`;
-  return shareOrDownload(canvas, filename);
-}
-
 /** 画布 → PNG → 系统分享（可用时）或下载 */
-async function shareOrDownload(canvas: HTMLCanvasElement, filename: string): Promise<'shared' | 'downloaded'> {
+export async function shareOrDownload(canvas: HTMLCanvasElement, filename: string): Promise<'shared' | 'downloaded'> {
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('PNG export failed');
   const file = new File([blob], filename, { type: 'image/png' });
@@ -285,6 +359,25 @@ async function shareOrDownload(canvas: HTMLCanvasElement, filename: string): Pro
   a.click();
   URL.revokeObjectURL(url);
   return 'downloaded';
+}
+
+/** 按样式渲染单条记录分享卡（样式选择弹层的预览与导出共用） */
+export function renderShareCard(record: AnalysisRecord, style: ShareCardStyle): HTMLCanvasElement {
+  return drawCard(record, resolvePalette(style));
+}
+
+/** 单条记录分享图文件名 */
+export function shareImageFilename(record: AnalysisRecord): string {
+  const d = new Date(record.createdAt);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `voice-report-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.png`;
+}
+
+/** 对比分享图文件名 */
+export function shareCompareFilename(a: AnalysisRecord): string {
+  const d = new Date(a.createdAt);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `voice-compare-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.png`;
 }
 
 /* ================================ 对比分享卡 ================================ */
@@ -330,13 +423,12 @@ function compareRows(a: AnalysisRecord, b: AnalysisRecord): [string, string, str
 }
 
 /** 绘制 A vs B 对比报告卡（双曲线叠加 + Δ 指标表 + 各自音域） */
-function drawCompareCard(a: AnalysisRecord, b: AnalysisRecord): HTMLCanvasElement {
+function drawCompareCard(a: AnalysisRecord, b: AnalysisRecord, t: Palette): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D unavailable');
-  const t = readTheme();
   const ranges = getBandRanges();
   const fmtDate = (ts: number) => {
     const d = new Date(ts);
@@ -344,8 +436,7 @@ function drawCompareCard(a: AnalysisRecord, b: AnalysisRecord): HTMLCanvasElemen
   };
 
   // 背景 + 页眉
-  ctx.fillStyle = t.card;
-  ctx.fillRect(0, 0, W, H);
+  paintBackground(ctx, t);
   ctx.fillStyle = t.accent;
   ctx.beginPath();
   ctx.arc(PAD + 9, PAD + 14, 9, 0, Math.PI * 2);
@@ -475,9 +566,9 @@ function drawCompareCard(a: AnalysisRecord, b: AnalysisRecord): HTMLCanvasElemen
   });
   const tableEnd = headY + 34 + rows.length * rowH;
 
-  /* 双曲线叠加图（x 按各自时长归一化对齐） */
+  /* 双曲线叠加图（x 按各自时长归一化对齐）；底部让位给二维码行 */
   const chartY = tableEnd + 36;
-  const chartH = Math.max(240, H - PAD - 28 - chartY);
+  const chartH = Math.max(128, Math.min(H - PAD - 28 - chartY, 1106 - chartY));
   ctx.fillStyle = t.surface;
   roundRect(ctx, PAD, chartY, W - PAD * 2, chartH, 28);
   ctx.fill();
@@ -541,24 +632,12 @@ function drawCompareCard(a: AnalysisRecord, b: AnalysisRecord): HTMLCanvasElemen
     legendX -= 56;
   }
 
-  /* 页脚 */
-  ctx.fillStyle = t.ink2;
-  ctx.font = '400 24px "Inter Tight", system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(ti('share.footer'), W / 2, H - PAD + 20);
+  drawFooterQr(ctx, t);
 
   return canvas;
 }
 
-/**
- * 生成并分享/下载 A vs B 对比报告图
- * 入口：历史页多选两条记录进入对比浮层 → 分享按钮。
- */
-export async function exportShareCompareImage(a: AnalysisRecord, b: AnalysisRecord): Promise<'shared' | 'downloaded'> {
-  const canvas = drawCompareCard(a, b);
-  const d = new Date(a.createdAt);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const filename = `voice-compare-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.png`;
-  return shareOrDownload(canvas, filename);
+/** 按样式渲染 A vs B 对比分享卡 */
+export function renderShareCompareCard(a: AnalysisRecord, b: AnalysisRecord, style: ShareCardStyle): HTMLCanvasElement {
+  return drawCompareCard(a, b, resolvePalette(style));
 }
