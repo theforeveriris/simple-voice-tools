@@ -4,35 +4,82 @@
  * - 消息流：AI 气泡带头像（左）/ 用户气泡（右）；点按气泡在其下方浮出
  *   复制 / 重做 / 分支（重做 = 截断到该消息之前重新生成；分支 = 以该消息为
  *   结尾复制出一个新对话）
+ * - 思考过程：推理模型（reasoning_content / thinking 块）的思考流式展示，
+ *   完成后保存到消息里、点气泡内的「思考过程」可展开回看
  * - 底部输入栏：随内容自动增高（上限后内部滚动），生成中变为停止按钮
  * - 右侧抽屉：新建对话 + 历史列表（点按切换、两步删除）
- * 对话存 IndexedDB（llm:chats，封顶 30 条）；生成走活动档案 + 多轮流式接口。
+ * 对话存 IndexedDB（llm:chats，封顶 30 条）；生成走活动档案（协议/流式/上下文
+ * 均由档案决定），系统提示附用户历史测试记录摘要，按上下文预算裁剪。
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, ArrowUp, Bot, Copy, GitBranch, PanelRight, Plus, RotateCcw, Square, Trash2,
+  ArrowLeft, ArrowUp, Brain, Copy, GitBranch, PanelRight, Plus, RotateCcw, Sparkles, Square, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isAbortError, languageName, llmChatStreamMessages } from '@/lib/llm';
-import { useActiveLlmConfig } from '@/lib/llmProfiles';
+import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import {
   addMessage, createChat, deleteChat, getChat, setMessages, useChats, type ChatMessage,
 } from '@/lib/llmChats';
 import { useStore } from '@/store/useStore';
+import { useHistoryStore } from '@/store/useHistoryStore';
 import { cn } from '@/lib/utils';
 
-/** 助手系统提示词：明确工具定位与边界，按界面语言回答 */
-function systemPrompt(): string {
+/** Token 粗估：中英混合按 2 字符 ≈ 1 token（量级参考，用于预算裁剪） */
+const estTokens = (s: string) => Math.ceil(s.length / 2);
+
+/** 用户历史测试记录摘要：按上下文预算（tokens）从最旧开始裁剪 */
+function historySection(budgetTokens: number): string {
+  const records = useHistoryStore.getState().records;
+  if (records.length === 0) return '';
+  const lines = [...records]
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .map((r) => {
+      const s = r.stats;
+      const parts = [
+        new Date(r.createdAt).toISOString().slice(0, 10),
+        r.mode ?? 'free',
+        `${Math.round(r.durationSec)}s`,
+        `avg ${s.avgF0.toFixed(1)}Hz`,
+        `p10-p90 ${s.p10F0.toFixed(0)}-${s.p90F0.toFixed(0)}Hz`,
+        s.avgF1 != null ? `F1 ${s.avgF1.toFixed(0)}` : '',
+        s.avgF2 != null ? `F2 ${s.avgF2.toFixed(0)}` : '',
+        s.jitterPct != null ? `Jitter ${s.jitterPct.toFixed(2)}%` : '',
+        s.hnrDb != null ? `HNR ${s.hnrDb.toFixed(1)}dB` : '',
+        s.cppsDb != null ? `CPPS ${s.cppsDb.toFixed(1)}dB` : '',
+        r.note ? `「${r.note}」` : '',
+      ].filter(Boolean);
+      return `- ${parts.join(' | ')}`;
+    });
+  const kept: string[] = [];
+  let acc = 0;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const cost = estTokens(lines[i]) + 4;
+    if (acc + cost > budgetTokens) break;
+    acc += cost;
+    kept.unshift(lines[i]);
+  }
+  if (kept.length === 0) return '';
+  const omitted = lines.length - kept.length;
+  return `\n\n## 用户历史测试记录（共 ${lines.length} 条${omitted > 0 ? `，以下为最近 ${kept.length} 条` : ''}，时间从旧到新）\n${kept.join('\n')}`;
+}
+
+/** 助手系统提示词：定位与边界 + 历史记录使用规则，按界面语言回答 */
+function systemPrompt(history: string): string {
   return [
     '你是 Simple Voice Tool 内置的 AI 助手——一个严肃的嗓音测量、分析与训练追踪工具。',
     '回答简洁、务实、有依据；涉及嗓音训练时给出可操作的练习建议；',
     '不做医学诊断，遇到疑似嗓音疾病（持续嘶哑、疼痛等）时建议就医或咨询言语治疗师。',
+    history
+      ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
+      : '',
+    history,
     `使用「${languageName()}」回答。`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 export function AssistantPage({ onClose }: { onClose: () => void }) {
@@ -45,6 +92,10 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
   const [input, setInput] = useState('');
   /** null = 空闲；否则为流式累积文本 */
   const [streamText, setStreamText] = useState<string | null>(null);
+  /** 流式思考累积文本（推理模型） */
+  const [streamThink, setStreamThink] = useState('');
+  /** 展开思考过程的持久化消息下标 */
+  const [thinkIdx, setThinkIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   /** 点按气泡浮出操作行的消息下标 */
@@ -64,7 +115,7 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const el = scrollRef.current;
     if (el && stickRef.current) el.scrollTop = el.scrollHeight;
-  }, [messages.length, streamText]);
+  }, [messages.length, streamText, streamThink]);
 
   // 输入栏随内容增高（上限 120px，之后内部滚动）
   useEffect(() => {
@@ -76,23 +127,47 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
 
   const generate = async (convId: string, history: ChatMessage[]) => {
     if (!cfg || history.length === 0) return;
+    // 上下文预算：历史记录摘要 + 系统提示 + 对话 + 回复余量都要装进窗口
+    const context = cfg.contextTokens ?? DEFAULT_CONTEXT_TOKENS;
+    const hist = historySection(Math.max(512, Math.floor(context * 0.4)));
+    const sys = systemPrompt(hist);
+    const reserve = estTokens(sys) + Math.ceil(context * 0.25);
+    let turns = history;
+    const maxTok = Math.max(1024, context - reserve);
+    const totalOf = (ts: ChatMessage[]) => ts.reduce((n, x) => n + estTokens(x.content), 0);
+    // 从最旧开始裁剪；保证 user 开头（Anthropic 要求 user/assistant 交替且以 user 起始）
+    while (turns.length > 1 && totalOf(turns) > maxTok) turns = turns.slice(1);
+    if (turns[0]?.role !== 'user') turns = turns.slice(1);
+    if (turns.length === 0) return;
+
     const controller = new AbortController();
     abortRef.current = controller;
     setError(null);
     setStreamText('');
+    setStreamThink('');
     stickRef.current = true;
+    let thinkAcc = '';
     try {
-      const reply = await llmChatStreamMessages(cfg, history, {
+      const reply = await llmChatStreamMessages(cfg, turns, {
         feature: 'assistant',
         signal: controller.signal,
-        system: systemPrompt(),
+        system: sys,
         onDelta: (acc) => setStreamText(acc),
+        onThink: (acc) => {
+          thinkAcc = acc;
+          setStreamThink(acc);
+        },
       });
-      addMessage(convId, { role: 'assistant', content: reply });
+      addMessage(convId, {
+        role: 'assistant',
+        content: reply,
+        ...(thinkAcc ? { think: thinkAcc } : {}),
+      });
     } catch (err: unknown) {
       if (!isAbortError(err)) setError(err instanceof Error ? err.message : String(err));
     } finally {
       setStreamText(null);
+      setStreamThink('');
       abortRef.current = null;
     }
   };
@@ -116,6 +191,7 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
     const kept = conv.messages.slice(0, idx);
     const target = conv.messages[idx];
     setActionIdx(null);
+    setThinkIdx(null);
     if (target.role === 'user') {
       setMessages(conv.id, kept);
       addMessage(conv.id, { role: 'user', content: target.content });
@@ -135,6 +211,7 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
     );
     setActiveId(id);
     setActionIdx(null);
+    setThinkIdx(null);
     setSidebarOpen(false);
     toast.success(t('assistant.branchDone'));
   };
@@ -151,11 +228,16 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const resetConversationView = () => {
+    setError(null);
+    setActionIdx(null);
+    setThinkIdx(null);
+  };
+
   const newChat = () => {
     setActiveId(null);
     setSidebarOpen(false);
-    setError(null);
-    setActionIdx(null);
+    resetConversationView();
   };
 
   const onDeleteChat = (id: string) => {
@@ -186,15 +268,33 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
     </button>
   );
 
-  const Bubble = ({ m, idx, streaming = false }: { m: ChatMessage; idx: number; streaming?: boolean }) => {
+  const ThinkBlock = ({ text, live }: { text: string; live?: boolean }) => (
+    <span className="mb-2 block max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/[0.04] px-2.5 py-2 text-left text-[11px] leading-relaxed text-ink-2">
+      {live && !text ? <span className="italic">{t('assistant.thinking')}</span> : text}
+    </span>
+  );
+
+  const Bubble = ({
+    m,
+    idx,
+    streaming = false,
+    liveThink = '',
+  }: {
+    m: ChatMessage;
+    idx: number;
+    streaming?: boolean;
+    liveThink?: string;
+  }) => {
     const mine = m.role === 'user';
+    const think = streaming ? liveThink : m.think ?? '';
+    const thinkVisible = streaming ? !!think || !m.content : !!m.think && thinkIdx === idx;
     const active = !streaming && actionIdx === idx;
     return (
       <div className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
         {!mine && (
           <span className="mb-1 flex items-center gap-1.5">
             <span className="grid size-6 place-items-center rounded-full bg-accent/15 text-accent">
-              <Bot size={13} />
+              <Sparkles size={13} />
             </span>
             <span className="text-[10px] font-medium text-ink-2">{t('assistant.title')}</span>
           </span>
@@ -207,7 +307,20 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
             mine ? 'bg-accent/15' : 'bg-card',
           )}
         >
-          {m.content || (streaming ? '…' : '')}
+          {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
+          {m.content || (streaming ? (liveThink ? '' : '…') : '')}
+          {!mine && !!m.think && !streaming && (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                setThinkIdx(thinkIdx === idx ? null : idx);
+              }}
+              className="mt-1.5 flex items-center gap-1 text-[10px] text-ink-2"
+            >
+              <Brain size={10} />
+              {t('assistant.think')}
+            </span>
+          )}
         </button>
         {active && (
           <motion.div
@@ -264,7 +377,7 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
         {messages.length === 0 && !busy ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <span className="grid size-14 place-items-center rounded-full bg-accent/15 text-accent">
-              <Bot size={26} />
+              <Sparkles size={26} />
             </span>
             <p className="max-w-[17rem] text-[13px] leading-relaxed text-ink-2">{t('assistant.greeting')}</p>
           </div>
@@ -273,7 +386,14 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
             {messages.map((m, i) => (
               <Bubble key={`${i}-${m.role}`} m={m} idx={i} />
             ))}
-            {busy && <Bubble m={{ role: 'assistant', content: streamText ?? '' }} idx={-1} streaming />}
+            {busy && (
+              <Bubble
+                m={{ role: 'assistant', content: streamText ?? '' }}
+                idx={-1}
+                streaming
+                liveThink={streamThink}
+              />
+            )}
             {error && (
               <div className="mx-auto flex flex-col items-center gap-1.5">
                 <p className="max-w-md text-center text-[11px] leading-relaxed text-red-500">{error}</p>
@@ -342,7 +462,7 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
                     className={cn('flex items-center gap-1 rounded-xl px-1.5', c.id === activeId && 'bg-accent/10')}
                   >
                     <button
-                      onClick={() => { setActiveId(c.id); setSidebarOpen(false); setError(null); setActionIdx(null); }}
+                      onClick={() => { setActiveId(c.id); setSidebarOpen(false); resetConversationView(); }}
                       className="min-w-0 flex-1 py-2.5 text-left"
                     >
                       <span className="block truncate text-[13px] text-ink">

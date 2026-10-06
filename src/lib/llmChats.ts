@@ -10,6 +10,8 @@ import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** 思考过程（推理模型 / thinking 块返回时保存，气泡可展开查看） */
+  think?: string;
 }
 
 export interface ChatConversation {
@@ -46,7 +48,8 @@ function validConversation(c: unknown): c is ChatConversation {
     && Array.isArray(o.messages)
     && o.messages.every((m) => !!m
       && typeof m.content === 'string'
-      && (m.role === 'user' || m.role === 'assistant'));
+      && (m.role === 'user' || m.role === 'assistant')
+      && (m.think === undefined || typeof m.think === 'string'));
 }
 
 async function ensureLoaded(): Promise<void> {

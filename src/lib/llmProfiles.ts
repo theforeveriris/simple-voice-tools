@@ -11,7 +11,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
-import type { LlmConfig } from '@/lib/llm';
+import type { LlmConfig, LlmProtocol } from '@/lib/llm';
 import { t } from '@/i18n';
 
 export interface LlmProfile {
@@ -20,7 +20,16 @@ export interface LlmProfile {
   baseUrl: string;
   apiKey: string;
   modelId: string;
+  /** API 协议：openai（默认）/ anthropic */
+  protocol: LlmProtocol;
+  /** 流式输出（默认 true；端点不支持 SSE 时关闭） */
+  stream: boolean;
+  /** 上下文窗口 tokens（AI 助手注入历史与裁剪对话的依据） */
+  contextTokens: number;
 }
+
+/** 上下文长度默认值：未配置 / 非法值时的兜底 */
+export const DEFAULT_CONTEXT_TOKENS = 8192;
 
 const KV_PROFILES = 'llm:profiles';
 
@@ -47,12 +56,27 @@ function validProfile(p: unknown): p is LlmProfile {
     && typeof o.modelId === 'string';
 }
 
+/** 补齐/矫正 v0.9.1 新增字段（旧档案无 protocol/stream/contextTokens） */
+function normalizeProfile(
+  p: Omit<LlmProfile, 'protocol' | 'stream' | 'contextTokens'> &
+    Partial<Pick<LlmProfile, 'protocol' | 'stream' | 'contextTokens'>>,
+): LlmProfile {
+  return {
+    ...p,
+    protocol: p.protocol === 'anthropic' ? 'anthropic' : 'openai',
+    stream: p.stream !== false,
+    contextTokens: typeof p.contextTokens === 'number' && p.contextTokens >= 1024
+      ? Math.min(p.contextTokens, 1_000_000)
+      : DEFAULT_CONTEXT_TOKENS,
+  };
+}
+
 async function ensureLoaded(): Promise<void> {
   if (profiles != null) return;
   loaded ??= (async () => {
     try {
       const raw = await idbGetKV<LlmProfile[]>(KV_PROFILES);
-      profiles = Array.isArray(raw) ? raw.filter(validProfile) : [];
+      profiles = Array.isArray(raw) ? raw.filter(validProfile).map(normalizeProfile) : [];
     } catch {
       profiles = []; // IndexedDB 不可用：本会话内仍可保存/切换（内存态）
     }
@@ -101,9 +125,16 @@ function commit(next: LlmProfile[]): void {
 /** 新建档案并返回 id（调用方负责把 llmActiveProfileId 指向它） */
 export function addProfile(
   name: string,
-  cfg: { baseUrl: string; apiKey: string; modelId: string },
+  cfg: {
+    baseUrl: string;
+    apiKey: string;
+    modelId: string;
+    protocol?: LlmProtocol;
+    stream?: boolean;
+    contextTokens?: number;
+  },
 ): string {
-  const p: LlmProfile = { id: genId(), name, ...cfg };
+  const p = normalizeProfile({ id: genId(), name, ...cfg });
   commit([...(profiles ?? []), p]);
   return p.id;
 }
@@ -145,7 +176,14 @@ export function activeLlmConfigFrom(
   const apiKey = p.apiKey.trim();
   const modelId = p.modelId.trim();
   if (!baseUrl || !apiKey || !modelId) return null;
-  return { baseUrl, apiKey, modelId };
+  return {
+    baseUrl,
+    apiKey,
+    modelId,
+    protocol: p.protocol,
+    stream: p.stream,
+    contextTokens: p.contextTokens,
+  };
 }
 
 /** React 订阅：档案列表（null = 尚未加载完成） */

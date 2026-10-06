@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Bot, ChevronRight, Layers, Loader2, SquarePen } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Layers, Loader2, Sparkles, SquarePen } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -89,7 +89,7 @@ export function LlmPage({
           className="flex items-center gap-3 rounded-[22px] bg-card p-4 text-left shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-[0.99]"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
-            <Bot size={19} />
+            <Sparkles size={19} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold text-ink">{t('assistant.entry')}</span>
@@ -104,6 +104,13 @@ export function LlmPage({
             <>
               <SettingRow label={t('settings.llmProfileName')}>
                 <span className="max-w-44 truncate text-xs text-ink-2">{activeProfile.name}</span>
+              </SettingRow>
+              <SettingRow label={t('settings.llmProtocol')}>
+                <span className="max-w-44 truncate text-xs text-ink-2">
+                  {activeProfile.protocol === 'anthropic'
+                    ? t('settings.llmProtocolAnthropic')
+                    : t('settings.llmProtocolOpenai')}
+                </span>
               </SettingRow>
               <SettingRow label={t('settings.llmBaseUrl')}>
                 <span className="max-w-44 truncate font-mono text-xs text-ink-2">{activeProfile.baseUrl}</span>

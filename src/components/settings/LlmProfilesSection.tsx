@@ -12,14 +12,17 @@ import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AppSettings } from '@/types';
+import type { LlmProtocol } from '@/lib/llm';
 import { cn } from '@/lib/utils';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch,
 } from '@/components/ui';
 import { SettingsSection } from './rows';
+import { InfoTip } from './InfoTip';
 import {
   addProfile, deleteProfile, duplicateProfile, updateProfile, useLlmProfiles,
-  type LlmProfile,
+  DEFAULT_CONTEXT_TOKENS, type LlmProfile,
 } from '@/lib/llmProfiles';
 import { resolveLlmConfig, testLlmConnection } from '@/lib/llm';
 
@@ -129,6 +132,11 @@ function ProfileSheet({
   const [baseUrl, setBaseUrl] = useState(profile?.baseUrl ?? '');
   const [apiKey, setApiKey] = useState(profile?.apiKey ?? '');
   const [modelId, setModelId] = useState(profile?.modelId ?? '');
+  const [protocol, setProtocol] = useState<LlmProtocol>(profile?.protocol ?? 'openai');
+  const [contextTokens, setContextTokens] = useState(String(
+    profile?.contextTokens ?? DEFAULT_CONTEXT_TOKENS,
+  ));
+  const [stream, setStream] = useState(profile?.stream !== false);
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [delArmed, setDelArmed] = useState(false);
@@ -136,7 +144,24 @@ function ProfileSheet({
   const inputCls =
     'w-full rounded-xl border border-black/10 bg-surface-hi px-3 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink-2/50 focus:border-accent';
 
-  const formCfg = resolveLlmConfig({ llmBaseUrl: baseUrl, llmApiKey: apiKey, llmModelId: modelId });
+  const formCfg = resolveLlmConfig({
+    llmBaseUrl: baseUrl,
+    llmApiKey: apiKey,
+    llmModelId: modelId,
+    protocol,
+    stream,
+    contextTokens: Number(contextTokens) || DEFAULT_CONTEXT_TOKENS,
+  });
+
+  const collect = () => ({
+    name: name.trim(),
+    baseUrl: baseUrl.trim(),
+    apiKey: apiKey.trim(),
+    modelId: modelId.trim(),
+    protocol,
+    stream,
+    contextTokens: Math.max(1024, Math.min(Number(contextTokens) || DEFAULT_CONTEXT_TOKENS, 1_000_000)),
+  });
 
   const onTest = () => {
     if (testing) return;
@@ -153,13 +178,8 @@ function ProfileSheet({
   };
 
   const onSave = () => {
-    const trimmed = {
-      name: name.trim(),
-      baseUrl: baseUrl.trim(),
-      apiKey: apiKey.trim(),
-      modelId: modelId.trim(),
-    };
-    if (!trimmed.name) {
+    const v = collect();
+    if (!v.name) {
       toast.error(t('toast.llmProfileNameEmpty'));
       return;
     }
@@ -168,12 +188,12 @@ function ProfileSheet({
       return;
     }
     if (profile) {
-      updateProfile(profile.id, trimmed);
+      updateProfile(profile.id, v);
     } else {
       // 新建的档案自动设为使用中（刚建完大概率就是要用它）
-      update({ llmActiveProfileId: addProfile(trimmed.name, trimmed) });
+      update({ llmActiveProfileId: addProfile(v.name, v) });
     }
-    toast.success(t('toast.llmProfileSaved', { name: trimmed.name }));
+    toast.success(t('toast.llmProfileSaved', { name: v.name }));
     onClose();
   };
 
@@ -256,6 +276,34 @@ function ProfileSheet({
               className={inputCls}
             />
           </label>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] font-medium text-ink-2">{t('settings.llmProtocol')}</span>
+            <Select value={protocol} onValueChange={(v) => setProtocol(v as LlmProtocol)}>
+              <SelectTrigger className="w-40 border-0 bg-surface-hi px-3 text-xs shadow-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                <SelectItem value="openai">{t('settings.llmProtocolOpenai')}</SelectItem>
+                <SelectItem value="anthropic">{t('settings.llmProtocolAnthropic')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <InfoTip label={t('settings.llmContext')} text={t('settings.llmContextDesc')} />
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1024}
+              step={1024}
+              value={contextTokens}
+              onChange={(e) => setContextTokens(e.target.value)}
+              className="w-32 rounded-xl border border-black/10 bg-surface-hi px-3 py-2 text-right font-mono text-xs text-ink outline-none focus:border-accent"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <InfoTip label={t('settings.llmStream')} text={t('settings.llmStreamDesc')} />
+            <Switch checked={stream} onCheckedChange={setStream} />
+          </div>
           <button
             onClick={onTest}
             disabled={testing}

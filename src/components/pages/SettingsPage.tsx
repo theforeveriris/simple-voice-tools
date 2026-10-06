@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bot, DatabaseBackup, FlaskConical, Info, Languages, Palette, Settings2, Smartphone, ChevronRight, Search, X } from 'lucide-react';
+import { DatabaseBackup, FlaskConical, Info, Languages, Palette, Settings2, Smartphone, ChevronRight, Search, Sparkles, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -282,7 +282,7 @@ export function SettingsPage() {
               {entry(t('settings.language'), Languages, () => setLanguageOpen(true))}
               {entry(t('settings.app'), Smartphone, () => setAppOpen(true))}
               {entry(t('settings.config'), Settings2, () => setConfigOpen(true))}
-              {entry(t('settings.llmPage'), Bot, () => setLlmOpen(true))}
+              {entry(t('settings.llmPage'), Sparkles, () => setLlmOpen(true))}
               {entry(t('settings.data'), DatabaseBackup, () => setDataOpen(true))}
               {entry(t('settings.labs'), FlaskConical, () => setLabsOpen(true))}
             </>
