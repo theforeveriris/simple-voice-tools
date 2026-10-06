@@ -6,6 +6,18 @@
 基频（音高）、共振峰（F1/F2）、能量电平的完整曲线与统计报告，并了解自己的
 嗓音在男/女声音域区间中所处的位置。
 
+## 获取应用
+
+[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/res/badges/button.png" alt="Get it on Obtainium" height="80">](https://apps.obtainium.imranr.dev/redirect.html?r=https%3A%2F%2Fgithub.com%2Ftheforeveriris%2Fsimple-voice-tools)
+
+- **安卓 APK**：从 [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
+  下载最新的 `SimpleVoiceTool-v*-release.apk` 直接安装（正式签名，含应用内更新提示）
+- **Obtainium**：已安装 [Obtainium](https://github.com/ImranR98/Obtainium) 的话，
+  点上方徽章即可添加本仓库，新版本自动跟进
+- **PWA**：浏览器访问
+  [在线版本](https://theforeveriris.github.io/simple-voice-tools/)，
+  通过「安装到主屏幕」使用（支持离线缓存，与 APK 版数据互相独立）
+
 ## 功能特点
 
 - **测试**：三个实时图表（F1/F2 共振峰、音频能量、音高曲线）随录音推进滚动更新，
