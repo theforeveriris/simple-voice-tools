@@ -118,7 +118,9 @@ function posPct(f: number): number {
   return (Math.log(Math.max(MIN, Math.min(MAX, f)) / MIN) / Math.log(MAX / MIN)) * 100;
 }
 
-/** 右下角二维码（指向仓库）+ 左下仓库署名；白底模块保证任何样式下可扫 */
+/** 右下角二维码（指向仓库）+ 左下仓库署名。
+ *  uqr 的 data 是二维布尔阵（data[row][col]）；底为透明，模块取 p.ink
+ *  保证与卡片底色的局部对比（暗色/极光样式下为浅色模块，即反色码）。 */
 function drawFooterQr(ctx: CanvasRenderingContext2D, p: Palette): void {
   const modulePx = 4; // 每模块 4px（35 模块 → 140px）
   const inset = 14;
@@ -126,17 +128,11 @@ function drawFooterQr(ctx: CanvasRenderingContext2D, p: Palette): void {
   const backing = size * modulePx + inset * 2;
   const x = W - PAD - backing;
   const y = H - 60 - backing;
-  ctx.fillStyle = '#FFFFFF';
-  roundRect(ctx, x, y, backing, backing, 22);
-  ctx.fill();
-  ctx.strokeStyle = p.line;
-  ctx.lineWidth = 2;
-  roundRect(ctx, x, y, backing, backing, 22);
-  ctx.stroke();
-  ctx.fillStyle = '#1B1826';
+  ctx.fillStyle = p.ink;
   for (let r = 0; r < size; r++) {
+    const row = data[r];
     for (let c = 0; c < size; c++) {
-      if (data[r * size + c]) {
+      if (row[c]) {
         ctx.fillRect(x + inset + c * modulePx, y + inset + r * modulePx, modulePx + 0.4, modulePx + 0.4);
       }
     }

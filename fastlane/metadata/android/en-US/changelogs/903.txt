@@ -1,0 +1,1 @@
+Fix: QR code actually renders now (library API misuse); QR background is transparent. Fix the Obtainium one-tap add link.
