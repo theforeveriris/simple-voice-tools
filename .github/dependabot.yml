@@ -1,0 +1,32 @@
+# 依赖自动升级：每个生态定期扫描，新版本以 PR 形式提出，
+# 会触发 ci.yml（lint + test + build）全量验证后再谈合并。
+version: 2
+updates:
+  # React/Vite/vitest 等前端依赖；minor/patch 合成一个 PR 降噪，major 单开
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # 四条工作流里用到的 GitHub Actions（checkout/setup-node 等版本漂移）
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # 安卓侧 AGP/Kotlin 插件与依赖库
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+
+  # Tauri 的 Rust 依赖（Cargo.lock 已入库）
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly

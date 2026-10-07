@@ -4,14 +4,22 @@ name: CI
 on:
   pull_request:
 
+# 同一 PR 连推多个 commit 时只保留最新一次运行，旧的直接取消
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # 防止构建 hang 住烧满默认 6 小时超时
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 与发布流水线（安卓/桌面）保持同版本，测试环境 = 出货环境
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run lint

@@ -12,11 +12,22 @@ on:
 permissions:
   contents: write
 
+# main 连推时新运行取消进行中的旧运行，避免旧包后到把 latest 覆盖回去；
+# 标签发布单独成组且不取消（正式发布宁可排队不可中断）
+concurrency:
+  group: ${{ github.workflow }}-${{ startsWith(github.ref, 'refs/tags/') && 'tag' || 'rolling' }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 防止 Gradle/网络 hang 住烧满默认 6 小时超时
+    timeout-minutes: 45
     steps:
+      # fetch-depth: 0 供正式 Release 用 git log 生成变更说明（需拿到上一个 tag）
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -27,6 +38,10 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+
+      # 缓存 ~/.gradle（依赖 + wrapper 发行版）：runner 全新机器上 Gradle
+      # 每次要重下几百 MB 的 AGP/依赖，热缓存后单次构建可省数分钟
+      - uses: gradle/actions/setup-gradle@v4
 
       - name: Install dependencies
         run: npm ci
@@ -86,6 +101,36 @@ jobs:
           cp "android/app/build/outputs/apk/${{ steps.sign.outputs.suffix }}/app-${{ steps.sign.outputs.suffix }}.apk" \
              "dist/SimpleVoiceTool-v${{ steps.ver.outputs.version }}-${{ steps.sign.outputs.suffix }}.apk"
 
+      # 正式 Release（v* 标签）用 git log 生成变更说明——直推 main 不走 PR，
+      # GitHub 自带的 generate_release_notes 拿不到条目；main 滚动发布保持原 body
+      - name: Build release body
+        id: notes
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            prev=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+            {
+              echo "body<<EOF"
+              echo "Simple Voice Tool v${{ steps.ver.outputs.version }}"
+              echo
+              if [ -n "$prev" ]; then
+                git log --no-merges --pretty=format:'- %s (%h)' "$prev..$GITHUB_REF_NAME"
+                echo
+                echo
+                echo "Full changes: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
+              else
+                echo "- Initial tagged release"
+              fi
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "body<<EOF"
+              echo "Android build of Simple Voice Tool v${{ steps.ver.outputs.version }}（${{ steps.sign.outputs.signed }}-signed）"
+              echo "- commit: ${{ github.sha }}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
       # 「latest」滚动预发布只保留当前版本：清理本家族（*-release.apk）中版本
       # 不同的旧资产。desktop 工作流对 *-setup.exe 同理——两个工作流各管各的
       # 家族，同 push 并发触发时互不误删。正式 Release（v* 标签）不清理，全量留存。
@@ -119,6 +164,4 @@ jobs:
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           files: dist/*.apk
           overwrite_files: true
-          body: |
-            Android build of Simple Voice Tool v${{ steps.ver.outputs.version }}（${{ steps.sign.outputs.signed }}-signed）
-            - commit: ${{ github.sha }}
+          body: ${{ steps.notes.outputs.body }}

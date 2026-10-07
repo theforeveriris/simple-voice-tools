@@ -12,11 +12,22 @@ on:
 permissions:
   contents: write
 
+# 与安卓工作流同理：main 连推时取消旧运行防 latest 被旧包回写；
+# 标签发布单独成组、不取消
+concurrency:
+  group: ${{ github.workflow }}-${{ startsWith(github.ref, 'refs/tags/') && 'tag' || 'rolling' }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   build-windows:
     runs-on: windows-latest
+    # Rust 全量编译最慢，留足余量，同时防 hang 住烧满默认 6 小时超时
+    timeout-minutes: 60
     steps:
+      # fetch-depth: 0 供正式 Release 用 git log 生成变更说明（需拿到上一个 tag）
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -65,6 +76,38 @@ jobs:
           cp src-tauri/target/release/bundle/nsis/*-setup.exe \
              "dist/SimpleVoiceTool-v${{ steps.ver.outputs.version }}-setup.exe"
 
+      # 正式 Release（v* 标签）用 git log 生成变更说明——直推 main 不走 PR，
+      # GitHub 自带的 generate_release_notes 拿不到条目；main 滚动发布保持原 body
+      - name: Build release body
+        id: notes
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            prev=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+            {
+              echo "body<<EOF"
+              echo "Simple Voice Tool v${{ steps.ver.outputs.version }}"
+              echo
+              if [ -n "$prev" ]; then
+                git log --no-merges --pretty=format:'- %s (%h)' "$prev..$GITHUB_REF_NAME"
+                echo
+                echo
+                echo "Full changes: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
+              else
+                echo "- Initial tagged release"
+              fi
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "body<<EOF"
+              echo "Simple Voice Tool v${{ steps.ver.outputs.version }}"
+              echo "- commit: ${{ github.sha }}"
+              echo "- Windows installer（NSIS，WebView2 运行时系统自带）"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
       # 与安卓工作流同理：「latest」只保留当前版本的安装包（各管各的家族，
       # 并发触发互不误删）；正式 Release（v* 标签）不清理
       - name: Prune old assets in "latest" release
@@ -94,7 +137,4 @@ jobs:
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           files: dist/*.exe
           overwrite_files: true
-          body: |
-            Simple Voice Tool v${{ steps.ver.outputs.version }}
-            - commit: ${{ github.sha }}
-            - Windows installer（NSIS，WebView2 运行时系统自带）
+          body: ${{ steps.notes.outputs.body }}
