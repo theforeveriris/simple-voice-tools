@@ -20,7 +20,8 @@ npm run tauri build   # 本地出包：src-tauri/target/release/bundle/nsis/*-se
 vitest → vite build → 版本号从 package.json 同步进 tauri.conf.json →
 `npx tauri build`（Rust 缓存加速）→ 安装包
 `SimpleVoiceTool-v{版本}-setup.exe` 上传到 `latest` 预发布（与安卓共用
-同一个滚动 release；打 `v*` 标签时进正式 Release）。
+同一个滚动 release；非 tag 推送时自动清理其中旧版本的 setup.exe；
+打 `v*` 标签时进正式 Release）。
 
 ## 与其它端的平台差异
 
@@ -29,7 +30,9 @@ vitest → vite build → 版本号从 package.json 同步进 tauri.conf.json �
 - Service Worker / PWA 安装流在 Tauri 内跳过（自定义协议下 SW 不可靠，
   且桌面应用自带更新通道）；
 - Capacitor 桥不存在：`isNative` 为 false，安卓的分享接收 / 系统栏配色 /
-  壁纸取色均不激活（这些是 Android 专属）；
+  壁纸取色 / 应用快捷方式均不激活（这些是 Android 专属）；
+- 「检查更新」在桌面端恒报不支持——PWA 途径无 SW 注册、原生途径非 isNative，
+  两边都不可用（更新靠重新下载安装包）；
 - 麦克风：WebView2 会弹系统权限请求，允许即可；若遇到静默拒绝，
   需在 Rust 侧处理 WebView2 的 PermissionRequested 事件（未预置）。
 

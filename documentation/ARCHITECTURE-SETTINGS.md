@@ -7,18 +7,21 @@
 
 ```
 SettingsPage
-├── 顶部胶囊：设置 / 关于（AboutTab：简介 + 文档链接 + 免责声明）
+├── 顶部胶囊：设置 / 关于（AboutTab：简介 + 使用说明 + 开发者文档链接 + 免责声明）
 ├── 搜索框（非空时切换为 SEARCH_INDEX 结果，点击直达子页面）
-└── 主视图：六张入口卡片
+└── 主视图：七张入口卡片
     AppearancePage（外观）   LanguagePage（语言）  AppPage（应用）
-    ConfigPage（配置）      DataPage（数据管理）  LabsPage（实验性功能）
+    ConfigPage（配置）      LlmPage（大模型）     DataPage（数据管理）
+    LabsPage（实验性功能）
 ```
 
 - 入口卡片：`entry(label, icon, onOpen)`；图标 lucide，`aria-label` 即 label。
-- **子页面是 SettingsPage 的本地 state**（`appearanceOpen` 等），不持久化、
-  不入 hash——切页签或返回键回主视图即重置。
+- **子页面是 SettingsPage 的本地 state**（`appearanceOpen` 等，含 `llmOpen`），
+  不持久化、不入 hash——切页签或返回键回主视图即重置。
 - 子页面之间靠**提前 return**切换：`if (xxxOpen) return <XxxPage ... />`，
   因此 **hooks 必须在这些 return 之前全部调用**（SettingsPage 自身遵守）。
+- 返回手势：子页打开时经 `registerBackClose`（`lib/backNav.ts`）压入返回栈，
+  系统返回键/手势先关子页再退页面；新子页沿用 `onBack = history.back()`。
 
 ## 搜索索引
 
@@ -57,7 +60,8 @@ props 约定：`{ settings, update, onBack }`——`update` 即 `updateSettings`
 
 1. 建 `components/settings/XxxPage.tsx`（上面的骨架）；
 2. `SettingsPage`：`SubPage` 联合类型加 id、`useState(xxxOpen)`、
-   提前 return 分支、主视图 `entry(t('settings.xxx'), Icon, ...)`；
+   提前 return 分支、主视图 `entry(t('settings.xxx'), Icon, ...)`、
+   `registerBackClose` 压返回栈；
 3. `SEARCH_INDEX` 登记子页的设置项（否则搜索不到）；
 4. `i18n` 五语言加子页标题键（搜索索引用的 sectionKey / labelKey 也要有词条）；
 5. 若子页含持久化设置项：`types.AppSettings` + `DEFAULT_SETTINGS` +
@@ -67,16 +71,25 @@ props 约定：`{ settings, update, onBack }`——`update` 即 `updateSettings`
 参考实现：`AppPage`（无设置项的最简形态）、`LanguagePage`（开关 + 下拉 +
 表单 + 浮层 + 进度条的最全形态）。
 
+## 变体：二级页与独立全屏页
+
+- **二级页**：子页之下再挂一层本地 state 页，如 `LlmPage` → `PromptPage`
+  （提示词调节）；骨架与 props 约定相同，只是由 LlmPage 自己管理开合。
+- **独立全屏页**：不完全属于设置的概念页放在 `components/` 顶级目录，如
+  `components/ai/AssistantPage.tsx`（AI 助手聊天页，从 LlmPage 进入）——
+  仍是 SettingsPage 的提前 return 分支，但组件不在 settings/ 目录下。
+
 ## 各子页速览（区块 → 去处）
 
 | 子页 | 区块 | 关键实现 |
 | --- | --- | --- |
-| 外观 | 主题（深浅 / 预设 / 骄傲旗参数）· 图表辅助 | `applyPreset` 立即重放主题 |
+| 外观 | 主题（深浅 / 预设三卡 / 骄傲旗参数）· 自定义背景图 · 图表辅助 | `applyPreset` 立即重放主题；背景图管线见 ARCHITECTURE-THEME.md |
 | 语言 | 界面语言 + AI 翻译（合一区块） | 见 ARCHITECTURE-I18N.md |
-| 应用 | 安装与分享 · 版本与更新 · 运行状态 | 见 GUIDE-PWA.md |
-| 配置 | 录音 · 训练 · 提醒 | 录音区改 `recorder` 常量 |
-| 数据管理 | 存储用量 · 备份与恢复 · 数据操作 | 见 GUIDE-PWA.md |
-| 实验性功能 | 功能开关 · 大模型 · 音区边界 · 实时功能 · 导入音频 · GitHub 备份 | `LlmConfigSection` 等 |
+| 应用 | 安装与分享 · 版本与更新 · 运行状态 | 见 GUIDE-PWA.md；原生壳内「检查更新」比对 GitHub Releases APK（`lib/appUpdate.ts`） |
+| 配置 | 录音 · 训练 · 提醒 · 图表与回放 · 通用 | 录音区含启动页开关；图表与回放 = 实时窗口/音高轴/语谱配色/回放倍速 |
+| 大模型 | AI 助手入口 · 模型配置 · 配置档案 · 提示词调节 · 用量与费用 | 档案制（`llm:profiles`），支持 openai/anthropic 双协议；请求日志在数据页 |
+| 数据管理 | 数据去向（页首，含 AI 请求日志）· 存储用量 · 备份与恢复（含口令加密）· WebDAV · 数据操作 | `PrivacyPanel`；加密见 ARCHITECTURE-STATE.md |
+| 实验性功能 | 功能开关 · 音区边界 · 算法参数 · 实时功能 · 导入音频 · GitHub 备份 | 算法参数 13 项见 PARAMETERS-GUIDE.md |
 
 ## 文案规范
 

@@ -22,6 +22,7 @@
 define: {
   __APP_VERSION__: JSON.stringify(pkg.version),   // package.json 的 version
   __BUILD_DATE__: JSON.stringify(ISO 日期),         // 构建时刻
+  __BUILD_AT__: JSON.stringify(buildAt),            // 毫秒时间戳，与 version.json.builtAt 同源双写
 }
 ```
 
@@ -40,7 +41,8 @@ define: {
      部署后几秒内就装完激活，只轮询 `installing / waiting` 撞不上瞬态，
      会把「已部署未刷新」误报成最新（历史 bug）；
    - 不同 → `reg.update()`，监听 `controllerchange`（先于轮询挂好）+ 8s 兜底，
-     新 SW 接管页面后 `location.reload()` → toast「发现新版本」；
+     新 SW 接管页面后 `location.reload()` → 启动时版本比对触发
+     toast「应用已更新到 v{version}」；
    - 线上构建信息拉取失败 / 无 SW 注册 → 「当前环境不支持」。
 
 ### 更新内容卡（What's new）
@@ -64,8 +66,8 @@ define: {
   `appinstalled` 与 standalone 变化都会通知订阅者（`usePwaInstall`）。
 - 应用子页安装行三种状态：已安装（禁用）/ 一键安装（触发浏览器弹窗）/
   手动安装（iOS Safari 等无 beforeinstallprompt 的环境展示指引文案）。
-- manifest：`display: standalone`，shortcuts 深链历史 / 设置，
-  `share_target` 见下。
+- manifest：`display: standalone`，shortcuts 深链录音 / 历史 / 设置
+  （长按图标快捷入口，启动时解析 `location.hash`），`share_target` 见下。
 
 ## Share Target（系统分享 → 应用内分析）
 
@@ -87,6 +89,11 @@ define: {
 应用子页「复制诊断信息」汇总：`__APP_VERSION__` / 构建日期 / standalone /
 SW 状态 / 持久化存储 / 在线 / locale / UA → 剪贴板。剪贴板失败降级为
 「请手动截图」toast。
+
+## 演示模式
+
+URL 加 `?demo=1` 且当前无历史记录时，生成一条示例记录并跳转分析页——
+无麦克风环境体验用；已有数据不受影响。各页面也有「载入示例数据」按钮。
 
 ## 常见问题排查
 

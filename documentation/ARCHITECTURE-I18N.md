@@ -18,7 +18,7 @@ AI 翻译语言管线与词典分享。核心实现：`src/i18n/`（index / hook
 
 - **React 无关**：`t()` 是模块级纯函数，任何非 React 代码（Canvas 画笔、DSP、备份）
   都可直接调用；React 侧经 `useI18n()` 取用。
-- **占位符**：`{name}` 形式，`t('toast.exported', { n: 5 })` 插值；未知占位符原样保留。
+- **占位符**：`{name}` 形式，`t('toast.jsonExported', { n: 5 })` 插值；未知占位符原样保留。
 - `DictKey = keyof typeof zhCN`：**zh-CN 词典是类型层面与运行时的双重基准**，
   所有键必译性由 `src/i18n/i18n.test.ts` 校验（键集合一致、占位符集合一致、无空串）。
 - `setLocale(locale)` 幂等但**总是同步 `<html lang>`**（AI 语言用其 slug），
@@ -63,8 +63,9 @@ AI 翻译语言管线与词典分享。核心实现：`src/i18n/`（index / hook
 
 ## AI 翻译语言管线（`src/i18n/aiLocale.ts`）
 
-把 zh-CN 基准词典交给 实验性功能 → 大模型配置（OpenAI 兼容 chat 接口）
-翻译成任意目标语言，产出一份「AI 语言词典」作为第 6 种界面语言。
+把 zh-CN 基准词典交给 设置 → 大模型 的活动档案（OpenAI 兼容 / Anthropic 协议的
+chat 接口，档案存 IndexedDB、经 `llmActiveProfileId` 异步解析）翻译成任意目标语言，
+产出一份「AI 语言词典」作为第 6 种界面语言。
 
 ### 缓存结构
 
@@ -83,20 +84,33 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`，截 24 字
 
 ### 生成与增量补全
 
-- `generateAiLocale(label, cfg, onProgress, { glossary })`：**全量**。基准 ~687 键，
-  每批 `BATCH = 90` 条一次请求（约 8 批），进度按批上报。
+- `generateAiLocale(label, cfg, onProgress, { glossary?, signal? })`：**全量**。
+  基准约 991 键（zh-CN 词典现有规模），每批 `BATCH = 90` 条一次请求（约 12 批），
+  进度按批上报。
 - `translateMissing(label, cfg, onProgress, opts)`：**增量**。只翻译缓存缺失的键
-  （应用升级新增界面文案后），并入现有词典保存。缺失键清单：`missingKeys(label)`。
+  （应用升级新增界面文案后），并入现有词典保存。缺失键清单：`missingKeys(label)`；
+  已覆盖词条数可经 `cacheCoverage(label)` 查询（语言子页展示「已覆盖/总数」）。
 - 两者共享 `translateInto`：开始时与每批完成后各上报一次
   `TranslateProgress { frac, batch, totalBatches, entriesDone, entriesTotal }`
   （batch 为已完成批次数，0 起始）——语言子页的进度条与
   「第 x/y 批 · 已翻译 m/n 条」明细由此驱动。
 - 提示词（`systemPrompt`）：角色 + 占位符保护 + 技术术语白名单
-  （F0/MPT/CPPS/YIN/WebDAV 等不译）+ **用户术语表**（每行「中文 = 译文」，
+  （F0/F1/F2/MPT/CPPS/HNR/Jitter/Shimmer/YIN/pYIN/MPM/LPC/P10/P90/CSV/JSON/
+  PWA/WebDAV 等不译）+ **用户术语表**（每行「中文 = 译文」，
   `parseGlossary` 解析，= / → / : 均可）+ 仅输出 JSON。
   `parseBatch` 只接受请求中存在的键与非空字符串，模型编造的键一律丢弃。
-- 完成后：写缓存 → `registerAiDict(label, dict, slug)` → `bump()` → 若
-  `settings.language === 'ai'` 界面立即切换。
+- 完成后：写缓存 → `registerAiDict(label, dict, slug)` → `bump()` →
+  **界面自动切换到该 AI 语言**（写入 `settings.language = 'ai'` 与
+  `aiLanguage`，并 toast 提示），不再以"当前已处于 AI 语言"为前提。
+
+### 后台任务（`src/i18n/aiTranslateTask.ts`）
+
+生成/补全跑在**模块级单例的后台任务**里——切页、设置子页卸载都不中断：
+
+- 状态机 `idle | running | done | error | cancelled`，环形日志上限 60 条；
+- API：`startAITask()` / `subscribeAITask` / `getAITaskState()` / `cancelAITask()`
+  （取消经 `AbortSignal`，已完成批次保留在缓存中，续跑即增量补全）；
+- 语言子页的进度卡经 `useSyncExternalStore(subscribeAITask, getAITaskState)` 订阅。
 
 ### 词典分享
 
@@ -126,6 +140,13 @@ slug（`aiSlug`）：显示名小写、非 `[a-z0-9]` 折叠为 `-`，截 24 字
 | `svt:i18n-overrides:<tag>` | 用户自定义词条（tag = localeTag，AI 按 slug） |
 
 其余应用级键见 [ARCHITECTURE-STATE.md](./ARCHITECTURE-STATE.md)。
+
+## 应用内文档（与本子系统无关，顺带说明）
+
+设置 → 关于 的「使用说明」不走 i18n 词典：构建时把 `public/guide.md`（仅简体中文
+一个版本）打进产物，运行时 `GuideSheet` 以 `fetch(BASE_URL + 'guide.md')` 拉取、
+内置极简 Markdown 渲染器展示，Service Worker 预缓存使其可离线阅读。开发者文档
+（`documentation/`）在关于页以 GitHub 源文件链接提供，不参与五语言键集校验。
 
 ## 给开发者的约定
 

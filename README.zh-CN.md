@@ -19,6 +19,8 @@
 - **PWA**：浏览器访问
   [在线版本](https://theforeveriris.github.io/simple-voice-tools/)，
   通过「安装到主屏幕」使用（支持离线缓存，与 APK 版数据互相独立）
+- **Windows**：从 [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
+  下载最新的 `SimpleVoiceTool-v*-setup.exe` 安装包（Tauri 构建；桌面端不提供应用内检查更新）
 
 ## 功能特点
 
@@ -88,7 +90,7 @@
   云备份可选**口令加密**（AES-GCM，上传前加密、口令不落盘，跨设备凭口令即可恢复，
   加密不影响「未变化文件跳过」）；设置 → 数据 顶部有**数据去向**面板，
   如实说明各类数据的边界与云备份加密状态
-- **导出**：分析报告一键生成 PNG 分享图（Canvas 绘制的品牌报告卡，跟随主题色，
+- **导出**：分析报告一键生成 PNG 分享图（Canvas 绘制的品牌报告卡，四种样式可选——跟随主题 / 深色 / 浅色 / 极光，跟随主题款实时取当前主题色，每种样式均带指向本仓库的二维码，
   支持系统分享面板）；单条记录可导出帧级 CSV、可交互的单文件 HTML 报告，以及
   **Praat 互操作文件**（PitchTier 基频曲线 / Formant 逐帧 F1/F2，Praat 直接打开即可交叉验证）
 - **键盘快捷键**：`1–4` 切换页签，`Space` 开始/停止录音，`M` 唤出模式选择，
@@ -118,6 +120,7 @@
 | [documentation/GUIDE-PWA.md](documentation/GUIDE-PWA.md) | 指南：PWA 更新流、Share Target、修复工具 |
 | [documentation/GUIDE-CAPACITOR.md](documentation/GUIDE-CAPACITOR.md) | 指南：Capacitor 安卓壳（构建/签名/原生分享/已知限制） |
 | [documentation/GUIDE-DESKTOP.md](documentation/GUIDE-DESKTOP.md) | 指南：Tauri Windows 桌面版（构建/CI/平台差异） |
+| [documentation/PARAMETERS-GUIDE.md](documentation/PARAMETERS-GUIDE.md) | 指标与参数指南：每个数字的含义、默认值与实验性算法参数 |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | 音高检测原理：YIN 差分函数、CMND、抛物线插值 |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | 共振峰提取原理：预加重、抽取、LPC、多项式求根 |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | 能量分析原理：RMS、分贝换算、VAD 门限体系 |
@@ -139,6 +142,7 @@
   - **CPPS 倒谱峰突出度**（自写基-2 FFT → 实倒谱 → 回归线基线 → 时间平滑分布统计）
   - **FFT 语谱图**（对数频带量化存储 + magma 伪彩色渲染）
 - fflate（ZIP 完整备份打包）；GitHub 云备份走 Device Flow + REST API，零后端
+- 原生壳：Capacitor 7（安卓 APK）+ Tauri 2（Windows 安装包）；uqr 用于分享图二维码
 
 ## 开发说明
 
@@ -163,7 +167,7 @@ npm run build
 ### 测试
 
 ```bash
-npm test        # vitest 单测（DSP/导出/备份/i18n 完整性，CI 同步执行）
+npm test        # vitest 单测（DSP 黄金样本 / 导出 / 备份 / LLM / i18n 完整性，CI 同步执行）
 ```
 
 > 构建产物输出到 `docs/` 目录（已 gitignore，不入库）：push 到 main 后由

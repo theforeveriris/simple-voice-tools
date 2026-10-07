@@ -10,26 +10,34 @@ localStorage 键清单、迁移与降级策略。实现：`src/store/`、`src/li
 
 - 内存态：`currentTab` / `isRecording` / `currentAnalysis` / `pendingAutoReplay`；
 - **持久化仅 `settings`**（`partialize`），且**排除 `llmApiKey`**（见下）；
-- `merge` 承担三代迁移：
+- `merge` 承担四代迁移：
   1. 旧版布尔 `adviceEnabled` → 三态 `adviceMode`；
   2. 旧版旗帜直接作为预设（`huePreset: 'transPride'` 等）→ 收敛为
      `huePreset: 'pride'` + `prideFlag`；
-  3. 旧版存于 localStorage 的 `llmApiKey` → 一次性迁入 IndexedDB kv。
+  3. 旧版存于 localStorage 的 `llmApiKey` → 一次性迁入 IndexedDB kv；
+  4. 旧版背景图开关 `bgImageEnabled` → `huePreset: 'image'`。
+- **v0.9.0「档案即数据源」启动迁移**：旧三字段 `llmBaseUrl` / `llmApiKey` / `llmModelId`
+  在无任何档案时一次性生成一份 LLM 档案并写 `llmActiveProfileId`（useStore 启动时执行）；
+  此后旧字段仅存不读，配置一律经活动档案解析（`lib/llmProfiles.ts`）。
 - `updateSettings(patch)`：patch 含 `llmApiKey` 时同步写入 IDB kv（敏感态不进
   localStorage）；内存态仅为配置解析用。
 - **`syncModuleSettings`**：settings 变化时把若干值推入模块级单例
   （音区边界 / 音高轴 / 实时窗口 / 语谱配色 / 音高算法 / 共振峰目标区 /
-  骄傲旗参数）——Canvas 画笔等非 React 代码经 getter 读取，避免 60fps 订阅。
+  骄傲旗参数 / 自定义背景图 `applyBgImage` / 实验性算法参数 `setAlgoParams`）——
+  Canvas 画笔等非 React 代码经 getter 读取，避免 60fps 订阅。
 
 ### useHistoryStore（记录，IndexedDB 持久化）
 
 - 内存 `records` 仅保留最近 `MAX_HISTORY = 200` 条（列表渲染上限），
   **完整数据永远在 IndexedDB**——导出 / 备份必须走 `getAllRecords()` 全量读，
   否则静默丢早于 200 条的记录（备份模块内有显式注释强调这一点）。
+- store 另暴露 `hydrate()`（启动从 IDB 装载）/ `ready` / `totalCount` /
+  `updateRecord()`（备注编辑等就地更新）。
 - `addRecord(record, audioBlob?)`：记录与音频同 id 分别入 `records` / `audio` 仓；
   写失败降级为内存态 + 每会话一次的 toast（`warnStorage`）。
-- 删除撤销：`removeWithUndo` 预取待删记录的音频 Blob（≤20 条时），
-  5 秒内 `addRecord` 原样恢复。
+- 删除撤销：预取待删记录的音频 Blob（≤20 条时），5 秒内 `addRecord` 原样恢复；
+  撤销编排（`removeWithUndo`）在页面层 `components/pages/HistoryPage.tsx`，
+  store 只提供增删原语。
 - 旧版 localStorage（`svt:history:v1`）一次性迁入 IDB，守卫键 `svt:idb-migrated`。
 
 ## IndexedDB（`src/lib/storage/idb.ts`，库名 `svt`，版本 2）
@@ -48,13 +56,17 @@ kv 仓库键清单：
 | `gh:login` | backup/github | 登录名 |
 | `gh:lastPush` | backup/github | 上次云备份时间 |
 | `webdav:config` | backup/webdav | WebDAV 凭据 |
-| `llm-api-key` | store/useStore | 大模型 API Key |
+| `webdav:lastPush` | backup/webdav | 上次 WebDAV 云备份时间 |
+| `backup:crypto` | backup/crypto | 云备份口令加密配置（salt / 迭代次数 / 校验块；**口令本身绝不落盘**，仅存会话内存） |
+| `llm-api-key` | store/useStore | 大模型 API Key（旧字段，v0.9.0 后由档案管理，仅存不读） |
 | `autoBackup:handle` | backup/local | 本地自动备份目录句柄（FileSystemDirectoryHandle） |
 | `autoBackup:lastTs` | backup/local | 上次自动备份时间 |
 | `llm:usage:totals` | lib/llmUsage | 大模型 Token 用量聚合（按功能分组的计数器） |
 | `llm:usage:log` | lib/llmUsage | 大模型调用明细（最新在前，封顶 200 条） |
 | `llm:results` | lib/llmResultStore | 大模型成功结果按缓存键持久化（最新在前，封顶 50 条） |
-| `llm:profiles` | lib/llmProfiles | 大模型接口配置档案（含各档案 API Key） |
+| `llm:profiles` | lib/llmProfiles | 大模型接口配置档案（多套一键切换，含 protocol: openai/anthropic、stream、contextTokens 与各档案 API Key；活动档案由 `settings.llmActiveProfileId` 指针指定） |
+| `llm:chats` | lib/llmChats | AI 助手对话历史（最新在前，封顶 30 条） |
+| `llm:requestLog` | lib/llmRequestLog | AI 请求日志（数据去向面板用，封顶 10 条，不含 API Key） |
 
 约定：**凭据与句柄一律进 kv，不进 localStorage**（localStorage 会被设置导出、
 容易被顺手清掉，且句柄无法结构化克隆进 localStorage）。
@@ -62,7 +74,12 @@ kv 仓库键清单：
 降级：首次打开失败即 `unavailable = true` 永久降级（本会话所有操作 reject），
 上层 toast 提示；`onblocked` 同样拒绝。`onupgradeneeded` 目前只建仓库，
 **尚无按版本的迁移分支**——给 `AnalysisRecord` 加字段需保持向后兼容（可选字段），
-破坏性变更必须在这里补迁移。
+破坏性变更必须在这里补迁移。现成实例：重算功能给记录追加了可选的
+`reanalyzedAt`（重算时间）与 `paramsFp`（算法参数指纹）字段（`types/index.ts`）。
+
+**云备份加密边界**：GitHub / WebDAV 云备份可选口令加密（AES-256-GCM + PBKDF2，
+见 `lib/backup/crypto.ts`）——上传前在本地加密，口令不落盘、跨设备凭口令恢复；
+手动 ZIP 备份与本地自动备份**始终明文**。
 
 ## localStorage 键清单
 

@@ -1,7 +1,7 @@
 # Capacitor 安卓壳（GUIDE-CAPACITOR）
 
 用 Capacitor 把现有 Web 应用原样打包为安卓 App：**Web 代码 100% 复用**，
-壳层只做权限、分享接收、通知、系统栏适配四件事。
+壳层只做权限、分享接收、通知、系统栏适配、应用快捷方式五件事。
 
 ## 架构总览
 
@@ -9,16 +9,20 @@
 浏览器 PWA  ←─ 同一份 Vite 构建（docs/）→  Capacitor WebView（https://localhost）
                                         ├─ 麦克风：RECORD_AUDIO 权限 + WebView getUserMedia 桥
                                         ├─ 分享接收：ShareTargetPlugin（Java）→ Web 导入管线
-                                        └─ 提醒通知：@capacitor/local-notifications
+                                        ├─ 提醒通知：@capacitor/local-notifications
+                                        └─ 应用快捷方式：AppShortcutPlugin（长按图标深链页签）
 ```
 
-Web 层平台分支的唯一入口是 `src/lib/platform.ts` 的 `isNative`
-（`Capacitor.isNativePlatform()`）。浏览器里恒为 `false`，所有 Web 行为不变：
+Web 层平台分支的主要入口是 `src/lib/platform.ts` 的 `isNative`
+（`Capacitor.isNativePlatform()`；同文件还有 `isTauri` 供桌面壳分支）。
+浏览器里恒为 `false`，所有 Web 行为不变：
 
 | 能力 | 浏览器 PWA | 原生壳 |
 | --- | --- | --- |
-| Service Worker / 检查更新 | 注册 SW（`main.tsx` 手动注册） | 跳过；更新走重新安装/应用商店 |
-| 设置 → 应用 | 安装入口 / 检查更新 / 清缓存可见 | 隐藏（无意义）；版本展示保留 |
+| Service Worker | 注册 SW（`main.tsx` 手动注册） | 跳过 |
+| 检查更新 | 比对线上 `version.json` | 比对 GitHub Releases 最新 APK（`lib/appUpdate.ts`），新版本给下载按钮，浏览器下载后覆盖安装（数据保留） |
+| 设置 → 应用 | 安装入口 / 检查更新 / 清缓存可见 | 隐藏安装入口 / SW 状态 / 清缓存重置；版本、检查更新、分享应用、诊断信息可见 |
+| 应用快捷方式 | manifest shortcuts（长按图标） | `AppShortcutPlugin`：静态 shortcuts 深链录音 / 历史 / 设置（同一套 `#/hash` 语义） |
 | 「分享到」 | manifest share_target（SW 拦截 POST） | `ShareTargetPlugin` 收 SEND intent → 缓存目录 → 事件给 Web |
 | 练习提醒 | Web Notification | `LocalNotifications.schedule`（即时展示） |
 | 其余（Web Audio / MediaRecorder / IndexedDB / vibrate / clipboard） | — | WebView 原样可用，无分支 |
@@ -44,8 +48,9 @@ npm run cap:open   # 用 Android Studio 打开 android/，真机 Run 即可
 
 `.github/workflows/android-release.yml`：
 
-- **推送到 main**：跑 vitest → vite build → cap sync → gradle assembleDebug，
-  APK 以 `SimpleVoiceTool-v{版本}-debug.apk` 传到 **`latest` 预发布**（滚动替换，
+- **推送到 main**：跑 vitest → vite build → cap sync → gradle 构建——三个签名
+  secrets 齐全时 `assembleRelease`（产出 `SimpleVoiceTool-v{版本}-release.apk`），
+  否则回退 debug 签名；APK 传到 **`latest` 预发布**（滚动替换并清理旧版本 .apk，
   固定下载入口：`github.com/theforeveriris/simple-voice-tools/releases/latest`）。
 - **推送 `v*` 标签**（如 `git tag v0.8.0 && git push origin v0.8.0`）：同样流程，
   但创建**正式 Release**。
@@ -102,6 +107,17 @@ storeFile/storePassword/keyAlias/keyPassword，并在 `android/app/build.gradle`
   与 PWA share target 共用 `importSharedFile()`（`analyzeAudioFile` 管线）。
 - 缓存文件 24 小时后由插件自动清理。
 
+## 应用快捷方式（AppShortcutPlugin）
+
+长按桌面图标出现三个静态快捷方式（录音 / 历史 / 设置，文案随系统语言）：
+
+- 原生侧：`android/.../res/xml/shortcuts.xml` 定义三个 VIEW intent
+  （`simplevoicetool://open/#/test|#/history|#/settings`）；
+  `AppShortcutPlugin` 冷启动经 `getInitialRoute()` 交出暂存路由，热启动推
+  `shortcutRoute` 事件；`MainActivity` 在 onCreate / onNewIntent 分发。
+- Web 侧：`main.tsx` 把路由落到对应页签；与 PWA manifest shortcuts 共用
+  同一套 `#/hash` 语义（见 GUIDE-PWA.md）。
+
 ## 系统栏配色跟随主题（SystemBarsPlugin）
 
 Android 15 强制 edge-to-edge，`statusBarColor` 被忽略；WebView 被
@@ -112,6 +128,17 @@ Android 15 强制 edge-to-edge，`statusBarColor` 被忽略；WebView 被
 `main.tsx`（首帧）与 App 主题 effect（每次主题变化，含深浅切换 / 自定义色相 /
 骄傲旗）调用，因此状态栏与莫奈动态色板实时一致。
 
+
+## 应用内更新检查（appUpdate.ts）
+
+侧载渠道没有应用商店推送，`lib/appUpdate.ts` 在原生壳内实现更新提示：
+
+- 设置 → 应用 → 检查更新：拉取
+  `api.github.com/repos/theforeveriris/simple-voice-tools/releases`，
+  从 APK 资产名解析最高 semver 与 `__APP_VERSION__` 比对；
+- 发现新版本 → 提供 APK 下载入口（系统浏览器下载 `SimpleVoiceTool-v*-release.apk`
+  后覆盖安装；正式签名一致，数据保留）；
+- 仅原生壳可用（`isNative` 门控）；PWA 走 `version.json` 更新流，桌面端无此机制。
 
 ## 已知限制 / 后续可选
 

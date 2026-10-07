@@ -13,6 +13,16 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 - **Android APK**: grab the latest `SimpleVoiceTool-v*-release.apk` from [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest) and install it directly (release-signed, with in-app update notices)
 - **Obtainium**: if you use [Obtainium](https://github.com/ImranR98/Obtainium), tap the badge above to add this repo and pick up new versions automatically
 - **PWA**: open the [web version](https://theforeveriris.github.io/simple-voice-tools/) and use "Add to home screen" (offline caching; storage is independent of the APK install)
+- **Windows**: grab the latest `SimpleVoiceTool-v*-setup.exe` installer from [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest) (Tauri build; the in-app "check for updates" is not available on desktop)
+
+## Screenshots
+
+| | | |
+| --- | --- | --- |
+| ![Testing page](fastlane/metadata/android/en-US/images/phoneScreenshots/01-testing.png) | ![Analysis page](fastlane/metadata/android/en-US/images/phoneScreenshots/02-analysis.png) | ![History list](fastlane/metadata/android/en-US/images/phoneScreenshots/03-history.png) |
+| **Testing** — three live charts (F1/F2 formants, audio energy, pitch with voice-range bands) scroll in real time while recording | **Analysis** — overview card with average F0 and range ruler, playback, pitch statistics and the experimental pitch-algorithm comparison | **History** — searchable record list with per-record pitch strips and mode tags |
+| ![Trend view](fastlane/metadata/android/en-US/images/phoneScreenshots/04-trend.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/05-settings.png) | |
+| **Trend** — long-term average-F0 chart with P10–P90 bands, a GitHub-style voice-diary heatmap, MPT/CPPS metrics and AI weekly review | **Settings** — searchable settings with sub-pages for appearance, language, app, preferences, LLM, data and experimental features | |
 
 ## Features
 
@@ -36,7 +46,7 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 - **Practice reminders**: optional daily local notification (fires at the set time when no recording exists that day), custom time supported
 - **Settings**: themes (three presets with preview cards — Monet-inspired: hue / accent / dark-hue sliders with duotone and an independent dark base; pride flags: trans / non-binary / gender-fluid with flowing gradient background + frosted-glass components and adjustable intensity / saturation / blur / drift; custom image: the background layer is taken over by an image with focus / blur / dim / saturation / presence / drift controls, compressed and stored locally, packed into ZIP backups; ambient easter eggs — voice tint: the UI hue drifts blue↔pink with live pitch, volume breath: gradient intensity breathes with mic loudness), data import/export (JSON / summary CSV), recording duration limit, microphone selection, save-audio toggle, native splash screen (on by default, toggle under Preferences)
 - **Backup**: full backup (ZIP: records + all audio) with one-click restore; storage usage panel (quota / audio size / persistent-storage request); cloud backup — GitHub private repo (Device Flow authorization, writes to your own repo, unchanged files skipped), WebDAV, or local auto-backup via File System Access (experimental); cloud backups support **passphrase encryption** (AES-GCM, encrypted before upload, the passphrase is never stored); the Data settings page opens with a **data-destination** panel that honestly documents where each kind of data goes
-- **Export**: one-tap PNG report card (Canvas-drawn, follows the theme, system share sheet); per-record frame-level CSV; an interactive single-file HTML report; **Praat interop files** (PitchTier pitch curves / per-frame Formant F1-F2 that open directly in Praat for cross-validation)
+- **Export**: one-tap PNG report card (Canvas-drawn, four selectable styles — themed / dark / light / aurora — with the themed style following your live theme colors and every card carrying a QR code to this repo; system share sheet); per-record frame-level CSV; an interactive single-file HTML report; **Praat interop files** (PitchTier pitch curves / per-frame Formant F1-F2 that open directly in Praat for cross-validation)
 - **Keyboard shortcuts**: `1–4` switch tabs, `Space` start/stop recording, `M` mode selector, `?` all shortcuts (history `/` focuses search, multi-select `Ctrl/⌘+A`, `Esc` to exit, …)
 - **App shortcuts**: long-press the home-screen icon to jump straight to testing / history / settings — manifest shortcuts for installed PWAs, native shortcuts on Android (labels follow system language)
 - **Experimental features**: a settings sub-page for capabilities being polished — analysis-page spectrogram toggle, test-page live spectrogram (narrowband magnitude spectrum), rule-based local advice, real-time pitch algorithm switch, algorithm parameters (YIN threshold / pitch search range / voiced & active-frame energy gates / LPC pre-emphasis & order / F1·F2 search windows / voice-quality confidence & minimum periods / CPPS peak search & time smoothing — applied to live and offline analysis alike), and four live practice views (vowel scatter / pitch / spectrum / VRP)
@@ -56,6 +66,7 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 | [documentation/GUIDE-PWA.md](documentation/GUIDE-PWA.md) | Guide: PWA update flow, Share Target, repair tool |
 | [documentation/GUIDE-CAPACITOR.md](documentation/GUIDE-CAPACITOR.md) | Guide: Capacitor Android shell (build / signing / native share / known limits) |
 | [documentation/GUIDE-DESKTOP.md](documentation/GUIDE-DESKTOP.md) | Guide: Tauri Windows desktop (build / CI / platform differences) |
+| [documentation/PARAMETERS-GUIDE.md](documentation/PARAMETERS-GUIDE.md) | Metrics & parameters guide: what every number means, defaults, and the experimental algorithm parameters |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | Pitch detection: YIN difference function, CMND, parabolic interpolation |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | Formant extraction: pre-emphasis, decimation, LPC, polynomial root finding |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | Energy analysis: RMS, decibel conversion, VAD threshold system |
@@ -77,6 +88,7 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
   - **CPPS** cepstral peak prominence (custom radix-2 FFT → real cepstrum → regression baseline → time-smoothed distribution statistics)
   - **FFT spectrogram** (log-band quantized storage + magma colormapping)
 - fflate (ZIP backup packaging); GitHub cloud backup via Device Flow + REST API, zero backend
+- Native shells: Capacitor 7 (Android APK) + Tauri 2 (Windows installer); uqr for the share-card QR code
 
 ## Development
 
@@ -101,7 +113,7 @@ npm run build
 ### Test
 
 ```bash
-npm test        # vitest suite (DSP / export / backup / i18n integrity; also runs in CI)
+npm test        # vitest suite (DSP golden fixtures / export / backup / LLM / i18n integrity; also runs in CI)
 ```
 
 > The build output goes to `docs/` (gitignored, not committed): pushes to `main` are

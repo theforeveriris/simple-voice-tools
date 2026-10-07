@@ -27,7 +27,8 @@ on-accent / accent-soft / on-accent-soft / line`，另派生 `accent2`（次强�
 
 ## 应用与切换（`applyTheme` / `presetSpec`）
 
-`presetSpec(preset, userHue, prideFlag)` → `{ hue, accentHue, spec }`；
+`presetSpec(preset, userHue, prideFlag = 'transPride', userAccentHue = userHue,
+userDarkHue = userHue)` → `{ hue, accentHue, spec }`；
 `applyTheme(hue, dark, accentHue, spec, prideFlag)`：
 
 1. 调 `buildTokens` 并把全部令牌写入 `document.documentElement.style`；
@@ -37,8 +38,17 @@ on-accent / accent-soft / on-accent-soft / line`，另派生 `accent2`（次强�
 4. `dispatchEvent('app:themechange')` —— `chartPainters` / 语谱图 LUT
    据此失效调色板缓存（Canvas 不会自动感知 CSS 变量变化）。
 
-调用点三处：`main.tsx`（首帧前）、`App.tsx`（订阅 hue / huePreset / prideFlag /
-theme / 系统深浅变化）、外观页 `applyPreset`（立即重放）。
+调用点三处：`main.tsx`（首帧前；原生壳内壁纸取色成功后再次调用，见下节）、
+`App.tsx`（订阅 hue / accentHue / darkHue / huePreset / prideFlag / theme /
+系统深浅变化）、外观页 `applyPreset`（立即重放）。
+
+## 莫奈取色首启默认 = 壁纸色（Material You，dynamic.ts）
+
+原生壳（Android）内首次启动（无持久化设置时）经原生 `SystemBars` 插件读取
+**系统壁纸主色**（API 27+），取其色相写入莫奈三滑条（hue / accentHue / darkHue）
+并持久化——壁纸色不是独立预设，而是与三个色相滑条同轨的初始值；浏览器环境
+恒返回 null 走常规兜底（山桃红）。实现：`lib/theme/dynamic.ts`，调用点
+`main.tsx` 首帧前后各一次。
 
 ## 预设
 
@@ -66,7 +76,8 @@ theme / 系统深浅变化）、外观页 `applyPreset`（立即重放）。
 2. `THEME_PRESETS` 加 spec（hue / accentHue / themeClass: 'theme-pride' / overrides）；
 3. `index.css` 加 `html.theme-pride[data-pride-flag='xxx'] body::before` 渐变
    （浅色 + `.dark` 微光两组）；
-4. 外观页下拉自动出现（由 `PRIDE_FLAGS` 驱动）；导入白名单 `STRING_ENUMS.prideFlag` 加 id；
+4. 外观页的旗帜选择为**条纹卡片三选一网格**（由 `PRIDE_FLAGS` 驱动，非下拉）；
+   导入白名单 `STRING_ENUMS.prideFlag` 加 id；
 5. i18n 五语言加旗帜名。
 
 ## 渐变背景与毛玻璃（index.css）
@@ -84,8 +95,10 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
 | `--pride-glass-blur` | 毛玻璃强度（0–28px） | 卡片 backdrop-blur 半径 |
 
 毛玻璃分层：`.bg-card`（55% + blur）、`.bg-background`（弹层，72% + blur+4px）、
-`.bg-surface-hi`（60% 无模糊，控制合成层数量）；页面与全屏浮层 `.bg-surface`
-透明让出背景。所有规则都在 `.theme-pride` 作用域下，莫奈主题零影响；
+`.bg-surface-hi`（60% 无模糊，控制合成层数量）；`.app-root` 页面容器透明让出背景，
+**其余全屏浮层**（`.bg-surface` 但非 `.app-root`）改为磨砂
+（`rgb(var(--c-surface-rgb) / 0.78)` + `blur(var(--pride-glass-blur) + 6px) saturate(1.1)`，
+保证浮层上的文字可读）。所有规则都在 `.theme-pride` 作用域下，莫奈主题零影响；
 **自定义背景图开启时**（`html.bg-image`）同一组毛玻璃规则以并列选择器生效
 （莫奈 + 背景图的组合也获得毛玻璃，否则不透明卡片会把图片完全盖住）。
 
@@ -102,8 +115,9 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
   调用）：`--bg-image-url`（objectURL）/ `--bg-image-pos`（九宫 → object-position）/
   `--bg-image-blur` / `--bg-image-sat` / `--bg-image-dim` / `--bg-image-alpha`；
   深浅差异只在压暗加深——深色规则内 `brightness(calc(1 - dim * 1.5))`，JS 不感知深浅；
-  透明度 = `alpha × --pride-breath`，**音量呼吸彩蛋零改动生效**（ambient 的呼吸
-  条件含 `bgImageEnabled`）；漂移复用 `pride-drift`（`bg-image-static` 单独关）。
+  透明度 = `alpha × --pride-breath`，**音量呼吸彩蛋零改动生效**（呼吸的激活条件是
+  `huePreset === 'pride' || huePreset === 'image'`）；漂移复用 `pride-drift`
+  （`bg-image-static` 单独关）。
 - **存储管线**：`processImageFile` 经 `createImageBitmap` 降采样长边 ≤2048px、
   优先编码 WebP q0.8（不支持时回退 JPEG），数百 KB 级 Blob 存 IndexedDB kv
   （键 `bg-image`）；`loadBgImage` 启动异步预加载（main.tsx），就绪后经 opacity
@@ -129,8 +143,9 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
   有声帧）；麦克风停止或开关关闭时恢复基准主题（同一 tick 内一次性）。
 - **音量呼吸**（设置 → 外观 → 骄傲旗参数，`volumeBreath`）：按最新帧
   rmsDb（-50 → -10 dBFS 归一）快起慢落平滑后写 `--pride-breath`（1–1.5 倍率），
-  CSS 中与 `--pride-glow` 相乘决定渐变层透明度（另有 150ms transition 兜底
-  平滑）；仅 pride 渐变主题可见，退出活跃态时一次性复位为 1。
+  CSS 中与 `--pride-glow` 相乘决定渐变层透明度（背景图主题下则乘在图片透明度上，
+  另有 150ms transition 兜底平滑）；pride 渐变与自定义背景图两种主题下可见，
+  退出活跃态时一次性复位为 1。
 - **凌晨极光**：`watchAuroraHours` 在本地时间 3:00–4:59 给 `<html>` 加
   `aurora` 类（启动先判一次避免闪旗面 + 每分钟复查跨边界），index.css 中
   极光规则置于旗帜规则之后（同特异性靠源顺序取胜，深色单独一组），
@@ -155,6 +170,13 @@ z-index: -1`，多层 radial-gradient + `blur(48px)`，`pride-drift` 32s 缓慢�
 Canvas 不感知 CSS 变量。`chartPalette()`（chartPainters）在读取时缓存调色板，
 `app:themechange` 事件触发重建；语谱图 LUT（accentRamp）同理。新增主题相关
 的 Canvas 颜色时，务必走 `chartPalette()` 而非直接 `getComputedStyle`。
+
+**分享卡 PNG 的取色是唯一例外**：`lib/export/shareCard.ts` 的 `themed` 样式在
+绘制时逐个 `getComputedStyle` 读取当前 `--c-*` 令牌（一次性读入绘制调色板，
+非缓存），因此分享图实时跟随当前主题——包括声音染色驱动的色相流动。
+另有 dark / light / aurora 三种固定风格（accent 仍取当前主题强调色）；样式在
+`ShareCardSheet` 浮层选择并实时预览，每种样式的报告卡都带指向本仓库的二维码
+（`uqr` 编码，模块色取当前样式 ink 色，深色样式输出反相码）。
 
 ## 首帧无闪烁
 
