@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 45
     steps:
       # fetch-depth: 0 供正式 Release 用 git log 生成变更说明（需拿到上一个 tag）
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
