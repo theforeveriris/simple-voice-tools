@@ -12,7 +12,6 @@ export const en = {
   'common.undo': 'Undo',
   'common.close': 'Close',
   'common.all': 'All',
-  'common.none': 'None',
   'common.export': 'Export',
   'common.import': 'Import',
   'common.connect': 'Connect',
@@ -22,8 +21,6 @@ export const en = {
   'common.goTest': 'Start a test',
   'common.loadDemo': 'Load sample data',
   'common.sec': '{n} s',
-  'common.on': 'On',
-  'common.off': 'Off',
 
   /* ---------- Bottom navigation ---------- */
   'nav.test': 'Test',
@@ -33,7 +30,6 @@ export const en = {
   'nav.recordStartAria': 'Start recording (long-press to choose mode)',
   'nav.recordStopAria': 'Stop recording',
   'nav.fanCancelHint': 'Tap blank area to cancel',
-  'nav.tabAria': '{name} tab',
 
   /* ---------- Test modes ---------- */
   'mode.reading': 'Free reading',
@@ -79,7 +75,6 @@ export const en = {
   'analysis.shareAria': 'Export share image',
   'analysis.shareTitle': 'Export share image (PNG)',
   'analysis.csvAria': 'Export frame-level CSV',
-  'analysis.csvTitle': 'Export frame-level CSV data',
   'analysis.noteAria': 'Edit note',
   'analysis.noteTitle': 'Edit note',
   'analysis.notePlaceholder': 'Name this record, e.g. "Morning voice" or "Training week 3"',
@@ -153,7 +148,6 @@ export const en = {
   'analysis.specAria': 'Spectrogram',
   'analysis.baselineTitle': 'vs. baseline',
   'analysis.baselineDesc': '{date} · {f0} Hz',
-  'analysis.baselineHint': 'Change the baseline in Settings → Training',
   'analysis.sustainedTitle': 'Sustained vowel analysis',
   'analysis.sustainedMpt': 'Maximum phonation time (MPT)',
   'analysis.sustainedCv': 'Pitch stability',
@@ -203,7 +197,6 @@ export const en = {
   'html.withAudioDesc': 'Larger file, but playback inside the report',
   'html.withoutAudio': 'Charts only',
   'html.withoutAudioDesc': 'Smallest file: curves, stats and spectrogram only',
-  'html.exporting': 'Generating…',
   'html.zoomHint': 'Wheel to zoom · drag to pan · double-click to reset',
   'toast.htmlExported': 'Interactive report exported',
   'toast.htmlExportFail': 'Failed to generate the interactive report',
@@ -230,7 +223,6 @@ export const en = {
   'history.trendAria': 'History trend: tap to inspect, tap again to open',
   'history.truncated': 'Showing the latest {limit} of {total} records · exports and backups include all',
   'history.trendEmpty': 'No records for this test mode yet',
-  'history.recordAria': 'Open record {n}',
 
   /* ---------- Voice diary ---------- */
   'history.diary': 'Voice diary',
@@ -330,7 +322,6 @@ export const en = {
 
   /* ---------- Labs · live vowel space ---------- */
   'vowelLive.title': 'Live vowel space',
-  'vowelLive.labsDesc': 'Watch your F1/F2 fall inside the vowel space in real time while speaking — instant feedback for language training and pronunciation coaching; monitor mode saves nothing',
   'vowelLive.openAction': 'Open live practice',
   'vowelLive.openAria': 'Open live vowel space',
   'vowelLive.start': 'Start live practice',
@@ -389,22 +380,16 @@ export const en = {
 
   /* ---------- Labs · LLM configuration ---------- */
   'settings.llmSection': 'LLM configuration',
-  'settings.llmDesc': 'OpenAI-compatible endpoint credentials. When training tips are set to "LLM-based", recording statistics (no audio) are sent to this endpoint to generate them — mind your privacy',
   'settings.llmBaseUrl': 'Base URL',
   'settings.llmBaseUrlPlaceholder': 'https://api.example.com/v1',
   'settings.llmApiKey': 'API Key',
   'settings.llmApiKeyPlaceholder': 'sk-…',
-  'settings.llmKeyToggle': 'Show / hide API Key',
   'settings.llmModelId': 'Model ID',
   'settings.llmModelIdPlaceholder': 'e.g. gpt-4o-mini / deepseek-chat',
   'settings.llmIncomplete': 'Fill in Base URL, API Key and Model ID first',
   'settings.llmProfiles': "API profiles",
-  'settings.llmProfilesDesc': "Save multiple API configs and switch in one tap; keys stay on this device",
-  'settings.llmProfileNamePlaceholder': "Profile name, e.g. DeepSeek",
-  'settings.llmProfileSave': "Save as profile",
   'settings.llmProfileDelete': "Delete this profile",
   'settings.llmProfileDeleteConfirm': "Delete for sure?",
-  'settings.llmProfileCustom': "Custom config",
   'settings.llmUsagePrice': "Price per million tokens",
   'settings.llmUsagePriceDesc': "Fill in to show estimated costs in the same currency as the numbers you enter",
   'settings.llmUsagePrompt': "Input",
@@ -470,9 +455,6 @@ export const en = {
   'settings.promptRulesDesc': 'Appended after the built-in standard; on conflict the rules win',
   'settings.promptRulePlaceholder': 'e.g. Prioritize resonance over pitch',
   'settings.promptEmpty': 'No extra rules yet — tap ＋ to add one',
-  'settings.promptEntry': 'Prompt',
-  'settings.promptEntryDesc': 'Add rules to or override the AI advice prompt',
-  'settings.promptOpen': 'Edit',
   /* ---------- Labs · Token usage ---------- */
   'settings.llmUsageTitle': 'Token usage',
   'settings.llmUsageCounting': 'Loading…',
@@ -574,11 +556,9 @@ export const en = {
   'settings.targetEnable': 'Enable training target',
   'settings.targetDesc': 'Overlay a target band on the live pitch chart with live deviation, and track how much time stays inside the target',
   'settings.targetRange': 'Target F0 range (Hz)',
-  'settings.targetTo': '–',
   'settings.baseline': 'Baseline record',
   'settings.baselineDesc': 'The analysis page shows Δ metrics against the baseline automatically',
   'settings.baselineNone': 'None (no comparison)',
-  'settings.baselineOption': '{date} · {f0} Hz{note}',
   'settings.storageUsage': 'Storage usage',
   'settings.storageCounting': 'Counting…',
   'settings.storageTotal': 'Total used',
@@ -644,7 +624,6 @@ export const en = {
   'settings.installManualHint': 'Click the "Install app" icon in the address bar, or choose "Add to Home Screen" in the browser menu (iOS Safari). Requires an HTTPS deployment (production page); the local dev server offers no install entry.',
   'settings.aboutVersion': 'v0.6.0 — A Web Audio API based voice test & analysis tool: YIN pitch detection, LPC formant extraction, energy analysis, spectrogram, Jitter/Shimmer/HNR/CPPS voice quality, vowel space scatter, phonetogram (VRP), three test modes with playback, ZIP/GitHub cloud backup, training target, external audio import, live vowel space, voice diary heatmap, comparison share card, custom pitch bands, multi-language and dark mode.',
   'settings.aboutPrivacy': 'Data is stored locally in your browser by default; it is only exported/uploaded when you explicitly run a full backup or GitHub cloud backup.',
-  'settings.docs': 'Documentation',
   'settings.docI18nTitle': 'Architecture: i18n & AI translation',
   'settings.docI18nDesc': 'Lookup chain, string overrides, AI dictionary pipeline and sharing',
   'settings.docThemeTitle': 'Architecture: theming',
@@ -667,8 +646,6 @@ export const en = {
   'settings.docDevDesc': 'Architecture · data flow · theming & motion',
 
   /* ---------- Share card ---------- */
-  'share.rangeChipFull': 'Full clip',
-  'share.rangeChipRange': 'Range {a}–{b}',
   'share.rangeLine': 'Range P10–P90: {a} – {b} Hz',
   'share.pickStyle': 'Share card style',
   'share.styleThemed': 'Theme',
@@ -819,7 +796,6 @@ export const en = {
   'settings.aiGeneratedInfo': 'Generated: {label} ({covered}/{total} strings · {pct}% · {model})',
   'settings.aiClear': 'Clear AI language',
   'settings.aiLocaleItem': 'AI: {label}',
-  'toast.aiGenerate': 'Generate AI translation',
   'toast.aiDone': 'AI translation done — switched to {label}',
   'toast.aiFail': 'AI translation failed: {msg}',
   'toast.aiCleared': 'AI language cleared, back to English UI',

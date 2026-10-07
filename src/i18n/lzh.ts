@@ -13,7 +13,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'common.undo': '復',
   'common.close': '闔',
   'common.all': '皆',
-  'common.none': '無',
   'common.export': '錄出',
   'common.import': '納入',
   'common.connect': '通',
@@ -23,8 +22,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'common.goTest': '往試',
   'common.loadDemo': '載示例之數',
   'common.sec': '{n} 秒',
-  'common.on': '啟',
-  'common.off': '閉',
 
   /* ---------- 底栏导航 ---------- */
   'nav.test': '試',
@@ -34,7 +31,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'nav.recordStartAria': '始錄（久按擇式）',
   'nav.recordStopAria': '止錄',
   'nav.fanCancelHint': '點空處則罷',
-  'nav.tabAria': '{name}之籤',
 
   /* ---------- 测试模式 ---------- */
   'mode.reading': '任意誦讀',
@@ -80,7 +76,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'analysis.shareAria': '錄出分享之圖',
   'analysis.shareTitle': '錄出分享之圖（PNG）',
   'analysis.csvAria': '錄出逐幀 CSV',
-  'analysis.csvTitle': '錄出逐幀 CSV 之數',
   'analysis.noteAria': '修其註',
   'analysis.noteTitle': '修其註',
   'analysis.notePlaceholder': '為此錄命名，如「晨起之嗓」「練聲第三週」',
@@ -154,7 +149,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'analysis.specAria': '語譜圖',
   'analysis.baselineTitle': '與基線比',
   'analysis.baselineDesc': '{date} · {f0} Hz',
-  'analysis.baselineHint': '可於設 → 練中易基線之錄',
   'analysis.sustainedTitle': '長音之析',
   'analysis.sustainedMpt': '最長聲時（MPT）',
   'analysis.sustainedCv': '音高之穩',
@@ -204,7 +198,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'html.withAudioDesc': '卷稍巨，然可於報中復聽',
   'html.withoutAudio': '惟圖與數',
   'html.withoutAudioDesc': '卷至簡，惟曲線、統計、語譜而已',
-  'html.exporting': '方生…',
   'html.zoomHint': '輪以縮 · 曳以移 · 再擊以復',
   'toast.htmlExported': '可動之報已錄出',
   'toast.htmlExportFail': '可動之報生之不成',
@@ -231,7 +224,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'history.trendAria': '史之趨勢圖：一點觀其數，再點啟其錄',
   'history.truncated': '僅陳近 {limit} 條 · 凡 {total} 條，錄出與備份皆括全錄',
   'history.trendEmpty': '此式之試，尚無其錄',
-  'history.recordAria': '啟第 {n} 條之錄',
 
   /* ---------- 用声日记 ---------- */
   'history.diary': '用聲日記',
@@ -331,7 +323,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
 
   /* ---------- 实验性 · 实时元音落点 ---------- */
   'vowelLive.title': '即時元音落點',
-  'vowelLive.labsDesc': '言之際，即觀 F1/F2 落點行乎元音之域，以為語言練習 / 正音之即時應答；監聽之式不存任何錄音',
   'vowelLive.openAction': '啟即時之練',
   'vowelLive.openAria': '啟即時元音落點',
   'vowelLive.start': '始即時之練',
@@ -390,22 +381,16 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
 
   /* ---------- 實驗 · 大模型之設 ---------- */
   'settings.llmSection': '大模型之設',
-  'settings.llmDesc': '具 OpenAI 相容介面之參；練聲之策擇「基於大模型判斷」者，必以錄之統計（音聲不與）致於斯介，以生其策，慎之',
   'settings.llmBaseUrl': 'Base URL',
   'settings.llmBaseUrlPlaceholder': 'https://api.example.com/v1',
   'settings.llmApiKey': 'API Key',
   'settings.llmApiKeyPlaceholder': 'sk-…',
-  'settings.llmKeyToggle': '顯 / 隱 API Key',
   'settings.llmModelId': '模型之號',
   'settings.llmModelIdPlaceholder': '如 gpt-4o-mini / deepseek-chat',
   'settings.llmIncomplete': '請先具 Base URL、API Key 與模型之號',
   'settings.llmProfiles': "配置之檔",
-  'settings.llmProfilesDesc': "存多套接口之配置，一鍵而換；其鑰惟存本機",
-  'settings.llmProfileNamePlaceholder': "檔之名，若 DeepSeek",
-  'settings.llmProfileSave': "存以為檔",
   'settings.llmProfileDelete': "除此刻檔",
   'settings.llmProfileDeleteConfirm': "果除之乎？",
-  'settings.llmProfileCustom': "自定之配置",
   'settings.llmUsagePrice': "其值（每百萬符）",
   'settings.llmUsagePriceDesc': "填之則折算其費；其幣同所填之值",
   'settings.llmUsagePrompt': "入",
@@ -471,9 +456,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.promptRulesDesc': '附於內建析準之後，相牴者以則為先',
   'settings.promptRulePlaceholder': '如：先度共鳴，後度音高',
   'settings.promptEmpty': '未有增則，點右上＋以增',
-  'settings.promptEntry': '提示詞',
-  'settings.promptEntryDesc': '增則或盡覆 AI 建議之詞',
-  'settings.promptOpen': '纂',
   /* ---------- 驗 · 耗符之計 ---------- */
   'settings.llmUsageTitle': '耗符之計',
   'settings.llmUsageCounting': '方閱…',
@@ -575,11 +557,9 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.targetEnable': '啟練聲之鵠',
   'settings.targetDesc': '試頁音高之圖疊以鵠帶，且示即時之差；錄中計其中鵠區間久之比',
   'settings.targetRange': '鵠基頻之區間（Hz）',
-  'settings.targetTo': '–',
   'settings.baseline': '基線之錄',
   'settings.baselineDesc': '析頁自陳當錄與基線之 Δ 率',
   'settings.baselineNone': '無（不比）',
-  'settings.baselineOption': '{date} · {f0} Hz{note}',
   'settings.storageUsage': '儲存所用',
   'settings.storageCounting': '方計中…',
   'settings.storageTotal': '總所用',
@@ -645,7 +625,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.installManualHint': '請於瀏覽器址欄點「安裝應用」之符，或於瀏覽器選單擇「加至主屏」（iOS Safari）。須於 HTTPS 部署之境（正頁）行之，本機開發之伺服器弗設裝入之門。',
   'settings.aboutVersion': 'v0.6.0 — 本乎 Web Audio API 之聲試與析之器：YIN 測音高、LPC 取共振峰、析聲能、語譜圖、Jitter/Shimmer/HNR/CPPS 嗓音之質、元音之域散點、聲域圖（VRP）、三式之試與復奏所錄、ZIP/GitHub 雲備、練聲之鵠、納外聲而析、即時元音落點、用聲日記熱圖、相比分享之卡、自定音區之界、多言語與深色之制。',
   'settings.aboutPrivacy': '數惟存於本機之瀏覽器；惟爾自用全備或 GitHub 雲備，方錄出/上傳。',
-  'settings.docs': '文書',
   'settings.docI18nTitle': '架構：i18n 與 AI 譯',
   'settings.docI18nDesc': '查找之鏈、自定词条、AI 詞典之管與相授之式',
   'settings.docThemeTitle': '架構：主題之統',
@@ -668,8 +647,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.docDevDesc': '架構 · 數之流 · 主題與動效之模',
 
   /* ---------- 分享图 ---------- */
-  'share.rangeChipFull': '全段',
-  'share.rangeChipRange': '區間 {a}–{b}',
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
   'share.pickStyle': '分享圖之式',
   'share.styleThemed': '從題',
@@ -820,7 +797,6 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.aiGeneratedInfo': '既生 {label}（{covered}/{total} 條 · {pct}% · {model}）',
   'settings.aiClear': '罷 AI 之語',
   'settings.aiLocaleItem': 'AI：{label}',
-  'toast.aiGenerate': '生 AI 之譯',
   'toast.aiDone': 'AI 譯成，已易為 {label}',
   'toast.aiFail': 'AI 譯敗：{msg}',
   'toast.aiCleared': '已罷 AI 之語，回英界面',

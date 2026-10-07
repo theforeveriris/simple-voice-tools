@@ -12,7 +12,6 @@ export const zhTW = {
   'common.undo': '復原',
   'common.close': '關閉',
   'common.all': '全部',
-  'common.none': '無',
   'common.export': '匯出',
   'common.import': '匯入',
   'common.connect': '連線',
@@ -22,8 +21,6 @@ export const zhTW = {
   'common.goTest': '去測試',
   'common.loadDemo': '載入範例資料',
   'common.sec': '{n} 秒',
-  'common.on': '開啟',
-  'common.off': '關閉',
 
   /* ---------- 底欄導覽 ---------- */
   'nav.test': '測試',
@@ -33,7 +30,6 @@ export const zhTW = {
   'nav.recordStartAria': '開始錄音（長按選擇模式）',
   'nav.recordStopAria': '停止錄音',
   'nav.fanCancelHint': '點擊空白處取消',
-  'nav.tabAria': '{name}頁籤',
 
   /* ---------- 測試模式 ---------- */
   'mode.reading': '隨意朗讀',
@@ -79,7 +75,6 @@ export const zhTW = {
   'analysis.shareAria': '匯出分享圖片',
   'analysis.shareTitle': '匯出分享圖片（PNG）',
   'analysis.csvAria': '匯出逐框 CSV',
-  'analysis.csvTitle': '匯出逐框 CSV 資料',
   'analysis.noteAria': '編輯備註',
   'analysis.noteTitle': '編輯備註',
   'analysis.notePlaceholder': '給這筆記錄取個名字，如「晨起嗓音」「訓練第 3 週」',
@@ -153,7 +148,6 @@ export const zhTW = {
   'analysis.specAria': '語譜圖',
   'analysis.baselineTitle': '與基線對比',
   'analysis.baselineDesc': '{date} · {f0} Hz',
-  'analysis.baselineHint': '可在設定 → 訓練 中更改基線記錄',
   'analysis.sustainedTitle': '長音分析',
   'analysis.sustainedMpt': '最長聲時（MPT）',
   'analysis.sustainedCv': '音高穩定度',
@@ -203,7 +197,6 @@ export const zhTW = {
   'html.withAudioDesc': '檔案較大，但可在報告中直接回放',
   'html.withoutAudio': '僅圖表資料',
   'html.withoutAudioDesc': '檔案最小，只含曲線、統計與語譜圖',
-  'html.exporting': '產生中…',
   'html.zoomHint': '滾輪縮放 · 拖動平移 · 雙擊復位',
   'toast.htmlExported': '互動報告已匯出',
   'toast.htmlExportFail': '互動報告產生失敗',
@@ -230,7 +223,6 @@ export const zhTW = {
   'history.trendAria': '歷史趨勢圖：單擊查看數值，再次單擊開啟記錄',
   'history.truncated': '僅顯示最近 {limit} 筆 · 共 {total} 筆，匯出與備份包含全部記錄',
   'history.trendEmpty': '該測試模式下暫無記錄',
-  'history.recordAria': '開啟第 {n} 筆記錄',
 
   /* ---------- 用聲日記 ---------- */
   'history.diary': '用聲日記',
@@ -330,7 +322,6 @@ export const zhTW = {
 
   /* ---------- 實驗性 · 即時母音落點 ---------- */
   'vowelLive.title': '即時母音落點',
-  'vowelLive.labsDesc': '說話時即時觀察 F1/F2 落點在母音空間中的移動，語言訓練 / 發音矯正的即時回饋；監聽模式不保存任何錄音',
   'vowelLive.openAction': '開啟即時練習',
   'vowelLive.openAria': '開啟即時母音落點',
   'vowelLive.start': '開始即時練習',
@@ -389,22 +380,16 @@ export const zhTW = {
 
   /* ---------- 實驗性 · 大模型配置 ---------- */
   'settings.llmSection': '大模型配置',
-  'settings.llmDesc': '填寫 OpenAI 相容介面參數；訓練建議選擇「基於大模型判斷」時，會把錄音統計指標（不含音訊）傳送到該介面生成建議，請注意隱私',
   'settings.llmBaseUrl': 'Base URL',
   'settings.llmBaseUrlPlaceholder': 'https://api.example.com/v1',
   'settings.llmApiKey': 'API Key',
   'settings.llmApiKeyPlaceholder': 'sk-…',
-  'settings.llmKeyToggle': '顯示 / 隱藏 API Key',
   'settings.llmModelId': '模型 ID',
   'settings.llmModelIdPlaceholder': '如 gpt-4o-mini / deepseek-chat',
   'settings.llmIncomplete': '請先填寫 Base URL、API Key 和模型 ID',
   'settings.llmProfiles': "設定檔案",
-  'settings.llmProfilesDesc': "儲存多套介面設定一鍵切換；API Key 只存本機",
-  'settings.llmProfileNamePlaceholder': "檔案名稱，如 DeepSeek",
-  'settings.llmProfileSave': "存為檔案",
   'settings.llmProfileDelete': "刪除此檔案",
   'settings.llmProfileDeleteConfirm': "確認刪除？",
-  'settings.llmProfileCustom': "自訂設定",
   'settings.llmUsagePrice': "單價（每百萬 tokens）",
   'settings.llmUsagePriceDesc': "填寫後按此折算估算費用；貨幣單位與所填數值一致",
   'settings.llmUsagePrompt': "輸入",
@@ -470,9 +455,6 @@ export const zhTW = {
   'settings.promptRulesDesc': '附加在內建分析標準之後，與標準衝突時以規則為準',
   'settings.promptRulePlaceholder': '如：優先評估共鳴而不是音高',
   'settings.promptEmpty': '尚無補充規則，點右上角 ＋ 新增',
-  'settings.promptEntry': '提示詞',
-  'settings.promptEntryDesc': '補充規則或整體覆寫 AI 建議的提示詞',
-  'settings.promptOpen': '編輯',
   /* ---------- 實驗性 · Token 用量 ---------- */
   'settings.llmUsageTitle': 'Token 用量',
   'settings.llmUsageCounting': '讀取中…',
@@ -574,11 +556,9 @@ export const zhTW = {
   'settings.targetEnable': '啟用訓練靶標',
   'settings.targetDesc': '測試頁音高圖疊加目標帶並顯示即時偏差，錄音統計落在目標區間內的時長占比',
   'settings.targetRange': '目標基頻區間（Hz）',
-  'settings.targetTo': '–',
   'settings.baseline': '基線記錄',
   'settings.baselineDesc': '分析頁自動顯示目前記錄與基線的 Δ 指標',
   'settings.baselineNone': '無（不對比）',
-  'settings.baselineOption': '{date} · {f0} Hz{note}',
   'settings.storageUsage': '儲存用量',
   'settings.storageCounting': '統計中…',
   'settings.storageTotal': '總用量',
@@ -644,7 +624,6 @@ export const zhTW = {
   'settings.installManualHint': '請在瀏覽器網址列點擊「安裝應用」圖示，或在瀏覽器選單選擇「加入主畫面」（iOS Safari）。需在 HTTPS 部署環境（正式頁面）下使用，本機開發伺服器不提供安裝入口。',
   'settings.aboutVersion': 'v0.6.0 — 基於 Web Audio API 的語音測試與分析工具：YIN 音高檢測、LPC 共振峰提取、能量分析、語譜圖、Jitter/Shimmer/HNR/CPPS 嗓音品質指標、母音空間散點、聲域圖（VRP）、三種測試模式與錄音播放、ZIP/GitHub 雲端備份、訓練靶標、外部音訊匯入分析、即時母音落點、用聲日記熱力圖、對比分享卡、自訂音區邊界、多語言與深色模式。',
   'settings.aboutPrivacy': '資料預設僅儲存在本機瀏覽器中；只有你主動使用完整備份或 GitHub 雲端備份時才會匯出/上傳。',
-  'settings.docs': '文件',
   'settings.docI18nTitle': '架構：i18n 與 AI 翻譯',
   'settings.docI18nDesc': '查找鏈、自訂詞條、AI 詞典管線與分享格式',
   'settings.docThemeTitle': '架構：主題系統',
@@ -667,8 +646,6 @@ export const zhTW = {
   'settings.docDevDesc': '架構 · 資料流 · 主題與動效模型',
 
   /* ---------- 分享圖 ---------- */
-  'share.rangeChipFull': '全段',
-  'share.rangeChipRange': '區間 {a}–{b}',
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
   'share.pickStyle': '選擇分享圖樣式',
   'share.styleThemed': '主題',
@@ -808,7 +785,7 @@ export const zhTW = {
   'toast.aiImported': '已匯入 {label}（{n} 條）',
   'toast.aiImportFail': '詞典匯入失敗：檔案格式不正確',
   'settings.aiTranslate': '允許 AI 翻譯',
-  'settings.aiTranslateDesc': '使用 實驗性功能 → 大模型配置 中填入的介面，把介面文案翻譯成其他語言並儲存到本機。全量翻譯約需 8 次介面呼叫，費用由你的介面承擔；可隨時重新產生或清除。未翻譯到的詞條回退繁體中文',
+  'settings.aiTranslateDesc': '使用 實驗性功能 → 大模型配置 中填入的介面，把介面文案翻譯成其他語言並儲存到本機。全量翻譯約需 8 次介面呼叫，費用由你的介面承擔；可隨時重新產生或清除。未翻譯到的詞條回退簡體中文',
   'settings.aiLanguageLabel': '目標語言',
   'settings.aiLanguagePlaceholder': '如 Deutsch / Español / 한국어…',
   'settings.aiGenerate': '產生翻譯',
@@ -819,7 +796,6 @@ export const zhTW = {
   'settings.aiGeneratedInfo': '已產生 {label}（{covered}/{total} 條 · {pct}% · {model}）',
   'settings.aiClear': '清除 AI 語言',
   'settings.aiLocaleItem': 'AI：{label}',
-  'toast.aiGenerate': '產生 AI 翻譯',
   'toast.aiDone': 'AI 翻譯完成，已切換到 {label}',
   'toast.aiFail': 'AI 翻譯失敗：{msg}',
   'toast.aiCleared': '已清除 AI 語言，回退英文介面',

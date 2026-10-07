@@ -13,7 +13,6 @@ export const zhCN = {
   'common.undo': '撤销',
   'common.close': '关闭',
   'common.all': '全部',
-  'common.none': '无',
   'common.export': '导出',
   'common.import': '导入',
   'common.connect': '连接',
@@ -23,8 +22,6 @@ export const zhCN = {
   'common.goTest': '去测试',
   'common.loadDemo': '载入示例数据',
   'common.sec': '{n} 秒',
-  'common.on': '开启',
-  'common.off': '关闭',
 
   /* ---------- 底栏导航 ---------- */
   'nav.test': '测试',
@@ -34,7 +31,6 @@ export const zhCN = {
   'nav.recordStartAria': '开始录音（长按选择模式）',
   'nav.recordStopAria': '停止录音',
   'nav.fanCancelHint': '点击空白处取消',
-  'nav.tabAria': '{name}页签',
 
   /* ---------- 测试模式 ---------- */
   'mode.reading': '随意朗读',
@@ -80,7 +76,6 @@ export const zhCN = {
   'analysis.shareAria': '导出分享图片',
   'analysis.shareTitle': '导出分享图片（PNG）',
   'analysis.csvAria': '导出帧级 CSV',
-  'analysis.csvTitle': '导出帧级 CSV 数据',
   'analysis.noteAria': '编辑备注',
   'analysis.noteTitle': '编辑备注',
   'analysis.notePlaceholder': '给这条记录起个名字，如「晨起嗓音」「训练第 3 周」',
@@ -154,7 +149,6 @@ export const zhCN = {
   'analysis.specAria': '语谱图',
   'analysis.baselineTitle': '与基线对比',
   'analysis.baselineDesc': '{date} · {f0} Hz',
-  'analysis.baselineHint': '可在设置 → 训练 中更改基线记录',
   'analysis.sustainedTitle': '长音分析',
   'analysis.sustainedMpt': '最长声时（MPT）',
   'analysis.sustainedCv': '音高稳定度',
@@ -204,7 +198,6 @@ export const zhCN = {
   'html.withAudioDesc': '文件较大，但可在报告中直接回放',
   'html.withoutAudio': '仅图表数据',
   'html.withoutAudioDesc': '文件最小，只含曲线、统计与语谱图',
-  'html.exporting': '生成中…',
   'html.zoomHint': '滚轮缩放 · 拖动平移 · 双击复位',
   'toast.htmlExported': '交互报告已导出',
   'toast.htmlExportFail': '交互报告生成失败',
@@ -229,7 +222,6 @@ export const zhCN = {
   'history.trendAria': '历史趋势图：单击查看数值，再次单击打开记录',
   'history.truncated': '仅显示最近 {limit} 条 · 共 {total} 条，导出与备份包含全部记录',
   'history.trendEmpty': '该测试模式下暂无记录',
-  'history.recordAria': '打开第 {n} 条记录',
 
   'history.emptyTitle': '还没有测试记录',
   'history.emptyDesc': '每次测试都会存成一条记录，可随时回看与对比',
@@ -331,7 +323,6 @@ export const zhCN = {
 
   /* ---------- 实验性 · 实时元音落点 ---------- */
   'vowelLive.title': '实时元音落点',
-  'vowelLive.labsDesc': '说话时实时观察 F1/F2 落点在元音空间中的移动，语言训练 / 发音矫正的即时反馈；监听模式不保存任何录音',
   'vowelLive.openAction': '打开实时练习',
   'vowelLive.openAria': '打开实时元音落点',
   'vowelLive.start': '开始实时练习',
@@ -390,22 +381,16 @@ export const zhCN = {
 
   /* ---------- 实验性 · 大模型配置 ---------- */
   'settings.llmSection': '大模型配置',
-  'settings.llmDesc': '填写 OpenAI 兼容接口参数；训练建议选择「基于大模型判断」时，会把录音统计指标（不含音频）发送到该接口生成建议，请注意隐私',
   'settings.llmBaseUrl': 'Base URL',
   'settings.llmBaseUrlPlaceholder': 'https://api.example.com/v1',
   'settings.llmApiKey': 'API Key',
   'settings.llmApiKeyPlaceholder': 'sk-…',
-  'settings.llmKeyToggle': '显示 / 隐藏 API Key',
   'settings.llmModelId': '模型 ID',
   'settings.llmModelIdPlaceholder': '如 gpt-4o-mini / deepseek-chat',
   'settings.llmIncomplete': '请先填写 Base URL、API Key 和模型 ID',
   'settings.llmProfiles': "配置档案",
-  'settings.llmProfilesDesc': "保存多套接口配置一键切换；API Key 只存本机",
-  'settings.llmProfileNamePlaceholder': "档案名称，如 DeepSeek",
-  'settings.llmProfileSave': "存为档案",
   'settings.llmProfileDelete': "删除此档案",
   'settings.llmProfileDeleteConfirm': "确认删除？",
-  'settings.llmProfileCustom': "自定义配置",
   'settings.llmUsagePrice': "单价（每百万 tokens）",
   'settings.llmUsagePriceDesc': "填写后按此折算估算费用；货币单位与所填数值一致",
   'settings.llmUsagePrompt': "输入",
@@ -471,9 +456,6 @@ export const zhCN = {
   'settings.promptRulesDesc': '追加在内置分析标准之后，与标准冲突时以规则为准',
   'settings.promptRulePlaceholder': '如：优先评估共鸣而不是音高',
   'settings.promptEmpty': '暂无补充规则，点右上角 ＋ 添加',
-  'settings.promptEntry': '提示词',
-  'settings.promptEntryDesc': '补充规则或整体覆写 AI 建议的提示词',
-  'settings.promptOpen': '编辑',
 
   /* ---------- 实验性 · Token 用量 ---------- */
   'settings.llmUsageTitle': 'Token 用量',
@@ -576,11 +558,9 @@ export const zhCN = {
   'settings.targetEnable': '启用训练靶标',
   'settings.targetDesc': '测试页音高图叠加目标带并显示实时偏差，录音统计落在目标区间内的时长占比',
   'settings.targetRange': '目标基频区间（Hz）',
-  'settings.targetTo': '–',
   'settings.baseline': '基线记录',
   'settings.baselineDesc': '分析页自动显示当前记录与基线的 Δ 指标',
   'settings.baselineNone': '无（不对比）',
-  'settings.baselineOption': '{date} · {f0} Hz{note}',
   'settings.storageUsage': '存储用量',
   'settings.storageCounting': '统计中…',
   'settings.storageTotal': '总用量',
@@ -646,7 +626,6 @@ export const zhCN = {
   'settings.installManualHint': '请在浏览器地址栏点击「安装应用」图标，或在浏览器菜单选择「添加到主屏幕」（iOS Safari）。需在 HTTPS 部署环境（生产页面）下使用，本地开发服务器不提供安装入口。',
   'settings.aboutVersion': 'v0.6.0 — 基于 Web Audio API 的语音测试与分析工具：YIN 音高检测、LPC 共振峰提取、能量分析、语谱图、Jitter/Shimmer/HNR/CPPS 嗓音质量指标、元音空间散点、声域图（VRP）、三种测试模式与录音回放、ZIP/GitHub 云备份、训练靶标、外部音频导入分析、实时元音落点、用声日记热力图、对比分享卡、自定义音区边界、多语言与深色模式。',
   'settings.aboutPrivacy': '数据默认仅保存在本机浏览器中；只有你主动使用完整备份或 GitHub 云备份时才会导出/上传。',
-  'settings.docs': '文档',
   'settings.docI18nTitle': '架构：i18n 与 AI 翻译',
   'settings.docI18nDesc': '查找链、自定义词条、AI 词典管线与分享格式',
   'settings.docThemeTitle': '架构：主题系统',
@@ -669,8 +648,6 @@ export const zhCN = {
   'settings.docDevDesc': '架构 · 数据流 · 主题与动效模型',
 
   /* ---------- 分享图 ---------- */
-  'share.rangeChipFull': '全段',
-  'share.rangeChipRange': '区间 {a}–{b}',
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
   'share.pickStyle': '分享图样式',
   'share.styleThemed': '主题',
@@ -821,7 +798,6 @@ export const zhCN = {
   'settings.aiGeneratedInfo': '已生成 {label}（{covered}/{total} 条 · {pct}% · {model}）',
   'settings.aiClear': '清除 AI 语言',
   'settings.aiLocaleItem': 'AI：{label}',
-  'toast.aiGenerate': '生成 AI 翻译',
   'toast.aiDone': 'AI 翻译完成，已切换到 {label}',
   'toast.aiFail': 'AI 翻译失败：{msg}',
   'toast.aiCleared': '已清除 AI 语言，回退英文界面',
