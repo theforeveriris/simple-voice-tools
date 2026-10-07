@@ -1,6 +1,21 @@
+<div align="center">
+
+<img src="fastlane/metadata/android/images/icon.png" width="96" alt="Simple Voice Tool 应用图标">
+
 # Simple Voice Tool
 
 [English](README.md) · 简体中文
+
+<img src="fastlane/metadata/android/images/featureGraphic.png" width="620" alt="Simple Voice Tool — Measure · Analyze · Track your voice">
+
+[![Release](https://img.shields.io/github/v/release/theforeveriris/simple-voice-tools)](https://github.com/theforeveriris/simple-voice-tools/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/theforeveriris/simple-voice-tools/deploy.yml?branch=main&label=CI)](https://github.com/theforeveriris/simple-voice-tools/actions/workflows/deploy.yml)
+[![License](https://img.shields.io/github/license/theforeveriris/simple-voice-tools)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
+[![Windows](https://img.shields.io/badge/Windows-Setup.exe-0078D6?logo=windows&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
+[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](https://theforeveriris.github.io/simple-voice-tools/)
+
+</div>
 
 ## 项目简介
 

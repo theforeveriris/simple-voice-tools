@@ -1,6 +1,21 @@
+<div align="center">
+
+<img src="fastlane/metadata/android/images/icon.png" width="96" alt="Simple Voice Tool app icon">
+
 # Simple Voice Tool
 
 English · [简体中文](README.zh-CN.md)
+
+<img src="fastlane/metadata/android/images/featureGraphic.png" width="620" alt="Simple Voice Tool — Measure · Analyze · Track your voice">
+
+[![Release](https://img.shields.io/github/v/release/theforeveriris/simple-voice-tools)](https://github.com/theforeveriris/simple-voice-tools/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/theforeveriris/simple-voice-tools/deploy.yml?branch=main&label=CI)](https://github.com/theforeveriris/simple-voice-tools/actions/workflows/deploy.yml)
+[![License](https://img.shields.io/github/license/theforeveriris/simple-voice-tools)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
+[![Windows](https://img.shields.io/badge/Windows-Setup.exe-0078D6?logo=windows&logoColor=white)](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
+[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](https://theforeveriris.github.io/simple-voice-tools/)
+
+</div>
 
 ## Project Overview
 
@@ -17,12 +32,18 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 
 ## Screenshots
 
-| | | |
-| --- | --- | --- |
-| ![Testing page](fastlane/metadata/android/en-US/images/phoneScreenshots/01-testing.png) | ![Analysis page](fastlane/metadata/android/en-US/images/phoneScreenshots/02-analysis.png) | ![History list](fastlane/metadata/android/en-US/images/phoneScreenshots/03-history.png) |
-| **Testing** — three live charts (F1/F2 formants, audio energy, pitch with voice-range bands) scroll in real time while recording | **Analysis** — overview card with average F0 and range ruler, playback, pitch statistics and the experimental pitch-algorithm comparison | **History** — searchable record list with per-record pitch strips and mode tags |
-| ![Trend view](fastlane/metadata/android/en-US/images/phoneScreenshots/04-trend.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/05-settings.png) | |
-| **Trend** — long-term average-F0 chart with P10–P90 bands, a GitHub-style voice-diary heatmap, MPT/CPPS metrics and AI weekly review | **Settings** — searchable settings with sub-pages for appearance, language, app, preferences, LLM, data and experimental features | |
+<table>
+  <tr>
+    <td width="240" align="center" valign="top"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01-testing.png" width="200" alt="Testing page"><br><sub><b>Testing</b> — three live charts (F1/F2 formants, audio energy, pitch with voice-range bands) scroll in real time while recording</sub></td>
+    <td width="240" align="center" valign="top"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02-analysis.png" width="200" alt="Analysis page"><br><sub><b>Analysis</b> — overview card with average F0 and range ruler, playback, pitch statistics and the experimental pitch-algorithm comparison</sub></td>
+    <td width="240" align="center" valign="top"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-history.png" width="200" alt="History list"><br><sub><b>History</b> — searchable record list with per-record pitch strips and mode tags</sub></td>
+  </tr>
+  <tr>
+    <td width="240" align="center" valign="top"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04-trend.png" width="200" alt="Trend view"><br><sub><b>Trend</b> — long-term average-F0 chart with P10–P90 bands, a GitHub-style voice-diary heatmap, MPT/CPPS metrics and AI weekly review</sub></td>
+    <td width="240" align="center" valign="top"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05-settings.png" width="200" alt="Settings"><br><sub><b>Settings</b> — searchable settings with sub-pages for appearance, language, app, preferences, LLM, data and experimental features</sub></td>
+    <td width="240"></td>
+  </tr>
+</table>
 
 ## Features
 
