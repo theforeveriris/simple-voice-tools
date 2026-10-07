@@ -80,12 +80,6 @@ export function specColorRgb(t: number): [number, number, number] {
   return STOPS[STOPS.length - 1][1];
 }
 
-/** 量化值 0-255 → CSS 颜色 */
-export function specColor(v: number): string {
-  const [r, g, b] = specColormapRgb(v / 255);
-  return `rgb(${r},${g},${b})`;
-}
-
 /* ------------------------------ 配色切换 ------------------------------ */
 
 /** 灰度色带：暗 → 白，线性渐变（感知近匀的简化版） */

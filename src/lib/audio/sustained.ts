@@ -7,15 +7,13 @@
  */
 
 import type { AnalysisRecord } from '@/types';
+import { getAlgoParams } from './algoParams';
 
 export interface SustainedMetrics {
   mptSec: number;
   cvPct: number | null;
   decayDbPerSec: number | null;
 }
-
-/** 发声帧能量门限（与 recorder/voiceQuality 口径一致） */
-const ACTIVE_DB = -50;
 
 export function computeSustainedMetrics(record: AnalysisRecord): SustainedMetrics {
   const { series, stats } = record;
@@ -35,10 +33,11 @@ export function computeSustainedMetrics(record: AnalysisRecord): SustainedMetric
     mptSec = Math.max(0, series.t[i1] - series.t[i0]);
 
     // 响度衰减斜率：区间内的发声能量帧（含无声带振动但有能量的帧）
+    const activeDb = getAlgoParams().activeGateDb;
     const xs: number[] = [];
     const ys: number[] = [];
     for (let i = i0; i <= i1; i++) {
-      if (series.rmsDb[i] < ACTIVE_DB) continue;
+      if (series.rmsDb[i] < activeDb) continue;
       xs.push(series.t[i]);
       ys.push(series.rmsDb[i]);
     }

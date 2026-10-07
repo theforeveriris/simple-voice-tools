@@ -61,7 +61,6 @@ export function detectPitchYin(
   }
 
   // 2. 累积均值归一化 d'(tau)
-  cmnd[tauMin] = 1;
   let runningSum = 0;
   for (let tau = tauMin; tau <= tauMax; tau++) {
     runningSum += diff[tau];

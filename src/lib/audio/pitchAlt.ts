@@ -10,8 +10,6 @@
 import { detectPitchYin, type PitchEstimate } from './pitch';
 import type { PitchAlgorithm } from '@/types';
 
-export type { PitchEstimate };
-
 /* ------------------------------ 复用缓冲 ------------------------------ */
 /**
  * 实时循环 60fps 逐帧调用，工作数组按需增长 + 模块级复用，稳态零分配。
@@ -87,7 +85,6 @@ export function detectPitchPyin(
     }
     diff[tau] = sum;
   }
-  cmnd[tauMin] = 1;
   let runningSum = 0;
   for (let tau = tauMin; tau <= tauMax; tau++) {
     runningSum += diff[tau];

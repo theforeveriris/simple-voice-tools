@@ -58,6 +58,8 @@ function ensureWorker(): Worker | null {
       for (const entry of pending.values()) entry.reject(new Error('analysis worker failed'));
       pending.clear();
       workerBroken = true;
+      // 实例可能仍存活（运行时错误而非脚本加载失败），终止以防泄漏
+      worker?.terminate();
       worker = null;
     };
     return worker;
@@ -80,7 +82,12 @@ function requestFrames(
     // PCM 以 transfer 交付（几秒音频即数 MB，结构化克隆是纯浪费的整块拷贝）；
     // 交付后主线程这份 buffer 即失效，本请求失败无法再回退主线程（见 runFrameAnalysis）。
     // 算法参数快照随请求下发（Worker 模块实例独立，见 analysisWorker）
-    w.postMessage({ type: 'frames', id, pcm, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
+    try {
+      w.postMessage({ type: 'frames', id, pcm, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
+    } catch (err) {
+      pending.delete(id);
+      reject(err);
+    }
   });
 }
 
@@ -89,7 +96,12 @@ function requestVq(w: Worker, pcm: Float32Array, sampleRate: number): Promise<Vq
   return new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
-    w.postMessage({ type: 'vq', id, pcm, sampleRate, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
+    try {
+      w.postMessage({ type: 'vq', id, pcm, sampleRate, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
+    } catch (err) {
+      pending.delete(id);
+      reject(err);
+    }
   });
 }
 
@@ -103,7 +115,12 @@ function requestPitch(
   return new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve: resolve as (value: unknown) => void, reject, onProgress });
-    w.postMessage({ type: 'pitch', id, pcm, algo, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
+    try {
+      w.postMessage({ type: 'pitch', id, pcm, algo, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
+    } catch (err) {
+      pending.delete(id);
+      reject(err);
+    }
   });
 }
 

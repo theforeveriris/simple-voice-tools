@@ -542,7 +542,9 @@ class VoiceRecorder {
       return null;
     }
 
-    const sampleHz = series.t.length > 1 ? 1 / (series.t[1] - series.t[0]) : 30;
+    // sampleHz 由全序列时间跨度反推（帧间隔时间戳按 ms 取整，单帧差有 ≈1% 系统偏差）
+    const spanSec = series.t.length > 1 ? series.t[series.t.length - 1] - series.t[0] : 0;
+    const sampleHz = spanSec > 0 ? (series.t.length - 1) / spanSec : 30;
     const stats = computeStats(series, sampleHz);
     // 训练靶标达成率（未启用时为 undefined）
     const inTargetPct = computeInTargetPct(series, this.targetRange);
@@ -579,21 +581,35 @@ class VoiceRecorder {
     }
     if (chunks.length === 0) return { record, audio: null };
 
+    const blob = new Blob(chunks, { type: mimeType });
+    // 解码与嗓音质量分开放置：解码失败只能丢弃音频；质量计算失败时音频完好，
+    // 必须保留（回放/重算能力不可逆丢失），仅嗓音质量为空
+    let pcm: Float32Array;
+    let sampleRate: number;
     try {
-      const blob = new Blob(chunks, { type: mimeType });
       const buf = await blob.arrayBuffer();
       const ctx = new AudioContext();
-      const audioBuffer = await ctx.decodeAudioData(buf);
-      void ctx.close();
-      const pcm = audioBuffer.getChannelData(0);
-      const metrics = await runVqMetrics(pcm, audioBuffer.sampleRate);
+      let audioBuffer: AudioBuffer;
+      try {
+        audioBuffer = await ctx.decodeAudioData(buf);
+      } finally {
+        void ctx.close();
+      }
+      pcm = audioBuffer.getChannelData(0);
+      sampleRate = audioBuffer.sampleRate;
+    } catch (err) {
+      console.error('录音音频解码失败（仅保留曲线统计落库）:', err);
+      return { record, audio: null };
+    }
+    try {
+      const metrics = await runVqMetrics(pcm, sampleRate);
       return {
         record: { ...record, stats: { ...record.stats, ...metrics } },
         audio: blob,
       };
     } catch (err) {
-      console.error('录音音频处理失败（嗓音质量不可用）:', err);
-      return { record, audio: null };
+      console.error('嗓音质量计算失败（音频保留，指标为空，可稍后重算）:', err);
+      return { record, audio: blob };
     }
   }
 
@@ -631,8 +647,9 @@ class VoiceRecorder {
 
     // 静音自动停止（长音模式）：首次发声后，持续静音达到阈值即结束，
     // 不再硬性截断，保证 MPT（最长声时）测量完整
+    const algo = getAlgoParams();
     if (this.silenceStopSec > 0 && !this.autoStopFired) {
-      if (db > -50) {
+      if (db > algo.activeGateDb) {
         this.voicedSeen = true;
         this.lastVoicedAt = now;
       } else if (this.voicedSeen && now - this.lastVoicedAt >= this.silenceStopSec * 1000) {
@@ -644,7 +661,7 @@ class VoiceRecorder {
 
     // 音高（每帧，算法跟随设置：yin / pyin / mpm，见 pitchAlt.ts；
     // 搜索范围与发声门限为实验性可调参数，见 algoParams）
-    const { pitchMinHz, pitchMaxHz, voicedGateDb } = getAlgoParams();
+    const { pitchMinHz, pitchMaxHz, voicedGateDb } = algo;
     const pitch = db > voicedGateDb
       ? detectPitch(this.timeBuf, this.audioContext.sampleRate, pitchMinHz, pitchMaxHz, getPitchAlgorithm())
       : null;

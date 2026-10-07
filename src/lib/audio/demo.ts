@@ -7,7 +7,7 @@
 
 import { computeStats } from './recorder';
 import { SPEC_BANDS, SPEC_FMIN, SPEC_FMAX, SPEC_DB_MIN, SPEC_DB_MAX } from '@/constants';
-import { base64FromBytes } from './spectrogram';
+import { base64FromBytes, dbToU8 } from './spectrogram';
 import type { AnalysisRecord, RecordSeries } from '@/types';
 
 /** 生成一段约 14 秒的示例记录（30Hz 采样） */
@@ -51,8 +51,6 @@ export function createDemoRecord(): AnalysisRecord {
       series.f2.push(Math.round(1250 + 480 * Math.sin(t / 3.3 + 1) + rnd() * 90));
 
       // 合成语谱：以 f0 为基频的谐波列 + 共振峰包络增亮 + 噪声底
-      const dbToU8 = (db: number) =>
-        Math.round(Math.max(0, Math.min(1, (db - SPEC_DB_MIN) / (SPEC_DB_MAX - SPEC_DB_MIN))) * 255);
       for (let b = 0; b < SPEC_BANDS; b++) {
         const freq = SPEC_FMIN * Math.pow(SPEC_FMAX / SPEC_FMIN, b / (SPEC_BANDS - 1));
         const harm = Math.abs(Math.log2(freq / Math.max(f0, 60))) % 1;

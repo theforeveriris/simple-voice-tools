@@ -72,17 +72,20 @@ export async function decodeBlob(blob: Blob): Promise<AudioBuffer> {
   }
 }
 
-/** 用 <audio> 元素轻量探测时长（秒），读不出（如流式 webm）返回 0 */
+/** 用 <audio> 元素轻量探测时长（秒），读不出（如流式 webm）或超时返回 0 */
 function probeDurationSec(file: Blob): Promise<number> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const el = new Audio();
     const done = (sec: number) => {
+      clearTimeout(timer);
       el.onloadedmetadata = null;
       el.onerror = null;
       URL.revokeObjectURL(url);
       resolve(sec);
     };
+    // 某些损坏文件 loadedmetadata/error 都不触发，超时按探测失败放行（后续解码兜底）
+    const timer = setTimeout(() => done(0), 4000);
     el.preload = 'metadata';
     el.onloadedmetadata = () => done(isFinite(el.duration) && el.duration > 0 ? el.duration : 0);
     el.onerror = () => done(0);
@@ -130,13 +133,7 @@ export async function analyzeAudioFile(
   // 2. 解码（任意浏览器支持的容器/编码）
   let decoded: AudioBuffer;
   try {
-    const raw = await file.arrayBuffer();
-    const decodeCtx = new AudioContext();
-    try {
-      decoded = await decodeCtx.decodeAudioData(raw);
-    } finally {
-      void decodeCtx.close();
-    }
+    decoded = await decodeBlob(file);
   } catch {
     throw new AudioImportError('decode');
   }
@@ -165,7 +162,9 @@ export async function analyzeAudioFile(
   const series = toRecordSeries(bufT, bufF0, bufDb, bufF1, bufF2, 1);
   const durationSec = series.t.length > 0 ? series.t[series.t.length - 1] : 0;
   if (durationSec < 1 || series.t.length < 4) throw new AudioImportError('tooShort');
-  const sampleHz = series.t.length > 1 ? 1 / (series.t[1] - series.t[0]) : FRAME_HZ;
+  // sampleHz 由全序列时间跨度反推（帧间隔时间戳按 ms 取整，单帧差有 ≈1% 系统偏差）
+  const spanSec = series.t.length > 1 ? series.t[series.t.length - 1] - series.t[0] : 0;
+  const sampleHz = spanSec > 0 ? (series.t.length - 1) / spanSec : FRAME_HZ;
   const stats = computeStats(series, sampleHz);
   const inTargetPct = computeInTargetPct(series, opts.targetRange ?? null);
   if (inTargetPct != null) stats.inTargetPct = inTargetPct;

@@ -97,14 +97,16 @@ function levinsonDurbin(r: Float64Array, order: number): Float64Array | null {
   a.fill(0, 0, order + 1);
   if (r[0] <= 1e-9) return null;
 
+  // e 为当前阶的预测误差 E_i = E_{i-1}·(1-k²)，反射系数必须除以它（不是 r[0]）
+  let e = r[0];
   for (let i = 1; i <= order; i++) {
     let acc = r[i];
     for (let j = 1; j < i; j++) acc -= a[j] * r[i - j];
-    const k = acc / r[0];
+    const k = acc / e;
     // 反射系数 |k| >= 1 说明帧不稳定，放弃
     if (Math.abs(k) >= 1) return null;
 
-    // 时间反转更新
+    // 就位对称更新：j 与 i-j 互为镜像对；i 为偶数时中点 a[i/2] 自配对（×(1-k)）
     const half = (i - 1) >> 1;
     for (let j = 1; j <= half; j++) {
       const aj = a[j];
@@ -112,11 +114,12 @@ function levinsonDurbin(r: Float64Array, order: number): Float64Array | null {
       a[j] = aj - k * aim;
       a[i - j] = aim - k * aj;
     }
-    if ((i - 1) % 2 === 0) {
-      const j = half + 1;
-      a[j] = a[j] - k * a[j];
+    if (i % 2 === 0) {
+      const j = i >> 1;
+      a[j] -= k * a[j];
     }
     a[i] = k;
+    e *= 1 - k * k;
   }
   return a.subarray(1, order + 1); // 去掉 a[0]，且截断到 order（复用缓冲比 order 长）
 }
@@ -190,18 +193,18 @@ export function extractFormants(
   sampleRate: number,
   rms: number,
 ): FormantEstimate {
-  // 静音门限：能量太低时 LPC 不稳定
-  if (rms < -52) return { f1: null, f2: null };
+  // 静音门限：能量太低时 LPC 不稳定（跟随实验性发声门限参数）
+  const algo = getAlgoParams();
+  if (rms < algo.activeGateDb) return { f1: null, f2: null };
 
   // LPC 阶数：实验性可调（0 = 自动 2 + fs/1000），并钳制到帧长的 1/4 防不稳定
-  const { lpcOrder } = getAlgoParams();
   const order = Math.min(
-    lpcOrder > 0 ? lpcOrder : lpcOrderAuto(sampleRate / DECIMATION),
+    algo.lpcOrder > 0 ? algo.lpcOrder : lpcOrderAuto(sampleRate / DECIMATION),
     (samples.length / DECIMATION) >> 2,
   );
   ensureFormantScratch(samples.length, order);
   // 实验性可调参数：预加重系数与 F1/F2 候选搜索窗（见 algoParams）
-  const { preEmphasis, f1MinHz, f2MaxHz } = getAlgoParams();
+  const { preEmphasis, f1MinHz, f2MaxHz } = algo;
 
   // 1. 预加重（提升高频，抵消声道辐射特性）
   const pre = preBuf;
