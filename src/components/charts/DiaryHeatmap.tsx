@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { BAND_COLORS, bandOf } from '@/constants';
-import { chartPalette } from './chartPainters';
+import { chartPalette, roundRectPath } from './chartPainters';
 import { t, localeTag } from '@/i18n';
 import { useStore } from '@/store/useStore';
 import type { AnalysisRecord } from '@/types';
@@ -38,12 +38,17 @@ interface DayStat {
   avgF0: number;
 }
 
-const DAY_MS = 86400000;
-
 /** 本地时区的当日零点 */
 function startOfDay(ts: number): number {
   const d = new Date(ts);
   d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** 按日历推算第 n 天：跨夏令时时区必须逐日加法，毫秒算术（+n*86400000）会错位一天 */
+function addDays(ts: number, n: number): number {
+  const d = new Date(ts);
+  d.setDate(d.getDate() + n);
   return d.getTime();
 }
 
@@ -94,21 +99,6 @@ interface PaintLayout {
   cells: CellLayout[];
 }
 
-/** 圆角小方格路径（roundRect 兜底，旧 Safari 无此 API） */
-function cellPath(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, r: number): void {
-  ctx.beginPath();
-  if (typeof ctx.roundRect === 'function') {
-    ctx.roundRect(x, y, size, size, r);
-    return;
-  }
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + size, y, x + size, y + size, r);
-  ctx.arcTo(x + size, y + size, x, y + size, r);
-  ctx.arcTo(x, y + size, x, y, r);
-  ctx.arcTo(x, y, x + size, y, r);
-  ctx.closePath();
-}
-
 function drawHeatmap(
   canvas: HTMLCanvasElement,
   days: Map<number, DayStat>,
@@ -139,7 +129,7 @@ function drawHeatmap(
   // 不可从 today-(weeks*7-1) 再对齐周起始——那会把末列整体推到本周之前，
   // 最近一周的记录永远落在网格之外（打卡格全空的 bug）
   const today = startOfDay(Date.now());
-  const firstCol = today - weekOffset(today, weekStart) * DAY_MS - (weeks - 1) * 7 * DAY_MS;
+  const firstCol = addDays(today, -weekOffset(today, weekStart) - (weeks - 1) * 7);
 
   const cells: CellLayout[] = [];
 
@@ -152,9 +142,9 @@ function drawHeatmap(
   ctx.textBaseline = 'alphabetic';
   let lastLabelCol = -4;
   for (let col = 0; col < weeks; col++) {
-    const colDay = firstCol + col * 7 * DAY_MS;
+    const colDay = addDays(firstCol, col * 7);
     const d = new Date(colDay);
-    const prev = new Date(colDay - 7 * DAY_MS);
+    const prev = new Date(addDays(colDay, -7));
     if (d.getMonth() !== prev.getMonth() && col - lastLabelCol >= 3) {
       ctx.fillText(`${d.getMonth() + 1}/${d.getDate()}`, padL + col * (cell + gap), 10);
       lastLabelCol = col;
@@ -164,14 +154,14 @@ function drawHeatmap(
   // （周一起始：一/三/五；周日起始：日/二/四），沿用本地化窄格式的星期名
   ctx.textBaseline = 'middle';
   for (const row of [0, 2, 4]) {
-    const label = new Date(firstCol + row * DAY_MS).toLocaleDateString(localeTag(), { weekday: 'narrow' });
+    const label = new Date(addDays(firstCol, row)).toLocaleDateString(localeTag(), { weekday: 'narrow' });
     ctx.fillText(label, 2, padT + row * (cell + gap) + cell / 2);
   }
   ctx.restore();
 
   for (let col = 0; col < weeks; col++) {
     for (let row = 0; row < 7; row++) {
-      const day = firstCol + (col * 7 + row) * DAY_MS;
+      const day = addDays(firstCol, col * 7 + row);
       const stat = day > today ? null : days.get(day) ?? null;
       const x = padL + col * (cell + gap);
       const y = padT + row * (cell + gap);
@@ -183,7 +173,7 @@ function drawHeatmap(
         if (day <= today) {
           ctx.globalAlpha = 0.55;
           ctx.fillStyle = pal.grid;
-          cellPath(ctx, x, y, cell, 2.5);
+          roundRectPath(ctx, x, y, cell, cell, 2.5);
           ctx.fill();
         }
         ctx.restore();
@@ -204,7 +194,7 @@ function drawHeatmap(
         ctx.globalAlpha = level === 0 ? 0.55 : [0.18, 0.38, 0.62, 0.9][level - 1];
       }
       ctx.fillStyle = fill;
-      cellPath(ctx, x, y, cell, 2.5);
+      roundRectPath(ctx, x, y, cell, cell, 2.5);
       ctx.fill();
       if (selected) {
         ctx.globalAlpha = 1;

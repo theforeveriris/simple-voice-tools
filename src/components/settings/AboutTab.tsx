@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { GuideSheet } from './GuideSheet';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -159,8 +160,10 @@ export function AboutTab() {
         <DocList entries={DEV_DOC_ENTRIES} />
       </SettingsSection>
 
-      {/* 使用说明（全屏查看器） */}
-      {guideOpen && <GuideSheet onClose={() => setGuideOpen(false)} />}
+      {/* 使用说明（全屏查看器）；AnimatePresence 让关闭时的退出淡出真正播放 */}
+      <AnimatePresence>
+        {guideOpen && <GuideSheet onClose={() => setGuideOpen(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

@@ -39,10 +39,11 @@ window.addEventListener('app:themechange', () => {
   paletteCache = null;
 });
 
-/** 秒 → m:ss */
+/** 秒 → m:ss（先对总秒数取整：59.7s 这类端点按位舍入会进位成 "0:60"） */
 export function formatClock(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec - m * 60);
+  const total = Math.round(sec);
+  const m = Math.floor(total / 60);
+  const s = total - m * 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
@@ -230,7 +231,6 @@ export function drawPitchLine(
   let segOpen = false;
   let lastX = 0;
   let lastY = 0;
-  let hadPrev = false;
 
   const beginSeg = (band: PitchBand, x: number, y: number) => {
     ctx.strokeStyle = BAND_COLORS[band];
@@ -249,7 +249,6 @@ export function drawPitchLine(
         segOpen = false;
       }
       segBand = null;
-      hadPrev = false;
       continue;
     }
     if (t < p.t0 - 0.05 || t > p.t1 + 0.05) continue;
@@ -259,8 +258,6 @@ export function drawPitchLine(
 
     if (!segOpen) {
       beginSeg(band, x, y);
-      if (hadPrev) ctx.moveTo(lastX, lastY); // 从上一有效点接续，避免断点
-      if (hadPrev) ctx.lineTo(x, y);
     } else if (band !== segBand) {
       ctx.stroke();
       beginSeg(band, lastX, lastY);
@@ -270,7 +267,6 @@ export function drawPitchLine(
     }
     lastX = x;
     lastY = y;
-    hadPrev = true;
   }
   if (segOpen) ctx.stroke();
   ctx.restore();
@@ -557,7 +553,7 @@ export function drawFormantTarget(
   ctx.globalAlpha = 0.75;
   ctx.lineWidth = 1.4;
   ctx.setLineDash([5, 4]);
-  roundRectPathOn(ctx, left, top, right - left, bottom - top, 8);
+  roundRectPath(ctx, left, top, right - left, bottom - top, 8);
   ctx.stroke();
   // 中心 × 标记
   const [cx, cy] = vowelXY(f1, f2, w, h);
@@ -572,8 +568,8 @@ export function drawFormantTarget(
   ctx.restore();
 }
 
-/** 局部 roundRect（与 drawVowelSpace 系列同款兜底，避免依赖外部工具） */
-function roundRectPathOn(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+/** 圆角矩形路径（ctx.roundRect 可用则用之，否则 arcTo 兜底；图表间共用） */
+export function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
   if (typeof ctx.roundRect === 'function') {
     ctx.beginPath();
     ctx.roundRect(x, y, w, h, r);

@@ -4,7 +4,7 @@
  * 词典（i18n 的 override 层），仅保存在本机。 Escape 或点击遮罩关闭。
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
@@ -22,6 +22,17 @@ export function EditStringsSheet({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<DictKey | null>(null);
   const [draft, setDraft] = useState('');
+
+  // Escape 关闭：编辑器打开时先退回列表，否则关整个浮层（与头注释承诺一致）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (editing) setEditing(null);
+      else onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editing, onClose]);
 
   /** 当前语言显示名（选择器同款） */
   const langLabel = getLocale() === 'ai'

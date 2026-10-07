@@ -1,4 +1,7 @@
-/** 底部导航页签的 id 与 i18n 标签键（设置页「启动默认页签」等共用） */
+/**
+ * 页签清单唯一来源（含顺序）：底部导航、App 深链校验（#/hash）、
+ * manifest / 原生 app shortcuts、设置页「启动默认页签」下拉共用这一份。
+ */
 
 import type { ViewType } from '@/types';
 

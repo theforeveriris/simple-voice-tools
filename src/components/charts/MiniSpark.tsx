@@ -6,9 +6,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { getPitchAxis } from '@/constants';
+import { getPitchAxis, bandOf, BAND_COLORS } from '@/constants';
 import type { RecordSeries } from '@/types';
-import { BAND_COLORS } from '@/constants';
 import { cn } from '@/lib/utils';
 
 interface MiniSparkProps {
@@ -75,7 +74,8 @@ export function MiniSpark({ series, width = 110, height = 30, full = false, clas
         }
         continue;
       }
-      const band = f < 85 ? 'low' : f < 165 ? 'male' : f < 180 ? 'transition' : f <= 255 ? 'female' : 'high';
+      // 音区判定与曲线着色、统计共用同一来源（跟随自定义音区边界）
+      const band = bandOf(f);
       const x = xOf(t[i]);
       const y = yOf(f);
       if (!open || band !== prevBand) {
@@ -86,7 +86,7 @@ export function MiniSpark({ series, width = 110, height = 30, full = false, clas
         } else {
           ctx.moveTo(x, y);
         }
-        ctx.strokeStyle = BAND_COLORS[band as keyof typeof BAND_COLORS];
+        ctx.strokeStyle = BAND_COLORS[band];
         prevBand = band;
         open = true;
       } else {

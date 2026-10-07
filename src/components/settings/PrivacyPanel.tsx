@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { getStoredLogin } from '@/lib/backup/github';
 import { getWebdavConfig } from '@/lib/backup/webdav';
 import { getBackupCryptoConfig, isBackupEncryptionUnlocked } from '@/lib/backup/crypto';
+import { BACKUP_CHANGED_EVENT } from '@/lib/backup/bus';
 import { clearLlmRequestLog, readLlmRequestLog, type LlmRequestLogEntry } from '@/lib/llmRequestLog';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -27,7 +28,8 @@ export function PrivacyPanel() {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    void (async () => {
+    // 云备份三项状态跟着写入侧走：加密开关/连接配置变更（含同页其他区块）发事件，这里重读
+    const reload = () => void (async () => {
       try {
         setGhLogin(await getStoredLogin());
         setWebdavOn((await getWebdavConfig()) != null);
@@ -35,8 +37,13 @@ export function PrivacyPanel() {
       } catch {
         /* IndexedDB 不可用时保持未知态 */
       }
+    })();
+    reload();
+    void (async () => {
       setLog(await readLlmRequestLog().catch(() => null));
     })();
+    window.addEventListener(BACKUP_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(BACKUP_CHANGED_EVENT, reload);
   }, []);
 
   const copyBody = (entry: LlmRequestLogEntry) => {

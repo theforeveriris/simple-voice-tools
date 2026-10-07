@@ -5,6 +5,7 @@
 
 import { motion } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
+import { formatClock } from '@/components/charts/chartPainters';
 import { t } from '@/i18n';
 
 /** 录音回放条（纯展示）：音频元素由页面层持有，播放头位置驱动全部图表 */
@@ -26,10 +27,6 @@ export function PlaybackCard({
   if (!url) return null;
   const pos = position ?? 0;
   const frac = duration > 0 ? Math.max(0, Math.min(1, pos / duration)) : 0;
-  const fmt = (s: number) => {
-    const m = Math.floor(s / 60);
-    return `${m}:${String(Math.floor(s - m * 60)).padStart(2, '0')}`;
-  };
 
   return (
     <motion.div
@@ -56,7 +53,7 @@ export function PlaybackCard({
         />
       </div>
       <span className="shrink-0 text-[11px] tabular-nums text-ink-2">
-        {fmt(pos)} / {fmt(duration)}
+        {formatClock(pos)} / {formatClock(duration)}
       </span>
     </motion.div>
   );

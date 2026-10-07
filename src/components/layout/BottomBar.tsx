@@ -28,6 +28,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { NAV, navLabelKey } from '@/components/settings/navItems';
 import type { ViewType, TestMode } from '@/types';
 import { toast } from 'sonner';
 import { t, getI18nVersion, localeTag } from '@/i18n';
@@ -36,13 +37,16 @@ import { cn } from '@/lib/utils';
 
 const SPRING = { type: 'spring' as const, stiffness: 380, damping: 32, mass: 0.9 };
 
+/** 页签图标（清单与顺序来自 navItems.NAV，唯一来源） */
+const TAB_ICONS: Record<ViewType, ElementType> = {
+  test: SquareTerminal,
+  analysis: ChartNoAxesColumn,
+  history: History,
+  settings: Settings2,
+};
+
 /** 页签文案走 i18n；label 取词典，组件内以 t(nav.xxx) 读取 */
-const TABS: { id: ViewType; labelKey: 'nav.test' | 'nav.analysis' | 'nav.history' | 'nav.settings'; icon: ElementType }[] = [
-  { id: 'test', labelKey: 'nav.test', icon: SquareTerminal },
-  { id: 'analysis', labelKey: 'nav.analysis', icon: ChartNoAxesColumn },
-  { id: 'history', labelKey: 'nav.history', icon: History },
-  { id: 'settings', labelKey: 'nav.settings', icon: Settings2 },
-];
+const TABS = NAV.map((id) => ({ id, labelKey: navLabelKey[id], icon: TAB_ICONS[id] }));
 
 /** 模式选项（扇形排列，自左向右） */
 const MODE_OPTIONS: { id: TestMode; labelKey: 'mode.reading' | 'mode.sustained' | 'mode.glide'; icon: ElementType }[] = [
@@ -555,8 +559,10 @@ export function BottomBar() {
           || target.tagName === 'BUTTON'
           || target.isContentEditable)
       ) return;
-      // Radix 对话框 / 浮层打开时交还给其内部焦点管理
-      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      // 对话框 / 浮层打开时交还给其内部焦点管理。
+      // Radix 弹层带 data-state，自绘浮层（快捷键帮助 / 编辑词条 / 使用说明）只有
+      // role="dialog" 本身——都按条件挂载，存在即打开，不能只认 [data-state="open"]
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
       if (e.key === ' ') {
         e.preventDefault();
         if (menuOpen) return;

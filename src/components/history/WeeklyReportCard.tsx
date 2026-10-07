@@ -5,26 +5,19 @@
  * 依赖 设置 → 大模型 中使用中档案的接口；同一周内会话级缓存。
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { CalendarRange, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import {
-  cachedWeeklyReport, fetchWeeklyReport, isAbortError, weekRecords, weeklyReportKey,
-  type LlmAdviceResult, type LlmPromptOptions,
+  cachedWeeklyReport, fetchWeeklyReport, hasCachedWeeklyReport, weekRecords, weeklyReportKey,
+  type LlmPromptOptions,
 } from '@/lib/llm';
 import { useActiveLlmConfig } from '@/lib/llmProfiles';
+import { useLlmStream } from '@/hooks/useLlmStream';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AnalysisRecord } from '@/types';
 import { LlmResultView, StreamPreview } from '@/components/analysis/LlmResultView';
-
-interface ReportState {
-  doneKey: string | null;
-  result: LlmAdviceResult | null;
-  error: string | null;
-  /** 本轮请求被用户取消（区别于失败） */
-  cancelled: boolean;
-}
 
 export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
   useI18n();
@@ -35,58 +28,27 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
   const promptOverride = useStore((s) => s.settings.llmPromptOverride);
   const prompt: LlmPromptOptions = { extraRules, promptOverride };
 
-  const [nonce, setNonce] = useState(0);
-  // 点过「生成」之后才拉取（周报调接口花钱，不自动发起）；重新生成 = nonce + 1
-  const [requested, setRequested] = useState(false);
-  const [streamText, setStreamText] = useState<string | null>(null);
-  const [state, setState] = useState<ReportState>({ doneKey: null, result: null, error: null, cancelled: false });
+  const key = cfg ? weeklyReportKey(cfg, records, prompt) : null;
   // effect 按缓存键（值稳定）触发，输入经 ref 传递
   const latest = useRef({ records, cfg, prompt });
   useEffect(() => {
     latest.current = { records, cfg, prompt };
   });
-  const abortRef = useRef<AbortController | null>(null);
-  const key = cfg ? weeklyReportKey(cfg, records, prompt) : null;
-  const requestKey = key ? `${key}#${nonce}` : null;
+  const llm = useLlmStream({
+    key,
+    run: (signal, onDelta) => {
+      const cur = latest.current;
+      const curKey = weeklyReportKey(cur.cfg!, cur.records, cur.prompt);
+      return cachedWeeklyReport(curKey, () => fetchWeeklyReport(cur.records, cur.cfg!, {
+        prompt: cur.prompt,
+        signal,
+        onDelta,
+      }));
+    },
+    checkCached: hasCachedWeeklyReport,
+  });
+  const { state, requestKey, stream, stale } = llm;
   const hasWeek = weekRecords(records).length > 0;
-
-  useEffect(() => {
-    if (!requested || !key || !requestKey) return;
-    const { cfg: curCfg, records: curRecords, prompt: curPrompt } = latest.current;
-    if (!curCfg) return;
-    const controller = new AbortController();
-    abortRef.current = controller;
-    let alive = true;
-    setStreamText(null);
-    cachedWeeklyReport(key, () => fetchWeeklyReport(curRecords, curCfg, {
-      prompt: curPrompt,
-      signal: controller.signal,
-      onDelta: (acc) => {
-        if (alive) setStreamText(acc);
-      },
-    }))
-      .then((result) => {
-        if (alive) setState({ doneKey: requestKey, result, error: null, cancelled: false });
-      })
-      .catch((err: unknown) => {
-        if (alive) {
-          setState({
-            doneKey: requestKey,
-            result: null,
-            error: isAbortError(err) ? null : err instanceof Error ? err.message : String(err),
-            cancelled: isAbortError(err),
-          });
-        }
-      })
-      .finally(() => {
-        if (abortRef.current === controller) abortRef.current = null;
-      });
-    return () => {
-      alive = false;
-    };
-  }, [requested, key, requestKey]);
-
-  const loading = requested && state.doneKey !== requestKey;
 
   return (
     <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
@@ -102,19 +64,19 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
         <p className="px-0.5 text-xs leading-relaxed text-ink-2">{t('history.reportNeedLlm')}</p>
       ) : !hasWeek ? (
         <p className="px-0.5 text-xs leading-relaxed text-ink-2">{t('history.reportEmpty')}</p>
-      ) : loading ? (
+      ) : llm.loading ? (
         <div className="flex flex-col px-0.5">
           <div className="flex items-center gap-2 text-xs text-ink-2">
             <Loader2 size={13} className="animate-spin text-accent" />
             {t('history.reportLoading')}
             <button
-              onClick={() => abortRef.current?.abort()}
+              onClick={llm.abort}
               className="ml-auto text-[11px] font-medium text-ink-2 transition-opacity hover:opacity-70"
             >
               {t('common.cancel')}
             </button>
           </div>
-          {streamText != null && <StreamPreview text={streamText} />}
+          {stream?.key === requestKey && <StreamPreview text={stream.text} />}
         </div>
       ) : state.error != null ? (
         <div className="flex flex-col gap-1.5 px-0.5">
@@ -123,7 +85,7 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
             <span className="ml-1 break-all text-ink-2">{state.error}</span>
           </p>
           <button
-            onClick={() => setNonce((n) => n + 1)}
+            onClick={llm.retry}
             className="flex w-fit items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70"
           >
             <RefreshCw size={12} />
@@ -134,7 +96,7 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
         <div className="flex flex-col gap-1.5 px-0.5">
           <p className="text-xs leading-relaxed text-ink-2">{t('analysis.adviceLlmCancelled')}</p>
           <button
-            onClick={() => setNonce((n) => n + 1)}
+            onClick={llm.retry}
             className="flex w-fit items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70"
           >
             <RefreshCw size={12} />
@@ -144,9 +106,10 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
       ) : state.result ? (
         <>
           <LlmResultView result={state.result} />
+          {/* stale = 输入在生成后变化过且未自动重取（缓存未命中），提示可重新生成 */}
           <button
-            onClick={() => setNonce((n) => n + 1)}
-            className="mt-2 flex items-center gap-1.5 px-0.5 text-[11px] font-medium text-ink-2 transition-opacity hover:opacity-70"
+            onClick={llm.retry}
+            className={`mt-2 flex items-center gap-1.5 px-0.5 text-[11px] font-medium transition-opacity hover:opacity-70 ${stale ? 'text-accent' : 'text-ink-2'}`}
           >
             <RefreshCw size={11} />
             {t('history.reportRegenerate')}
@@ -154,7 +117,7 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
         </>
       ) : (
         <button
-          onClick={() => setRequested(true)}
+          onClick={llm.start}
           className="rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-on-accent transition-opacity hover:opacity-90"
         >
           {t('history.reportGenerate')}

@@ -15,12 +15,6 @@ import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 
-/**
- * 实时画布的尺寸自适应（DPR 感知）。
- * 画布只在 live 阶段挂载，因此返回回调 ref（attachCanvas）：挂载瞬间同步测量
- * 尺寸并启用 ResizeObserver，后续窗口 / 布局变化继续跟随。rAF 循环经 canvasRef
- * 读取画布、sizeRef 读取 CSS 尺寸；若用 effect 初始化会在挂载时拿不到画布而失效。
- */
 export function LiveSheetFrame({
   title,
   idleHint,

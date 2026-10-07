@@ -12,6 +12,7 @@ import { ShareCardSheet } from '@/components/share/ShareCardSheet';
 import { renderShareCompareCard, shareCompareFilename } from '@/lib/export/shareCard';
 import { chartPalette, collectVowelPoints, drawVowelSpaceFrame, drawVowelPoints, drawVowelCentroid, drawVowelRefs, vowelXY } from '@/components/charts/chartPainters';
 import { AdviceCard } from '@/components/analysis/AdviceCard';
+import { fmtShortDateTime } from '@/lib/utils';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { useStore } from '@/store/useStore';
@@ -19,12 +20,6 @@ import type { AnalysisRecord } from '@/types';
 
 const F_MIN = 50;
 const F_MAX = 520;
-
-function fmtDate(ts: number): string {
-  const d = new Date(ts);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 function deltaText(a: number | null | undefined, b: number | null | undefined, digits = 1): string {
   if (a == null || b == null) return '—';
@@ -257,7 +252,7 @@ export function CompareSheet({
                 <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white ${tag === 'A' ? 'bg-accent' : 'bg-accent2'}`}>
                   {tag}
                 </span>
-                <span className="min-w-0 text-xs text-ink-2">{fmtDate(rec.createdAt)}</span>
+                <span className="min-w-0 text-xs text-ink-2">{fmtShortDateTime(rec.createdAt)}</span>
                 {rec.mode && (
                   <span className="shrink-0 whitespace-nowrap rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
                     {t(`mode.${rec.mode}`)}

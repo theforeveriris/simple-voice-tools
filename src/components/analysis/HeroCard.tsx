@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Music2, Sparkles } from 'lucide-react';
 import { freqToNote, bandOf, BAND_COLORS, getBandRanges } from '@/constants';
+import { formatClock } from '@/components/charts/chartPainters';
 import { localeTag, t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 
@@ -97,10 +98,6 @@ export function HeroSummary({
   const { avgF0 } = record.stats;
   const note = freqToNote(avgF0);
   const isPartial = range[0] > 0.001 || range[1] < record.durationSec - 0.001;
-  const fmt = (s: number) => {
-    const m = Math.floor(s / 60);
-    return `${m}:${String(Math.round(s - m * 60)).padStart(2, '0')}`;
-  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -114,7 +111,7 @@ export function HeroSummary({
           <Sparkles size={12} className="shrink-0 text-accent" />
           {t('analysis.avgF0')}
           <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-            {isPartial ? t('analysis.chipRange', { a: fmt(range[0]), b: fmt(range[1]) }) : t('analysis.chipFull')}
+            {isPartial ? t('analysis.chipRange', { a: formatClock(range[0]), b: formatClock(range[1]) }) : t('analysis.chipFull')}
           </span>
           {record.mode && (
             <span className="flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">

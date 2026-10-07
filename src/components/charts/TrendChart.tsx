@@ -12,12 +12,10 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { BAND_COLORS, getBandRanges } from '@/constants';
 import { trendMetricValue } from '@/lib/trendMetric';
 import type { TrendMetric } from '@/lib/trendMetric';
-import { chartPalette } from './chartPainters';
+import { chartPalette, roundRectPath } from './chartPainters';
 import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 import { cn } from '@/lib/utils';
-
-export type { TrendMetric };
 
 interface TrendChartProps {
   records: AnalysisRecord[];
@@ -32,28 +30,16 @@ interface TrendChartProps {
 const F_MIN = 50;
 const F_MAX = 520;
 const DASH: [number, number] = [4, 5];
+/** 绘图内边距：drawTrend 与 pick() 的命中换算必须共用同一组常量 */
+const PAD_L = 34;
+const PAD_R = 16;
+const PAD_T = 26;
+const PAD_B = 30;
 
 /** 线性值 → 纵向像素（vMin 贴底、vMax 贴顶） */
 function yLinear(v: number, vMin: number, vMax: number, h: number): number {
   const t = (v - vMin) / Math.max(1e-9, vMax - vMin);
   return h - Math.max(0, Math.min(1, t)) * h;
-}
-
-/** roundRect 兜底（旧版 Safari 无 ctx.roundRect） */
-function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  if (typeof ctx.roundRect === 'function') {
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, r);
-    return;
-  }
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
 }
 
 /** 选取美观的日期刻度步长（毫秒） */
@@ -101,10 +87,10 @@ function drawTrend(
   if (sorted.length === 0 || w < 40 || h < 40) return;
 
   const pal = chartPalette();
-  const padL = 34;
-  const padR = 16;
-  const padT = 26;
-  const padB = 30;
+  const padL = PAD_L;
+  const padR = PAD_R;
+  const padT = PAD_T;
+  const padB = PAD_B;
   const innerW = w - padL - padR;
   const innerH = h - padT - padB;
 
@@ -289,19 +275,19 @@ export function TrendChart({ records, onOpen, connectLine = false, metric = 'f0'
     const canvas = canvasRef.current;
     if (!canvas || sorted.length === 0) return null;
     const rect = canvas.getBoundingClientRect();
-    const padL = 34;
-    const innerW = rect.width - padL - 16;
+    const innerW = rect.width - PAD_L - PAD_R;
+    const innerH = rect.height - PAD_T - PAD_B;
     const first = sorted[0].createdAt;
     const last = sorted[sorted.length - 1].createdAt;
     const span = Math.max(last - first, 86400000);
     const pad = Math.max(span * 0.06, 6 * 3600000);
     const t0 = first - pad;
     const t1 = last + pad;
-    const xOf = (t: number) => padL + ((t - t0) / (t1 - t0)) * innerW;
+    const xOf = (t: number) => PAD_L + ((t - t0) / (t1 - t0)) * innerW;
     const present = values.filter((v): v is number => v != null);
     const [vMin, vMax] = present.length > 0 ? linearDomain(present, metric) : [0, 1];
     const yOf = (v: number) =>
-      metric !== 'f0' ? yLinear(v, vMin, vMax, rect.height - 26 - 30) + 26 : yFor(v, rect.height - 26 - 30) + 26;
+      metric !== 'f0' ? yLinear(v, vMin, vMax, innerH) + PAD_T : yFor(v, innerH) + PAD_T;
 
     let best: string | null = null;
     let bestDist = Infinity;

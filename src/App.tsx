@@ -27,11 +27,10 @@ import { missingKeys } from '@/i18n/aiLocale';
 import { useI18n } from '@/i18n/hook';
 import { t } from '@/i18n';
 import { checkPracticeReminder } from '@/lib/reminder';
+// 页签清单（含顺序）：同时供 manifest shortcuts / 原生 app shortcuts 的深链校验使用，
+// 与底部导航 / 启动默认页签共用同一份（navItems.ts）
+import { NAV as TABS } from '@/components/settings/navItems';
 import type { ViewType } from '@/types';
-
-/** 页签清单（含顺序）：同时供 manifest shortcuts / 原生 app shortcuts 的深链校验使用 */
-// eslint-disable-next-line react-refresh/only-export-components -- 非组件导出是有意为之（深链校验共用）
-export const TABS: ViewType[] = ['test', 'analysis', 'history', 'settings'];
 
 /** 由 location.hash 解析页签（#/history 形式），未知或缺失时回退测试页 */
 function tabFromHash(): ViewType {
@@ -330,7 +329,6 @@ function App() {
     return () => {
       void handle?.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importSharedFile]);
 
   return (

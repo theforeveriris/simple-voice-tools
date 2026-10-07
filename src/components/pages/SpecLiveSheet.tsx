@@ -55,7 +55,7 @@ export function SpecLiveSheet({ onClose }: { onClose: () => void }) {
           const snap = recorder.getLive();
           const t1 = snap.elapsedSec;
           const t0 = t1 - WIN_SEC;
-          if (allTimes.length >= 2 && t1 - t0 > 0.2) {
+          if (allTimes.length >= 2) {
             // 二分找第一个进入窗口的帧（缓冲按时间递增）
             let lo = 0;
             let hi = allTimes.length - 1;

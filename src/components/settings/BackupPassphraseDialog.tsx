@@ -4,7 +4,7 @@
  * - unlock：单输入，校验通过后口令仅留在内存供本会话加解密使用
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import {
   enableBackupEncryption, unlockBackupEncryption, MIN_PASSPHRASE_LEN,
@@ -38,14 +38,17 @@ export function BackupPassphraseDialog({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  // 打开（或换用途）时清空上次输入：渲染期对比派生重置，避免 effect 内同步 setState
+  const [prev, setPrev] = useState({ open, mode });
+  if (prev.open !== open || prev.mode !== mode) {
+    setPrev({ open, mode });
     if (open) {
       setPass('');
       setConfirm('');
       setError(null);
       setBusy(false);
     }
-  }, [open, mode]);
+  }
 
   const isUnlock = mode === 'unlock';
   const titleKey = isUnlock ? 'settings.encTitleUnlock' : mode === 'change' ? 'settings.encTitleChange' : 'settings.encTitleEnable';

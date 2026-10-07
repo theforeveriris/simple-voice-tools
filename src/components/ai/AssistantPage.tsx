@@ -8,6 +8,7 @@
  *   完成后保存到消息里、点气泡内的「思考过程」可展开回看
  * - 底部输入栏：随内容自动增高（上限后内部滚动），生成中变为停止按钮
  * - 右侧抽屉：新建对话 + 历史列表（点按切换、两步删除）
+ * 生成中关闭页面不中断请求（跑完照常写入对话，避免丢回复）；中途取消用停止按钮。
  * 对话存 IndexedDB（llm:chats，封顶 30 条）；生成走活动档案（协议/流式/上下文
  * 均由档案决定），系统提示附用户历史测试记录摘要，按上下文预算裁剪。
  */
@@ -40,8 +41,10 @@ function historySection(budgetTokens: number): string {
     .sort((a, b) => a.createdAt - b.createdAt)
     .map((r) => {
       const s = r.stats;
+      const d = new Date(r.createdAt);
+      const pad = (n: number) => String(n).padStart(2, '0');
       const parts = [
-        new Date(r.createdAt).toISOString().slice(0, 10),
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
         r.mode ?? 'free',
         `${Math.round(r.durationSec)}s`,
         `avg ${s.avgF0.toFixed(1)}Hz`,
@@ -80,6 +83,108 @@ function systemPrompt(history: string): string {
     history,
     `使用「${languageName()}」回答。`,
   ].filter(Boolean).join('\n');
+}
+
+/** 气泡操作按钮（模块级：定义在组件体内会让整条消息流每次渲染重挂载） */
+function ActionBtn({ icon: Icon, label, onClick }: { icon: typeof Copy; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 rounded-full bg-card px-2.5 py-1.5 text-[10px] font-medium text-ink-2 shadow-[0_1px_6px_rgba(28,25,45,0.08)] transition-transform active:scale-90"
+    >
+      <Icon size={11} />
+      {label}
+    </button>
+  );
+}
+
+/** 思考过程块 */
+function ThinkBlock({ text, live }: { text: string; live?: boolean }) {
+  return (
+    <span className="mb-2 block max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/[0.04] px-2.5 py-2 text-left text-[11px] leading-relaxed text-ink-2">
+      {live && !text ? <span className="italic">{t('assistant.thinking')}</span> : text}
+    </span>
+  );
+}
+
+/** 消息气泡（模块级，理由同上；交互状态与回调由 props 传入） */
+function Bubble({
+  m,
+  idx,
+  streaming = false,
+  liveThink = '',
+  active,
+  thinkOpen,
+  onAction,
+  onToggleThink,
+  onCopy,
+  onRedo,
+  onBranch,
+}: {
+  m: ChatMessage;
+  idx: number;
+  streaming?: boolean;
+  liveThink?: string;
+  /** 操作行是否展开（非流式） */
+  active: boolean;
+  /** 思考块是否展开（非流式） */
+  thinkOpen: boolean;
+  onAction: (idx: number | null) => void;
+  onToggleThink: (idx: number) => void;
+  onCopy: (idx: number) => void;
+  onRedo: (idx: number) => void;
+  onBranch: (idx: number) => void;
+}) {
+  const mine = m.role === 'user';
+  const think = streaming ? liveThink : m.think ?? '';
+  const thinkVisible = streaming ? !!think || !m.content : !!m.think && thinkOpen;
+  return (
+    <div className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
+      {!mine && (
+        <span className="mb-1 flex items-center gap-1.5">
+          <span className="grid size-6 place-items-center rounded-full bg-accent/15 text-accent">
+            <Sparkles size={13} />
+          </span>
+          <span className="text-[10px] font-medium text-ink-2">{t('assistant.title')}</span>
+        </span>
+      )}
+      <button
+        onClick={() => onAction(streaming ? null : active ? null : idx)}
+        className={cn(
+          'max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-left text-[13px] leading-relaxed text-ink',
+          'shadow-[0_2px_10px_rgba(28,25,45,0.05)]',
+          mine ? 'bg-accent/15' : 'bg-card',
+        )}
+      >
+        {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
+        {m.content || (streaming ? (liveThink ? '' : '…') : '')}
+        {!mine && !!m.think && !streaming && (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleThink(idx);
+            }}
+            className="mt-1.5 flex items-center gap-1 text-[10px] text-ink-2"
+          >
+            <Brain size={10} />
+            {t('assistant.think')}
+          </span>
+        )}
+      </button>
+      {active && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.16 }}
+          className="mt-1.5 flex items-center gap-1.5"
+        >
+          <ActionBtn icon={Copy} label={t('assistant.copy')} onClick={() => onCopy(idx)} />
+          {!streaming && <ActionBtn icon={RotateCcw} label={t('assistant.redo')} onClick={() => onRedo(idx)} />}
+          {!streaming && <ActionBtn icon={GitBranch} label={t('assistant.branch')} onClick={() => onBranch(idx)} />}
+        </motion.div>
+      )}
+    </div>
+  );
 }
 
 export function AssistantPage({ onClose }: { onClose: () => void }) {
@@ -258,86 +363,6 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
   const iconBtn =
     'grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90';
 
-  const ActionBtn = ({ icon: Icon, label, onClick }: { icon: typeof Copy; label: string; onClick: () => void }) => (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-1 rounded-full bg-card px-2.5 py-1.5 text-[10px] font-medium text-ink-2 shadow-[0_1px_6px_rgba(28,25,45,0.08)] transition-transform active:scale-90"
-    >
-      <Icon size={11} />
-      {label}
-    </button>
-  );
-
-  const ThinkBlock = ({ text, live }: { text: string; live?: boolean }) => (
-    <span className="mb-2 block max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/[0.04] px-2.5 py-2 text-left text-[11px] leading-relaxed text-ink-2">
-      {live && !text ? <span className="italic">{t('assistant.thinking')}</span> : text}
-    </span>
-  );
-
-  const Bubble = ({
-    m,
-    idx,
-    streaming = false,
-    liveThink = '',
-  }: {
-    m: ChatMessage;
-    idx: number;
-    streaming?: boolean;
-    liveThink?: string;
-  }) => {
-    const mine = m.role === 'user';
-    const think = streaming ? liveThink : m.think ?? '';
-    const thinkVisible = streaming ? !!think || !m.content : !!m.think && thinkIdx === idx;
-    const active = !streaming && actionIdx === idx;
-    return (
-      <div className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
-        {!mine && (
-          <span className="mb-1 flex items-center gap-1.5">
-            <span className="grid size-6 place-items-center rounded-full bg-accent/15 text-accent">
-              <Sparkles size={13} />
-            </span>
-            <span className="text-[10px] font-medium text-ink-2">{t('assistant.title')}</span>
-          </span>
-        )}
-        <button
-          onClick={() => setActionIdx(streaming ? null : active ? null : idx)}
-          className={cn(
-            'max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-left text-[13px] leading-relaxed text-ink',
-            'shadow-[0_2px_10px_rgba(28,25,45,0.05)]',
-            mine ? 'bg-accent/15' : 'bg-card',
-          )}
-        >
-          {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
-          {m.content || (streaming ? (liveThink ? '' : '…') : '')}
-          {!mine && !!m.think && !streaming && (
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                setThinkIdx(thinkIdx === idx ? null : idx);
-              }}
-              className="mt-1.5 flex items-center gap-1 text-[10px] text-ink-2"
-            >
-              <Brain size={10} />
-              {t('assistant.think')}
-            </span>
-          )}
-        </button>
-        {active && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.16 }}
-            className="mt-1.5 flex items-center gap-1.5"
-          >
-            <ActionBtn icon={Copy} label={t('assistant.copy')} onClick={() => void copy(idx)} />
-            {!streaming && <ActionBtn icon={RotateCcw} label={t('assistant.redo')} onClick={() => redo(idx)} />}
-            {!streaming && <ActionBtn icon={GitBranch} label={t('assistant.branch')} onClick={() => branch(idx)} />}
-          </motion.div>
-        )}
-      </div>
-    );
-  };
-
   const topBar = (
     <div className="flex items-center gap-2 px-3 pt-3">
       <button onClick={onClose} aria-label={t('common.back')} className={iconBtn}>
@@ -384,7 +409,18 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="mx-auto flex max-w-2xl flex-col gap-3 pb-2">
             {messages.map((m, i) => (
-              <Bubble key={`${i}-${m.role}`} m={m} idx={i} />
+              <Bubble
+                key={`${i}-${m.role}`}
+                m={m}
+                idx={i}
+                active={actionIdx === i}
+                thinkOpen={thinkIdx === i}
+                onAction={setActionIdx}
+                onToggleThink={(idx) => setThinkIdx(thinkIdx === idx ? null : idx)}
+                onCopy={copy}
+                onRedo={redo}
+                onBranch={branch}
+              />
             ))}
             {busy && (
               <Bubble
@@ -392,6 +428,13 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
                 idx={-1}
                 streaming
                 liveThink={streamThink}
+                active={false}
+                thinkOpen={false}
+                onAction={setActionIdx}
+                onToggleThink={() => undefined}
+                onCopy={() => undefined}
+                onRedo={() => undefined}
+                onBranch={() => undefined}
               />
             )}
             {error && (

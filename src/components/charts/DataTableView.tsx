@@ -53,12 +53,12 @@ function CopyButton({ data }: { data: TableData }) {
   );
 }
 
-function TableBody({ data, className }: { data: TableData; className: string }) {
+function TableBody({ data }: { data: TableData }) {
   if (data.rows.length === 0) {
     return <p className="py-6 text-center text-[11px] text-ink-2">{t('table.empty')}</p>;
   }
   return (
-    <div className={cn('min-h-0 flex-1 overflow-auto', className)}>
+    <div className="min-h-0 flex-1 overflow-auto">
       <table className="w-full border-collapse text-left font-mono text-[10px] tabular-nums">
         <thead className="sticky top-0 bg-card">
           <tr>
@@ -105,7 +105,7 @@ export function SeriesDataTable({
         </span>
         <CopyButton data={data} />
       </div>
-      <TableBody data={data} className="" />
+      <TableBody data={data} />
     </div>
   );
 }
@@ -128,7 +128,7 @@ export function TrendDataTable({ records, metric = 'f0' }: { records: AnalysisRe
       <div className="flex items-center justify-end gap-2 px-2 pt-1.5">
         <CopyButton data={data} />
       </div>
-      <TableBody data={data} className="" />
+      <TableBody data={data} />
     </div>
   );
 }

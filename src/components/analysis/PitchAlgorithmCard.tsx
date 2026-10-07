@@ -9,7 +9,8 @@ import { useEffect, useRef, useState } from 'react';
 import { FlaskConical, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHistoryStore } from '@/store/useHistoryStore';
-import { getPitchAxis, BAND_COLORS, getBandRanges } from '@/constants';
+import { getPitchAxis } from '@/constants';
+import { drawPitchBands } from '@/components/charts/chartPainters';
 import {
   recomputePitch, compareWithRecord, ALT_ALGOS,
   type AltCompareResult,
@@ -105,18 +106,8 @@ export function PitchAlgorithmCard({ record }: { record: AnalysisRecord }) {
     const yFor = (f: number) => h - ((f - fMin) / (fMax - fMin)) * h;
     const xFor = (tt: number) => (tt / Math.max(1e-6, record.durationSec)) * w;
 
-    // 音区背景色带（与音高图一致，帮助读图）
-    const ranges = getBandRanges();
-    for (const band of ['low', 'male', 'transition', 'female', 'high'] as const) {
-      const [a, b] = ranges[band];
-      const yTop = Math.max(0, yFor(Math.min(b, fMax)));
-      const yBot = Math.min(h, yFor(Math.max(a, fMin)));
-      if (yBot <= yTop) continue;
-      ctx.globalAlpha = band === 'transition' ? 0.07 : 0.13;
-      ctx.fillStyle = BAND_COLORS[band];
-      ctx.fillRect(0, yTop, w, yBot - yTop);
-    }
-    ctx.globalAlpha = 1;
+    // 音区背景色带：直接复用音高图的画笔（含分界虚线），保证两图视觉口径一致
+    drawPitchBands(ctx, w, h, fMin, fMax, yFor);
 
     // 横向参考网格（100/300/500 Hz）
     ctx.strokeStyle = 'rgba(128,124,140,0.35)';

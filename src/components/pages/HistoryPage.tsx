@@ -28,7 +28,7 @@ import { DiaryHeatmap } from '@/components/charts/DiaryHeatmap';
 import type { DiaryMetric } from '@/components/charts/DiaryHeatmap';
 import { CompareSheet } from './CompareSheet';
 import { freqToNote, bandOf, BAND_COLORS, MAX_HISTORY } from '@/constants';
-import { t } from '@/i18n';
+import { t, getI18nVersion } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { localeTag } from '@/i18n';
 import type { AnalysisRecord, TestMode } from '@/types';
@@ -54,7 +54,13 @@ function useLongPress(onLongPress: () => void) {
   const fired = useRef(false);
   const origin = useRef({ x: 0, y: 0 });
 
+  // 卸载时清掉未触发的定时器：长按中卡片被移除/切视图，不应再把页面带入多选
+  useEffect(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+  }, []);
+
   const onPointerDown = (e: ReactPointerEvent) => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
     fired.current = false;
     origin.current = { x: e.clientX, y: e.clientY };
     timer.current = window.setTimeout(() => {
@@ -345,6 +351,8 @@ export function HistoryPage() {
     setTab('analysis');
   };
 
+  // 搜索命中串含本地化模式名与日期：语言切换（i18n 版本 bump）后重算
+  const i18nVer = getI18nVersion();
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return records;
@@ -359,7 +367,8 @@ export function HistoryPage() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [records, query]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- i18nVer 是有意依赖：语言切换后重算本地化搜索串
+  }, [records, query, i18nVer]);
 
   const trendRecords = useMemo(
     () => (trendFilter === 'all' ? records : records.filter((r) => r.mode === trendFilter)),
