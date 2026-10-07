@@ -53,14 +53,20 @@ function validConversation(c: unknown): c is ChatConversation {
 }
 
 async function ensureLoaded(): Promise<void> {
-  if (chats != null) return;
   loaded ??= (async () => {
+    let raw: ChatConversation[] = [];
     try {
-      const raw = await idbGetKV<ChatConversation[]>(KV_CHATS);
-      chats = Array.isArray(raw) ? raw.filter(validConversation) : [];
+      const stored = await idbGetKV<ChatConversation[]>(KV_CHATS);
+      raw = Array.isArray(stored) ? stored.filter(validConversation) : [];
     } catch {
-      chats = []; // IndexedDB 不可用：本会话内仍可对话（内存态）
+      raw = []; // IndexedDB 不可用：本会话内仍可对话（内存态）
     }
+    // 加载期间若有写入（createChat 等会先建立空内存列表），按 id 合并而非覆盖，
+    // 且内存中的新写入优先
+    const byId = new Map<string, ChatConversation>();
+    for (const c of raw) byId.set(c.id, c);
+    for (const c of chats ?? []) byId.set(c.id, c);
+    chats = sortAndCap([...byId.values()]);
   })();
   await loaded;
 }
@@ -117,7 +123,10 @@ function truncate(text: string, max: number): string {
 export function createChat(title: string, messages: ChatMessage[] = []): string {
   const now = Date.now();
   const conv: ChatConversation = { id: genId(), title, createdAt: now, updatedAt: now, messages };
-  commit([conv, ...(chats ?? [])]);
+  // 加载未完成时也先建立内存列表：其余写操作都有 !chats 守卫会静默丢消息，
+  // 这里放行后 ensureLoaded 按 id 合并，新对话不会被读到的旧数据覆盖
+  chats ??= [];
+  commit([conv, ...chats]);
   return conv.id;
 }
 

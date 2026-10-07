@@ -15,6 +15,7 @@ import { buildFullBackupZip, importFullBackup, type BackupImportResult } from '@
 import {
   isBackupEncryptionEnabled, encryptForBackup, isEncryptedBackup, decryptBackupEnvelope,
 } from '@/lib/backup/crypto';
+import { notifyBackupChanged } from './bus';
 import { t } from '@/i18n';
 
 const KV_CONFIG = 'webdav:config';
@@ -38,6 +39,7 @@ export async function getWebdavConfig(): Promise<WebdavConfig | null> {
 
 export async function saveWebdavConfig(cfg: WebdavConfig): Promise<void> {
   await idbPutKV(KV_CONFIG, cfg);
+  notifyBackupChanged();
 }
 
 export async function getWebdavLastPush(): Promise<number | null> {

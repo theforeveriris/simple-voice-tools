@@ -26,6 +26,7 @@ import {
   isBackupEncryptionEnabled, encryptForBackup, isEncryptedBackup, decryptBackupEnvelope,
 } from '@/lib/backup/crypto';
 import { audioMimeOf } from '@/lib/file';
+import { notifyBackupChanged } from './bus';
 import { t } from '@/i18n';
 
 const DEVICE_CODE_URL = 'https://github.com/login/device/code';
@@ -175,6 +176,7 @@ async function refreshAccessToken(clientId: string, refreshToken: string): Promi
 
 export async function storeGhToken(token: GhToken): Promise<void> {
   await idbPutKV(KV_TOKEN, token);
+  notifyBackupChanged();
 }
 
 /** 连接收尾：保存令牌并记录登录名，返回 login */
@@ -198,6 +200,7 @@ export async function disconnectGithub(): Promise<void> {
   await idbDeleteKV(KV_TOKEN);
   await idbDeleteKV(KV_LOGIN);
   await idbDeleteKV(KV_LAST_PUSH);
+  notifyBackupChanged();
 }
 
 /** 取可用令牌：过期前自动用 refresh_token 续期 */
@@ -422,9 +425,11 @@ export async function pullBackup(
   const { records: incoming } = parseRecordsPayload(new TextDecoder().decode(jsonBytes));
   const added = useHistoryStore.getState().importRecords(incoming);
 
-  // 云端音频中，本地缺失的部分
+  // 云端音频中，本地缺失的部分。
+  // validIds 取全量（IDB + 内存）：importRecords 全部入库，内存 records 有
+  // MAX_HISTORY 截断，按内存窗口判断会静默漏掉窗口外记录的音频
   const store = useHistoryStore.getState();
-  const validIds = new Set(useHistoryStore.getState().records.map((r) => r.id));
+  const validIds = new Set((await store.getAllRecords()).map((r) => r.id));
   const audioPaths: { path: string; id: string }[] = [];
   for (const path of remoteShas.keys()) {
     if (!path.startsWith(BACKUP_AUDIO_DIR)) continue;

@@ -53,6 +53,7 @@ const OPTIONAL_NUMBER_KEYS: Partial<Record<keyof AppSettings, [number, number]>>
 
 /** 枚举字符串字段：导入时校验取值，非法值忽略（保持当前设置） */
 const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
+  theme: ['light', 'dark', 'system'],
   huePreset: ['monet', 'pride', 'image'],
   prideFlag: ['transPride', 'nonbinary', 'genderfluid'],
   language: ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'ai'],
@@ -73,6 +74,8 @@ const NUMBER_RANGE: Partial<Record<keyof AppSettings, [number, number]>> = {
   hue: [0, 360],
   accentHue: [0, 360],
   darkHue: [0, 360],
+  maxDurationSec: [0, 300],
+  diaryWeekStart: [0, 1],
   targetF0Min: [50, 500],
   targetF0Max: [50, 500],
   pitchAxisMin: [30, 200],
@@ -155,10 +158,15 @@ export function parseSettingsPayload(json: string): Partial<AppSettings> {
   // 大模型补充规则：字符串数组逐条接受
   const er = incoming.llmExtraRules;
   if (Array.isArray(er) && er.every((x) => typeof x === 'string')) out.llmExtraRules = er;
-  // 自定义音区边界：四个有限数字
+  // 自定义音区边界：四个有限数字（按升序整理，边界本身是有序分界）
   const bb = incoming.bandBounds;
   if (Array.isArray(bb) && bb.length === 4 && bb.every((n) => typeof n === 'number' && isFinite(n))) {
-    out.bandBounds = bb;
+    out.bandBounds = [...bb].sort((a, b) => a - b);
+  }
+  // 训练靶标：两个字段独立夹取，这里兜底保证 min ≤ max（交换而非丢弃）
+  if (typeof out.targetF0Min === 'number' && typeof out.targetF0Max === 'number'
+    && out.targetF0Min > out.targetF0Max) {
+    [out.targetF0Min, out.targetF0Max] = [out.targetF0Max, out.targetF0Min];
   }
   return out as Partial<AppSettings>;
 }

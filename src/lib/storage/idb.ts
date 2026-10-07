@@ -20,6 +20,7 @@ let unavailable = false;
 function openDb(): Promise<IDBDatabase> {
   if (unavailable) return Promise.reject(new Error('IndexedDB unavailable'));
   if (!dbPromise) {
+    let blocked = false;
     dbPromise = new Promise((resolve, reject) => {
       if (typeof indexedDB === 'undefined') {
         reject(new Error('IndexedDB unsupported'));
@@ -40,10 +41,17 @@ function openDb(): Promise<IDBDatabase> {
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
-      req.onblocked = () => reject(new Error('IndexedDB blocked'));
+      // 版本升级被其他标签页阻塞：瞬态而非终态，reject 本次调用但不锁死
+      req.onblocked = () => {
+        blocked = true;
+        reject(new Error('IndexedDB blocked'));
+      };
     });
     dbPromise.catch(() => {
-      unavailable = true;
+      // blocked 解除后可重开，丢弃本次 promise 让后续调用重试；
+      // 其余失败（不支持/打开失败）按永久不可用降级
+      dbPromise = null;
+      if (!blocked) unavailable = true;
     });
   }
   return dbPromise;

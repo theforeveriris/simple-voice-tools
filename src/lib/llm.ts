@@ -175,13 +175,21 @@ export function buildSystemPrompt(
 
 /* ------------------------------ 数据载荷 ------------------------------ */
 
+/** 本地时间戳（YYYY-MM-DD [HH:mm]）：模型侧的时间口径与界面其余部分一致（UTC 会让晨/晚判断失真） */
+function localStamp(ms: number, withTime: boolean): string {
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, '0');
+  const date = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return withTime ? `${date} ${p(d.getHours())}:${p(d.getMinutes())}` : date;
+}
+
 /** 单条记录的全部统计指标（键值行；口径与文档一致，含派生量） */
 function recordPayload(rec: AnalysisRecord, target: AdviceTarget): string {
   const s = rec.stats;
   const voicedPct = s.totalSamples > 0 ? (s.voicedSamples / s.totalSamples) * 100 : 0;
   const cvPct = s.medianF0 > 0 ? (s.stdF0 / s.medianF0) * 100 : null;
   const lines: (string | null)[] = [
-    `date: ${new Date(rec.createdAt).toISOString().slice(0, 16).replace('T', ' ')}`,
+    `date: ${localStamp(rec.createdAt, true)}`,
     `mode: ${rec.mode ?? 'unknown'}`,
     rec.note ? `note: ${rec.note}` : null,
     `durationSec: ${s.durationSec.toFixed(1)}`,
@@ -513,7 +521,13 @@ export async function llmChatStreamMessages(
 
   if (!wantStream || !ctype.includes('text/event-stream')) {
     // 非流式（开关关闭或服务商不支持）：整体读取，一次性回调
-    const data = (await res.json()) as ChatResponseData;
+    let data: ChatResponseData;
+    try {
+      data = (await res.json()) as ChatResponseData;
+    } catch {
+      // HTTP 200 但响应体不是 JSON（自建网关错误页等）：给出可读原因而非裸 SyntaxError
+      throw new Error('Response is not valid JSON');
+    }
     const content = responseContent(cfg, data);
     if (!content.trim()) throw new Error('Empty response');
     const think = responseThink(cfg, data);
@@ -795,8 +809,8 @@ function modePayload(records: AnalysisRecord[], mode: AnalysisRecord['mode']): s
 export function buildWeeklyPayload(records: AnalysisRecord[], now = Date.now()): string | null {
   const week = weekRecords(records, now);
   if (week.length === 0) return null;
-  const start = new Date(week[0].createdAt).toISOString().slice(0, 10);
-  const end = new Date(now).toISOString().slice(0, 10);
+  const start = localStamp(week[0].createdAt, false);
+  const end = localStamp(now, false);
   const days = new Set(week.map((r) => new Date(r.createdAt).toDateString())).size;
   const totalMin = (week.reduce((a, r) => a + r.stats.durationSec, 0) / 60).toFixed(1);
   const parts = [
@@ -876,7 +890,12 @@ function cachedWithStore(
 
 const weeklyCache = new Map<string, Promise<LlmAdviceResult>>();
 
-/** 周报缓存键：窗口随日期自然滚动，配置 / 语言 / 提示词定制 / 记录集合变化即失效 */
+/** 记录侧缓存键指纹：id + 备注 + 统计摘要（重算同 id 换新统计时键随之变化，避免命中过期建议） */
+function recordFingerprint(r: AnalysisRecord): string {
+  return `${r.id}:${r.note ?? ''}:${hashStr(JSON.stringify(r.stats))}`;
+}
+
+/** 周报缓存键：窗口随日期自然滚动，配置 / 语言 / 提示词定制 / 记录集合（含统计）变化即失效 */
 export function weeklyReportKey(cfg: LlmConfig, records: AnalysisRecord[], prompt?: LlmPromptOptions): string {
   const week = weekRecords(records);
   return JSON.stringify([
@@ -888,7 +907,7 @@ export function weeklyReportKey(cfg: LlmConfig, records: AnalysisRecord[], promp
     new Date().toDateString(),
     (prompt?.extraRules ?? []).map((r) => r.trim()).filter(Boolean),
     prompt?.promptOverride?.trim() ?? null,
-    week.map((r) => r.id),
+    week.map(recordFingerprint),
   ]);
 }
 
@@ -897,7 +916,18 @@ export function cachedWeeklyReport(key: string, run: () => Promise<LlmAdviceResu
   return cachedWithStore(weeklyCache, key, run);
 }
 
-/** 缓存键：接口配置 / 模型 / 语言 / 靶标 / 基线 / 提示词定制 / 记录（id+备注）任一变化即失效 */
+/** 缓存是否已存在（内存或持久化，不发起任何请求）：卡片据此决定键变化后能否静默免费重取 */
+export async function hasCachedLlmAdvice(key: string): Promise<boolean> {
+  if (adviceCache.has(key)) return true;
+  return (await loadLlmResult(key).catch(() => null)) != null;
+}
+
+export async function hasCachedWeeklyReport(key: string): Promise<boolean> {
+  if (weeklyCache.has(key)) return true;
+  return (await loadLlmResult(key).catch(() => null)) != null;
+}
+
+/** 缓存键：接口配置 / 模型 / 语言 / 靶标 / 基线 / 提示词定制 / 记录（id+备注+统计指纹）任一变化即失效 */
 export function llmAdviceKey(
   cfg: LlmConfig,
   records: AnalysisRecord[],
@@ -919,6 +949,6 @@ export function llmAdviceKey(
     baseline?.id ?? null,
     (prompt?.extraRules ?? []).map((r) => r.trim()).filter(Boolean),
     prompt?.promptOverride?.trim() ?? null,
-    records.map((r) => `${r.id}:${r.note ?? ''}`),
+    records.map(recordFingerprint),
   ]);
 }

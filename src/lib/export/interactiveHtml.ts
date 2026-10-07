@@ -19,10 +19,11 @@ import type { AnalysisRecord } from '@/types';
 /** 报告曲线图的固定高度（px，运行时样式同步） */
 const CH_H = { pitch: 250, energy: 140, formant: 200, spec: 220, vowel: 260 };
 
-/** 秒 → m:ss（与 App 内 formatClock 同规则） */
+/** 秒 → m:ss（与 App 内 formatClock 同规则；先对总秒数取整防 "1:60"） */
 function fmtClock(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec - m * 60);
+  const total = Math.round(sec);
+  const m = Math.floor(total / 60);
+  const s = total - m * 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
@@ -469,7 +470,7 @@ const RUNTIME_JS = `
     var h = document.getElementById('head-meta');
     var chips = [D.meta.dateStr];
     if (D.meta.modeLabel) chips.push(D.meta.modeLabel);
-    var m = Math.floor(D.meta.durationSec / 60), s = Math.round(D.meta.durationSec - m * 60);
+    var tot = Math.round(D.meta.durationSec), m = Math.floor(tot / 60), s = tot - m * 60;
     chips.push(L.duration + ' ' + m + ':' + (s < 10 ? '0' : '') + s);
     var f0s = S.f0.filter(function (v) { return isF(v); });
     if (f0s.length) {

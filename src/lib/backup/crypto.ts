@@ -23,6 +23,7 @@
  */
 
 import { idbDeleteKV, idbGetKV, idbPutKV } from '@/lib/storage/idb';
+import { notifyBackupChanged } from './bus';
 import { t } from '@/i18n';
 
 const KV_CONFIG = 'backup:crypto';
@@ -184,17 +185,20 @@ export async function enableBackupEncryption(passphrase: string): Promise<void> 
   };
   await idbPutKV(KV_CONFIG, config);
   session = { passphrase: trimmed, config };
+  notifyBackupChanged();
 }
 
 /** 关闭加密：删除本机配置与会话口令。云端已加密的文件保持原样（旧口令仍可解）。 */
 export async function disableBackupEncryption(): Promise<void> {
   await idbDeleteKV(KV_CONFIG);
   session = null;
+  notifyBackupChanged();
 }
 
 /** 退出会话（清除内存中的口令；配置与云端数据不变） */
 export function lockBackupEncryption(): void {
   session = null;
+  notifyBackupChanged();
 }
 
 /**
@@ -204,14 +208,17 @@ export function lockBackupEncryption(): void {
 export async function unlockBackupEncryption(passphrase: string): Promise<boolean> {
   const cfg = await getBackupCryptoConfig();
   if (!cfg?.enabled) return false;
+  // 与开启加密时的 trim 口径一致：否则口令含首尾空格时派生密钥不同，永远解不开
+  const trimmed = passphrase.trim();
   try {
-    const key = await deriveKey(passphrase, b64ToU8(cfg.saltB64), cfg.iterations);
+    const key = await deriveKey(trimmed, b64ToU8(cfg.saltB64), cfg.iterations);
     const pt = await aesGcmDecrypt(key, b64ToU8(cfg.checkIvB64), b64ToU8(cfg.checkCtB64));
     if (new TextDecoder().decode(pt) !== CHECK_PLAINTEXT) return false;
   } catch {
     return false;
   }
-  session = { passphrase, config: cfg };
+  session = { passphrase: trimmed, config: cfg };
+  notifyBackupChanged();
   return true;
 }
 

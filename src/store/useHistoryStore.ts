@@ -129,7 +129,8 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
   },
 
   clearAll: () => {
-    set({ records: [] });
+    // totalCount 同步归零，否则列表清空后仍显示「已截断，共 N 条」提示
+    set({ records: [], totalCount: 0 });
     persist(async () => {
       await idbClearRecords();
       await idbClearAudio();

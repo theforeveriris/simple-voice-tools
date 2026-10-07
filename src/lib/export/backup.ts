@@ -170,8 +170,10 @@ export async function importFullBackup(file: File): Promise<BackupImportResult> 
   const store = useHistoryStore.getState();
   const added = store.importRecords(incoming);
 
-  // 音频：文件名（去扩展名）即记录 id，只挂载到本地存在的记录
-  const validIds = new Set(useHistoryStore.getState().records.map((r) => r.id));
+  // 音频：文件名（去扩展名）即记录 id，只挂载到本地存在的记录。
+  // validIds 取全量（IDB + 内存）：importRecords 全部入库，内存 records 有
+  // MAX_HISTORY 截断，按内存窗口判断会静默漏掉窗口外记录的音频
+  const validIds = new Set((await store.getAllRecords()).map((r) => r.id));
   let audio = 0;
   for (const [name, data] of Object.entries(files)) {
     if (!name.startsWith('audio/') || name.endsWith('/')) continue;

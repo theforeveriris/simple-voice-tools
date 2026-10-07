@@ -68,10 +68,13 @@ interface AppShortcutsPluginInterface {
 /** 仅原生壳内可用；与 ShareTarget 相同约定：先 addListener 再取初始路由 */
 export const AppShortcuts = registerPlugin<AppShortcutsPluginInterface>('AppShortcuts');
 
-/** 从 CSS 颜色串取亮度（0-255）；解析失败返回 null */
+/** 从 CSS 颜色串取亮度（0-255）；解析失败或全透明返回 null */
 function luminanceOf(cssColor: string): number | null {
-  const m = cssColor.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+  const m = cssColor.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:\s*[,/]\s*([\d.]+))?\s*\)/);
   if (!m) return null;
+  // rgba(0,0,0,0)（transparent，主题背景为渐变/图片时的计算值）视作无法读取，
+  // 否则会取到亮度 0 被当成纯黑，浅色主题下系统栏错误地走黑底亮图标
+  if (m[4] != null && Number(m[4]) === 0) return null;
   // 相对亮度近似（人眼权重），足够判断图标明暗
   return 0.299 * Number(m[1]) + 0.587 * Number(m[2]) + 0.114 * Number(m[3]);
 }
