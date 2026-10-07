@@ -157,7 +157,7 @@ jobs:
       # 密码/别名存 ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS（见 documentation/GUIDE-CAPACITOR.md）；
       # 注意：debug→release 签名变更 = 应用身份变更，已装用户需卸载重装（先做 ZIP 备份）
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
           name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'Latest build (main)' }}
