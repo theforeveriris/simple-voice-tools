@@ -8,7 +8,7 @@ import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
 import type { AnalysisRecord, AppSettings, ViewType } from '@/types';
 import {
-  DEFAULT_SETTINGS, MODE_META, setBandBounds,
+  AGE_BAND_PRESETS, DEFAULT_SETTINGS, MODE_META, setBandBounds,
   setPitchAxis, setLiveWindowSec, setSpecColormap, setPitchAlgorithm,
   setFormantTarget,
 } from '@/constants';
@@ -181,7 +181,8 @@ export const useStore = create<AppState>()(
 // 初始化一次（persist 从 localStorage 同步恢复后 merge 会触发订阅），
 // 之后仅在实际变化时刷新
 function syncModuleSettings(s: AppSettings): void {
-  setBandBounds(s.bandBounds);
+  // 用户自定义 bandBounds 优先；未自定义时按年龄段派生默认音区边界
+  setBandBounds(s.bandBounds ?? AGE_BAND_PRESETS[s.ageGroup]);
   setPitchAxis(s.pitchAxisMin, s.pitchAxisMax);
   setLiveWindowSec(s.liveWindowSec);
   setSpecColormap(s.specColormap);

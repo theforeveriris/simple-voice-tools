@@ -60,6 +60,8 @@ const STRING_ENUMS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   specColormap: ['magma', 'gray', 'accent'],
   startTab: ['test', 'analysis', 'history', 'settings'],
   bgImageFocus: ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'],
+  userGoal: ['mtf', 'ftm', 'other'],
+  ageGroup: ['child', 'adolescent', 'adult', 'senior'],
 };
 
 /** 对象字段校验：analysisCards 五个布尔齐全才接受 */

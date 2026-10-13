@@ -16,6 +16,7 @@ import { NAV, navLabelKey } from './navItems';
 import { RecordingSection } from './RecordingSection';
 import { TrainingSection } from './TrainingSection';
 import { ReminderSection } from './ReminderSection';
+import { ProfileSection } from './ProfileSection';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 import {
@@ -59,6 +60,8 @@ export function ConfigPage({
           </button>
           <p className="text-base font-semibold text-ink">{t('settings.config')}</p>
         </div>
+
+        <ProfileSection settings={settings} update={update} />
 
         <RecordingSection settings={settings} update={update} />
 

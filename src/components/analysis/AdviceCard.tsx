@@ -13,7 +13,7 @@ import { useHistoryStore } from '@/store/useHistoryStore';
 import { buildAdvice, type AdviceTarget } from '@/lib/advice';
 import {
   cachedLlmAdvice, fetchLlmAdvice, hasCachedLlmAdvice, llmAdviceKey,
-  type LlmConfig,
+  type LlmConfig, type LlmPromptOptions,
 } from '@/lib/llm';
 import { useActiveLlmConfig } from '@/lib/llmProfiles';
 import { useLlmStream } from '@/hooks/useLlmStream';
@@ -32,6 +32,8 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   const cfg = useActiveLlmConfig(activeProfileId);
   const extraRules = useStore((s) => s.settings.llmExtraRules);
   const promptOverride = useStore((s) => s.settings.llmPromptOverride);
+  const userGoal = useStore((s) => s.settings.userGoal);
+  const ageGroup = useStore((s) => s.settings.ageGroup);
   const baselineId = useStore((s) => s.settings.baselineRecordId);
   const baselineRecord = useHistoryStore((s) =>
     baselineId ? s.records.find((r) => r.id === baselineId) ?? null : null,
@@ -59,7 +61,7 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
             target={target}
             cfg={cfg}
             baseline={baseline}
-            prompt={{ extraRules, promptOverride }}
+            prompt={{ extraRules, promptOverride, goal: userGoal, ageGroup }}
           />
         )
         : <RuleAdvice records={records} target={target} />}
@@ -115,7 +117,7 @@ function LlmAdvice({
   target: AdviceTarget;
   cfg: LlmConfig | null;
   baseline: AnalysisRecord | null;
-  prompt: { extraRules?: string[]; promptOverride?: string };
+  prompt: LlmPromptOptions;
 }) {
   const key = cfg ? llmAdviceKey(cfg, records, target, { baseline, prompt }) : null;
   // effect 按缓存键（值稳定）触发，输入经 ref 传递：键值不变则不重复请求

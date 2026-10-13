@@ -72,6 +72,19 @@ export interface AnalysisCards {
 }
 
 /**
+ * 用户训练方向（声音性别化目标）
+ * mtf 女性化（跨女等目标为女性化声音）；ftm 男性化；other 未指定 / 其他 / 双方向
+ * 取代此前 AI 靠数据反推方向的逻辑，作为显式上下文传给训练建议 / 周报 / 提示词
+ */
+export type UserGoal = 'mtf' | 'ftm' | 'other';
+
+/**
+ * 年龄段：影响默认音区边界（实验性功能 → 自定义音区边界默认按此派生），
+ * 以及大模型分析时的参考基频 / 共振峰范围口径
+ */
+export type AgeGroup = 'child' | 'adolescent' | 'adult' | 'senior';
+
+/**
  * 测试模式
  * 短按录音圆球使用当前模式（默认朗读，记住上次选择），
  * 长按圆球弹出扇形选择器切换。
@@ -232,6 +245,13 @@ export interface AlgoParams {
  * 应用设置
  */
 export interface AppSettings {
+  /* ---------- 用户画像（训练方向 / 年龄段） ----------
+   * 用于推导默认音区边界（ageGroup）、默认训练靶标（userGoal），
+   * 并显式传给大模型分析标准以取代原先「靠数据反推方向」的口径。 */
+  /** 训练方向（声音性别化目标）：mtf / ftm / other */
+  userGoal: UserGoal;
+  /** 年龄段：child / adolescent / adult / senior，影响默认音区边界与提示词 */
+  ageGroup: AgeGroup;
   /** 莫奈主题种子色相（0-360） */
   hue: number;
   /** 莫奈主题强调色相（0-360）：按钮 / 选中态 / 图表主曲线；与 hue 相同 = 单色（默认），不同 = 双色调 */

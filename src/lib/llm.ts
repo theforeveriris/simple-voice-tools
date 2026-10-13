@@ -9,7 +9,7 @@
  * 逐维度评估，再给可执行建议。
  */
 
-import type { AnalysisRecord } from '@/types';
+import type { AgeGroup, AnalysisRecord, UserGoal } from '@/types';
 import type { AdviceTarget } from '@/lib/advice';
 import { computeSustainedMetrics } from '@/lib/audio/sustained';
 import { LOCALES, getAiLocaleLabel, getLocale } from '@/i18n';
@@ -160,19 +160,6 @@ const SYSTEM_PROMPT = [
  * 组装 system prompt：默认用内置分析标准并把补充规则追加在末尾（冲突时以规则为准）；
  * 用户整体覆写时完全使用覆写内容
  */
-export function buildSystemPrompt(
-  base: string,
-  extraRules: string[] | undefined,
-  override: string | undefined,
-): string {
-  if (override != null && override.trim()) return override.trim();
-  const rules = (extraRules ?? []).map((r) => r.trim()).filter(Boolean);
-  if (rules.length === 0) return base;
-  return `${base}\n\n## User rules (follow these too; on conflict they win)\n${rules
-    .map((r, i) => `${i + 1}. ${r}`)
-    .join('\n')}`;
-}
-
 /* ------------------------------ 数据载荷 ------------------------------ */
 
 /** 本地时间戳（YYYY-MM-DD [HH:mm]）：模型侧的时间口径与界面其余部分一致（UTC 会让晨/晚判断失真） */
@@ -262,6 +249,7 @@ function buildUserPrompt(
   records: AnalysisRecord[],
   target: AdviceTarget,
   baseline: AnalysisRecord | null,
+  ctx?: LlmPromptOptions,
 ): string {
   const parts: string[] = [];
   if (records.length >= 2) {
@@ -280,6 +268,12 @@ function buildUserPrompt(
       parts.push('Pinned baseline (earlier recording; deltas = current − baseline; ignore if its mode differs):');
       parts.push(baselinePayload(records[0], baseline));
     }
+  }
+  if (ctx?.goal || ctx?.ageGroup) {
+    const meta: string[] = [];
+    if (ctx.goal) meta.push(`userGoal: ${ctx.goal}`);
+    if (ctx.ageGroup) meta.push(`ageGroup: ${ctx.ageGroup}`);
+    parts.push(`User context: ${meta.join(', ')}`);
   }
   parts.push(`Answer language: ${languageName()}`);
   return parts.join('\n');
@@ -628,6 +622,56 @@ export async function llmChatStreamMessages(
 export interface LlmPromptOptions {
   extraRules?: string[];
   promptOverride?: string;
+  /** 用户训练方向（mtf / ftm / other），显式传给提示词取代从数据反推 */
+  goal?: UserGoal;
+  /** 用户年龄段，影响基频 / 共振峰参考范围口径 */
+  ageGroup?: AgeGroup;
+}
+
+/**
+ * 按用户训练方向 / 年龄段拼接一段「User profile」段落，
+ * 追加在分析标准之后、用户规则之前；空上下文返回空串。
+ * 取代了原先「靠数据反推 MtF / FtM」的口径。
+ */
+function userContextBlock(goal: UserGoal | undefined, ageGroup: AgeGroup | undefined): string {
+  if (!goal && !ageGroup) return '';
+  const lines = ['## User profile (explicit, do NOT re-derive from data)'];
+  if (goal === 'mtf') {
+    lines.push('- Training goal: feminization (MtF / transfeminine). Read every dimension through a female-affirming lens: target higher F0, female formants, lighter / larger resonance posture.');
+  } else if (goal === 'ftm') {
+    lines.push('- Training goal: masculinization (FtM / transmasculine). Read every dimension through a male-affirming lens: target lower F0, male formants, relaxed down-pitch posture; do NOT advise pressing the larynx down.');
+  } else if (goal === 'other') {
+    lines.push('- Training goal: unspecified / non-binary. Assess both feminization and masculinization directions and note which the data currently supports; do not assume one direction.');
+  }
+  if (ageGroup === 'child') {
+    lines.push('- Age group: child (pre-pubescent). Reference pitch is higher (typical speaking F0 ~250-400 Hz). Do NOT flag typical child pitch as "high" or "out of range".');
+  } else if (ageGroup === 'adolescent') {
+    lines.push('- Age group: adolescent (puberty / voice change). Pitch is in transition and varies widely day-to-day; interpret ranges leniently.');
+  } else if (ageGroup === 'adult') {
+    lines.push('- Age group: adult.');
+  } else if (ageGroup === 'senior') {
+    lines.push('- Age group: senior. Reference pitch is lower; do NOT flag typical lower pitch as "low" or "out of range".');
+  }
+  return lines.join('\n');
+}
+
+/**
+ * 组装 system prompt：默认用内置分析标准，把「User profile」段落在中间注入，
+ * 末尾追加用户补充规则（冲突时以规则为准）；用户整体覆写时完全使用覆写内容
+ */
+export function buildSystemPrompt(base: string, prompt?: LlmPromptOptions): string {
+  const override = prompt?.promptOverride?.trim();
+  if (override) return override;
+  const ctx = userContextBlock(prompt?.goal, prompt?.ageGroup);
+  const parts = [base];
+  if (ctx) parts.push(ctx);
+  const rules = (prompt?.extraRules ?? []).map((r) => r.trim()).filter(Boolean);
+  if (rules.length > 0) {
+    parts.push(`## User rules (follow these too; on conflict they win)\n${rules
+      .map((r, i) => `${i + 1}. ${r}`)
+      .join('\n')}`);
+  }
+  return parts.join('\n\n');
 }
 
 export async function fetchLlmAdvice(
@@ -644,8 +688,8 @@ export async function fetchLlmAdvice(
   const { baseline = null, prompt, signal, onDelta } = opts;
   const content = await llmChatStream(
     cfg,
-    buildSystemPrompt(SYSTEM_PROMPT, prompt?.extraRules, prompt?.promptOverride),
-    buildUserPrompt(records, target, baseline),
+    buildSystemPrompt(SYSTEM_PROMPT, prompt),
+    buildUserPrompt(records, target, baseline, prompt),
     { temperature: 0.4, signal, onDelta, feature: 'advice' },
   );
   return parseLlmAdviceResult(content);
@@ -806,7 +850,7 @@ function modePayload(records: AnalysisRecord[], mode: AnalysisRecord['mode']): s
 }
 
 /** 组装周报用户消息；7 天内无记录返回 null（调用方提示先去录音） */
-export function buildWeeklyPayload(records: AnalysisRecord[], now = Date.now()): string | null {
+export function buildWeeklyPayload(records: AnalysisRecord[], now = Date.now(), ctx?: LlmPromptOptions): string | null {
   const week = weekRecords(records, now);
   if (week.length === 0) return null;
   const start = localStamp(week[0].createdAt, false);
@@ -821,6 +865,12 @@ export function buildWeeklyPayload(records: AnalysisRecord[], now = Date.now()):
     const m = modePayload(week, mode);
     if (m) parts.push(`--- ${m}`);
   }
+  if (ctx?.goal || ctx?.ageGroup) {
+    const meta: string[] = [];
+    if (ctx.goal) meta.push(`userGoal: ${ctx.goal}`);
+    if (ctx.ageGroup) meta.push(`ageGroup: ${ctx.ageGroup}`);
+    parts.push(`User context: ${meta.join(', ')}`);
+  }
   parts.push(`Answer language: ${languageName()}`);
   return parts.join('\n');
 }
@@ -832,11 +882,11 @@ export async function fetchWeeklyReport(
   opts: { prompt?: LlmPromptOptions; signal?: AbortSignal; onDelta?: (accumulated: string) => void } = {},
 ): Promise<LlmAdviceResult> {
   const { prompt, signal, onDelta } = opts;
-  const payload = buildWeeklyPayload(records);
+  const payload = buildWeeklyPayload(records, Date.now(), prompt);
   if (payload == null) throw new Error('No records in the last 7 days');
   const content = await llmChatStream(
     cfg,
-    buildSystemPrompt(WEEKLY_PROMPT, prompt?.extraRules, prompt?.promptOverride),
+    buildSystemPrompt(WEEKLY_PROMPT, prompt),
     payload,
     { temperature: 0.4, signal, onDelta, feature: 'weekly' },
   );

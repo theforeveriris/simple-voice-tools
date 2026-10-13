@@ -26,7 +26,9 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
   const cfg = useActiveLlmConfig(activeProfileId);
   const extraRules = useStore((s) => s.settings.llmExtraRules);
   const promptOverride = useStore((s) => s.settings.llmPromptOverride);
-  const prompt: LlmPromptOptions = { extraRules, promptOverride };
+  const userGoal = useStore((s) => s.settings.userGoal);
+  const ageGroup = useStore((s) => s.settings.ageGroup);
+  const prompt: LlmPromptOptions = { extraRules, promptOverride, goal: userGoal, ageGroup };
 
   const key = cfg ? weeklyReportKey(cfg, records, prompt) : null;
   // effect 按缓存键（值稳定）触发，输入经 ref 传递

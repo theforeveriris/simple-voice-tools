@@ -6,20 +6,31 @@ const BASE = '内置分析标准 ## Analysis standard';
 
 describe('buildSystemPrompt', () => {
   it('无定制时返回内置标准', () => {
-    const p = buildSystemPrompt(BASE, undefined, undefined);
+    const p = buildSystemPrompt(BASE);
     expect(p).toBe(BASE);
   });
 
   it('补充规则追加在标准之后，空行被过滤', () => {
-    const p = buildSystemPrompt(BASE, ['  优先评估共鸣  ', '', '   '], undefined);
+    const p = buildSystemPrompt(BASE, { extraRules: ['  优先评估共鸣  ', '', '   '] });
     expect(p).toContain('## Analysis standard');
     expect(p).toContain('## User rules (follow these too; on conflict they win)');
     expect(p).toContain('1. 优先评估共鸣');
   });
 
   it('覆写时完全使用覆写内容（规则不再拼接）', () => {
-    const p = buildSystemPrompt(BASE, ['规则A'], '完全自定义的提示词');
+    const p = buildSystemPrompt(BASE, { extraRules: ['规则A'], promptOverride: '完全自定义的提示词' });
     expect(p).toBe('完全自定义的提示词');
+  });
+
+  it('显式训练方向 / 年龄段插入「User profile」段，且在补充规则之前', () => {
+    const p = buildSystemPrompt(BASE, { goal: 'mtf', ageGroup: 'adolescent', extraRules: ['规则A'] });
+    expect(p).toContain('## User profile (explicit, do NOT re-derive from data)');
+    expect(p).toContain('Training goal: feminization');
+    expect(p).toContain('adolescent');
+    const profileIdx = p.indexOf('## User profile');
+    const rulesIdx = p.indexOf('## User rules');
+    expect(profileIdx).toBeGreaterThan(0);
+    expect(rulesIdx).toBeGreaterThan(profileIdx);
   });
 });
 

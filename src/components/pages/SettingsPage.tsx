@@ -48,6 +48,9 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   // 应用
   { page: 'app', sectionKey: 'settings.app', labelKey: 'settings.install' },
   { page: 'app', sectionKey: 'settings.updateSection', labelKey: 'settings.checkUpdate' },
+  // 配置 · 用户画像
+  { page: 'config', sectionKey: 'settings.profile', labelKey: 'settings.userGoal' },
+  { page: 'config', sectionKey: 'settings.profile', labelKey: 'settings.ageGroup' },
   // 配置 · 录音
   { page: 'config', sectionKey: 'settings.recording', labelKey: 'settings.autoEnter' },
   { page: 'config', sectionKey: 'settings.recording', labelKey: 'settings.audioSave' },

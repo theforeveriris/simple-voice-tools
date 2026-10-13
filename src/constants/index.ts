@@ -3,7 +3,10 @@
  * 音高区间、莫奈主题预设、音符换算、默认设置
  */
 
-import type { AppSettings, PitchAlgorithm, PitchBand, PrideFlag, TestMode } from '@/types';
+import type {
+  AgeGroup, AppSettings, PitchAlgorithm, PitchBand, PrideFlag, TestMode, UserGoal,
+} from '@/types';
+import type { DictKey } from '@/i18n';
 
 /**
  * 骄傲旗主题可选旗帜（设置 → 外观 的旗帜复选顺序）
@@ -34,6 +37,55 @@ export type BandBounds = [number, number, number, number];
 
 /** 默认边界：85 / 165 / 180 / 255 Hz */
 export const DEFAULT_BAND_BOUNDS: BandBounds = [85, 165, 180, 255];
+
+/**
+ * 按年龄段派生的默认音区边界
+ * （未设置 bandBounds 时由 store 根据 settings.ageGroup 选用其中之一）：
+ * 童声 / 青少年变声期 / 成人 / 长者 各自的典型会话基频范围
+ * 全部与音高纵轴 PITCH_AXIS [50, 520] 对齐，保证两端有音区宽度
+ */
+export const AGE_BAND_PRESETS: Record<AgeGroup, BandBounds> = {
+  // 儿童：说话基频通常 250–400 Hz
+  child: [150, 250, 280, 380],
+  // 青少年（变声期）：基频跨度大且不稳定，区间放宽
+  adolescent: [100, 170, 200, 300],
+  // 成人：维持原 85/165/180/255
+  adult: [85, 165, 180, 255],
+  // 长者：基频整体下移
+  senior: [70, 130, 150, 220],
+};
+
+/**
+ * 按训练方向给出的默认靶标（用户首次设置目标时铺底；具体区间仍可在
+ * 配置 → 训练 中手调，靶标本身默认未启用需用户主动打开）
+ */
+export const GOAL_TARGET_DEFAULTS: Record<UserGoal, {
+  targetF0Min: number;
+  targetF0Max: number;
+  formantTargetF1: number;
+  formantTargetF2: number;
+}> = {
+  // 女性化：典型会话女声 165–220（设置给到 255 留训练余量）；共振峰偏女声位
+  mtf: { targetF0Min: 165, targetF0Max: 255, formantTargetF1: 900, formantTargetF2: 1900 },
+  // 男性化：典型会话男声 85–165；共振峰偏男声位
+  ftm: { targetF0Min: 85, targetF0Max: 165, formantTargetF1: 700, formantTargetF2: 1500 },
+  // 未指定：覆盖男女双区间的中性宽靶
+  other: { targetF0Min: 120, targetF0Max: 220, formantTargetF1: 800, formantTargetF2: 1700 },
+};
+
+/** 设置 / 引导页可选项（顺序与展示一致） */
+export const USER_GOALS: { id: UserGoal; labelKey: DictKey; descKey: DictKey }[] = [
+  { id: 'mtf', labelKey: 'settings.goalMtf', descKey: 'settings.goalMtfDesc' },
+  { id: 'ftm', labelKey: 'settings.goalFtm', descKey: 'settings.goalFtmDesc' },
+  { id: 'other', labelKey: 'settings.goalOther', descKey: 'settings.goalOtherDesc' },
+];
+
+export const AGE_GROUPS: { id: AgeGroup; labelKey: DictKey; descKey: DictKey }[] = [
+  { id: 'child', labelKey: 'settings.ageChild', descKey: 'settings.ageChildDesc' },
+  { id: 'adolescent', labelKey: 'settings.ageAdolescent', descKey: 'settings.ageAdolescentDesc' },
+  { id: 'adult', labelKey: 'settings.ageAdult', descKey: 'settings.ageAdultDesc' },
+  { id: 'senior', labelKey: 'settings.ageSenior', descKey: 'settings.ageSeniorDesc' },
+];
 
 /** 边界允许范围（与音高纵轴 PITCH_AXIS 对齐，留出音区最小宽度） */
 const BOUND_MIN = 60;
@@ -133,6 +185,9 @@ export const THEME_PRESETS: { id: string; hue: number; label: string }[] = [
  * 默认应用设置
  */
 export const DEFAULT_SETTINGS: AppSettings = {
+  // 用户画像：训练方向与年龄段（未显式选时为「其他 / 成人」）
+  userGoal: 'other',
+  ageGroup: 'adult',
   hue: 15,
   accentHue: 15,
   darkHue: 15,
@@ -160,12 +215,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   testMode: 'reading',
   syncChartRange: true,
   mobileSpark: true,
+  // 新装默认靶标为「未指定」口径的中性区间（120–220 Hz），与 userGoal='other' 对齐；
+  // 首次引导 / 切换训练方向会按 GOAL_TARGET_DEFAULTS 重新铺底，已有记录用户保留自身值
   targetEnabled: false,
-  targetF0Min: 165,
-  targetF0Max: 255,
+  targetF0Min: 120,
+  targetF0Max: 220,
   formantTargetEnabled: false,
-  formantTargetF1: 730,
-  formantTargetF2: 1090,
+  formantTargetF1: 800,
+  formantTargetF2: 1700,
   formantTargetRadius: 200,
   // 实验性功能
   showSpectrogram: true,

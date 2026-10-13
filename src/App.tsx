@@ -11,6 +11,7 @@ import { BottomBar } from '@/components/layout/BottomBar';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
 import { SplashScreen } from '@/components/layout/SplashScreen';
+import { OnboardingSheet } from '@/components/settings/OnboardingSheet';
 import { TestPage } from '@/components/pages/TestPage';
 import { AnalysisPage } from '@/components/pages/AnalysisPage';
 import { HistoryPage } from '@/components/pages/HistoryPage';
@@ -342,6 +343,11 @@ function App() {
 
       {/* 原生壳启动页：浏览器/PWA 的启动画面由系统按 manifest 生成，这里只补壳内 */}
       {isNative && <SplashScreen />}
+
+      {/* 首次打开引导：未完成时（localStorage svt:onboarded 缺失）显示一次，
+          训练方向 / 年龄段 / 语言 / 主题 全部完成后标记，可手动从「跳过」关闭。
+          z 高于启动页 / 底部导航，避免与启动动画叠加闪动 */}
+      <OnboardingSheet />
 
       <main ref={mainRef} className="mx-auto w-full max-w-5xl px-5 pt-7 pb-36">
         {/*

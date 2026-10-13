@@ -9,6 +9,8 @@ const SAMPLE: AppSettings = {
   ...DEFAULT_SETTINGS,
   hue: 210,
   language: 'en',
+  userGoal: 'ftm',
+  ageGroup: 'adolescent',
   targetEnabled: true,
   targetF0Min: 155,
   targetF0Max: 230,
@@ -40,6 +42,8 @@ describe('parseSettingsPayload', () => {
     const parsed = parseSettingsPayload(JSON.stringify(buildSettingsPayload(SAMPLE)));
     expect(parsed.hue).toBe(210);
     expect(parsed.language).toBe('en');
+    expect(parsed.userGoal).toBe('ftm');
+    expect(parsed.ageGroup).toBe('adolescent');
     expect(parsed.targetF0Min).toBe(155);
     expect(parsed.bandBounds).toEqual([90, 170, 185, 260]);
     expect(parsed.githubClientId).toBe('Iv23lixxxx');
@@ -53,6 +57,16 @@ describe('parseSettingsPayload', () => {
     expect(parsed.llmPriceIn).toBe(2);
     expect(parsed.llmPriceOut).toBe(8);
     expect(parsed.llmApiKey).toBeUndefined();
+  });
+
+  it('非法 userGoal / ageGroup 在导入时被忽略，保持当前设置', () => {
+    const json = JSON.stringify({
+      app: 'simple-voice-tools', kind: 'settings', version: 1, exportedAt: 'x',
+      settings: { userGoal: 'mtf-or-ftm', ageGroup: 'teen' },
+    });
+    const parsed = parseSettingsPayload(json);
+    expect(parsed.userGoal).toBeUndefined();
+    expect(parsed.ageGroup).toBeUndefined();
   });
 
   it('拒绝非 JSON 与 kind 不符的内容', () => {
