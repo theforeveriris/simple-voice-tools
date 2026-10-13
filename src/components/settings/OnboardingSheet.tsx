@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Languages, Palette, Sparkles, UserCircle2, X } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Languages, Palette, Sparkles, UserCircle2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import {
   AGE_GROUPS, GOAL_TARGET_DEFAULTS, USER_GOALS,
@@ -141,7 +141,7 @@ export function OnboardingSheet() {
       className="fixed inset-0 z-[300] overflow-y-auto bg-surface"
     >
       <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-5 px-5 py-8">
-        {/* 顶栏：标题 + 跳过 */}
+        {/* 顶栏：标题（右上角的「跳过」按要求去除；底部「上一步 / 下一步 / 开始」足以控制流程） */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-accent" />
@@ -149,15 +149,6 @@ export function OnboardingSheet() {
               {t('onboard.welcome')}
             </h1>
           </div>
-          <button
-            type="button"
-            onClick={close}
-            className="flex items-center gap-1 rounded-full bg-card px-3 py-1.5 text-[11px] font-medium text-ink-2 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-opacity hover:opacity-80"
-            aria-label={t('onboard.skip')}
-          >
-            <X size={12} />
-            {t('onboard.skip')}
-          </button>
         </div>
 
         {/* 步骤指示器 */}
