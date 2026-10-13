@@ -33,3 +33,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# OpenChamber 工作产物（截图等）
+.openchamber/
