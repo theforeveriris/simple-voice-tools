@@ -17,7 +17,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, ChevronLeft, Languages, Palette, Sparkles, UserCircle2, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import {
-  AGE_GROUPS, GOAL_TARGET_DEFAULTS, PRIDE_FLAGS, USER_GOALS,
+  AGE_GROUPS, GOAL_TARGET_DEFAULTS, USER_GOALS,
 } from '@/constants';
 import type { AgeGroup, AppSettings, UserGoal } from '@/types';
 import { LOCALES } from '@/i18n';
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui';
+import { ThemePickerBody } from './ThemePicker';
 
 /** 完成标记键（与 svt:update-seen 等已有的 lv 顶键同风格，区别于 zustand persist 命名空间） */
 const ONBOARDED_KEY = 'svt:onboarded';
@@ -250,105 +251,10 @@ export function OnboardingSheet() {
               <p className="text-[12px] leading-relaxed text-ink-2">
                 {t('onboard.appearanceDesc')}
               </p>
-              {/* 主题深浅 */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-medium text-ink-2">
-                  {t('settings.theme')}
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['system', 'light', 'dark'] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => updateSettings({ theme: m })}
-                      aria-pressed={settings.theme === m}
-                      className={cn(
-                        'rounded-xl bg-surface-hi px-3 py-2 text-xs font-medium text-ink transition-transform active:scale-[0.98]',
-                        settings.theme === m && 'ring-2 ring-accent',
-                      )}
-                    >
-                      {t(`settings.theme${m === 'system' ? 'System' : m === 'light' ? 'Light' : 'Dark'}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* 配色预设：莫奈 vs 骄傲旗 */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-medium text-ink-2">
-                  {t('settings.huePreset')}
-                </span>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => updateSettings({ huePreset: 'monet' })}
-                    aria-pressed={settings.huePreset === 'monet'}
-                    className={cn(
-                      'flex items-center gap-2 rounded-xl bg-surface-hi p-2 text-left transition-transform active:scale-[0.98]',
-                      settings.huePreset === 'monet' && 'ring-2 ring-accent',
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className="block h-9 w-12 shrink-0 rounded-lg"
-                      style={{
-                        background: `linear-gradient(135deg, oklch(0.85 0.06 ${settings.hue}), oklch(0.62 0.12 ${settings.hue}), oklch(0.5 0.12 ${(settings.hue + 70) % 360}))`,
-                      }}
-                    />
-                    <span className="text-xs font-medium text-ink">
-                      {t('settings.presetMonet')}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateSettings({ huePreset: 'pride' })}
-                    aria-pressed={settings.huePreset === 'pride'}
-                    className={cn(
-                      'flex items-center gap-2 rounded-xl bg-surface-hi p-2 text-left transition-transform active:scale-[0.98]',
-                      settings.huePreset === 'pride' && 'ring-2 ring-accent',
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className="block h-9 w-12 shrink-0 rounded-lg"
-                      style={{
-                        background: `linear-gradient(to bottom, ${(PRIDE_FLAGS.find((f) => f.id === settings.prideFlag)?.stripes ?? []).join(',')})`,
-                      }}
-                    />
-                    <span className="text-xs font-medium text-ink">
-                      {t('settings.presetPride')}
-                    </span>
-                  </button>
-                </div>
-              </div>
-              {/* 莫奈色相：仅在莫奈 / 图片预设下显示色相滑条（图片也走种子色相） */}
-              {settings.huePreset !== 'pride' && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-ink-2">
-                      {t('settings.hue')}
-                    </span>
-                    <span className="text-[11px] tabular-nums text-ink-2">
-                      {settings.hue}°
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={360}
-                    value={settings.hue}
-                    onChange={(e) => {
-                      const hue = Number(e.target.value);
-                      // 强调色 / 深色色相若与原 hue 一致（未独立调整），随主题色相一起动
-                      const patch: Partial<AppSettings> = { hue };
-                      if (settings.accentHue === settings.hue) patch.accentHue = hue;
-                      if (settings.darkHue === settings.hue) patch.darkHue = hue;
-                      updateSettings(patch);
-                    }}
-                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-red-400 via-emerald-400 to-violet-500 accent-accent"
-                    aria-label={t('settings.hue')}
-                  />
-                </div>
-              )}
+              {/* 与 设置 → 外观 的主要主题控件一致：深浅 / 预设卡片 /
+                  莫奈三色相 / 骄傲旗与渐变参数 / 自定义图片选图。
+                  不含九宫焦点、模糊、压暗、声音染色等微调小项（留在设置里）。 */}
+              <ThemePickerBody settings={settings} update={updateSettings} />
             </>
           )}
         </motion.div>

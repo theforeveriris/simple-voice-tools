@@ -36,55 +36,7 @@ import {
 import { cn } from '@/lib/utils';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
-
-/** 主题卡片：上方色板预览 + 下方名称，选中描边（预设 / 旗帜选择共用） */
-function ThemeCard({ active, onClick, label, children }: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'flex flex-col gap-1.5 rounded-2xl bg-card p-2 text-left shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-[0.97]',
-        active && 'ring-2 ring-accent',
-      )}
-    >
-      <span className="relative block h-10 w-full overflow-hidden rounded-xl border border-line/60">
-        {children}
-      </span>
-      <span className="line-clamp-2 min-h-7 text-[10px] leading-snug font-medium text-ink">{label}</span>
-    </button>
-  );
-}
-
-/** 旗帜色板预览（条纹自上而下） */
-function FlagSwatch({ stripes }: { stripes: readonly string[] }) {
-  return (
-    <span
-      className="block h-full w-full"
-      style={{ background: `linear-gradient(to bottom, ${stripes.join(',')})` }}
-      aria-hidden
-    />
-  );
-}
-
-/** 莫奈色板预览：表面 → 强调 → 次强调（次强调 = hue+70，与 buildTokens 单色逻辑一致） */
-function MonetSwatch({ hue }: { hue: number }) {
-  return (
-    <span
-      className="block h-full w-full"
-      style={{
-        background: `linear-gradient(135deg, oklch(0.85 0.06 ${hue}), oklch(0.62 0.12 ${hue}), oklch(0.5 0.12 ${(hue + 70) % 360}))`,
-      }}
-      aria-hidden
-    />
-  );
-}
+import { FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
 
 /** 九宫焦点：展示顺序（左上 → 右下）与各方向词条 */
 const BG_FOCUS_KEYS: BgImageFocus[] = [
@@ -103,60 +55,6 @@ const BG_FOCUS_LABEL: Record<BgImageFocus, DictKey> = {
   'bottom': 'settings.bgPosBottom',
   'bottom-right': 'settings.bgPosBottomRight',
 };
-
-/** 毛玻璃强度行（pride 渐变与自定义背景图共用同一参数 prideGlassBlur） */
-function GlassRow({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return (
-    <SettingRow label={<InfoTip label={t('settings.prideGlass')} text={t('settings.prideGlassDesc')} />}>
-      <div className="flex items-center gap-2.5">
-        <input
-          type="range"
-          min={0}
-          max={28}
-          step={2}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
-          aria-label={t('settings.prideGlass')}
-        />
-        <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">
-          {value === 0 ? t('settings.prideGlassOff') : `${value}px`}
-        </span>
-      </div>
-    </SettingRow>
-  );
-}
-
-/** 骄傲旗参数滑条（与色相滑条同款拖块） */
-function PrideSlider({
-  label, min, max, step, value, onChange, format,
-}: {
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  onChange: (v: number) => void;
-  format: (v: number) => string;
-}) {
-  return (
-    <SettingRow label={label}>
-      <div className="flex items-center gap-2.5">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-surface-hi accent-accent"
-          aria-label={label}
-        />
-        <span className="w-10 shrink-0 text-right text-xs tabular-nums text-ink-2">{format(value)}</span>
-      </div>
-    </SettingRow>
-  );
-}
 
 export function AppearancePage({
   settings,
