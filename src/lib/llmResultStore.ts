@@ -19,7 +19,10 @@ interface StoredResult {
   result: LlmAdviceResult;
 }
 
-let cache: StoredResult[] | null = null;
+/** 会话内存缓存；kv 读取失败时仍作为降级缓存（本会话命中语义不变） */
+let cache: StoredResult[] = [];
+/** kv 是否已成功读取（含确认无数据）；未成功前不落盘，避免覆盖旧结果 */
+let kvReadOk = false;
 // 串行队列：读改写不与并发保存交错
 let queue: Promise<void> = Promise.resolve();
 
@@ -39,35 +42,47 @@ function isValidResult(v: unknown): v is LlmAdviceResult {
 }
 
 async function ensureLoaded(): Promise<void> {
-  if (cache != null) return;
+  if (kvReadOk) return;
   try {
     const raw = await idbGetKV<StoredResult[]>(KV_RESULTS);
-    cache = Array.isArray(raw)
-      ? raw
-        .filter((e): e is StoredResult =>
-          !!e && typeof e === 'object'
+    // 读取成功：kv 数据与失败期间累积的会话缓存按 key 合并（新写入优先），
+    // 再按 at 置顶排序截断
+    const byKey = new Map<string, StoredResult>();
+    if (Array.isArray(raw)) {
+      for (const e of raw) {
+        if (!!e && typeof e === 'object'
           && typeof e.key === 'string' && typeof e.at === 'number'
-          && isValidResult(e.result))
-        .slice(0, MAX_RESULTS)
-      : [];
+          && isValidResult(e.result)) byKey.set(e.key, e);
+      }
+    }
+    for (const e of cache) byKey.set(e.key, e);
+    cache = [...byKey.values()]
+      .sort((a, b) => b.at - a.at)
+      .slice(0, MAX_RESULTS);
+    kvReadOk = true;
   } catch {
-    cache = []; // IndexedDB 不可用（含单测环境）：退化为纯会话缓存
+    // IndexedDB 瞬态不可用：不把「失败」当「无数据」缓存，下次读取重试；
+    // 本会话仍可命中失败期间写入的会话缓存
   }
 }
 
 /** 按缓存键取已持久化的结果；无 / 损坏 / IDB 不可用返回 null */
 export async function loadLlmResult(key: string): Promise<LlmAdviceResult | null> {
-  await enqueue(async () => {});
-  await ensureLoaded();
-  return cache!.find((e) => e.key === key)?.result ?? null;
+  await enqueue(async () => {
+    await ensureLoaded();
+  });
+  return cache.find((e) => e.key === key)?.result ?? null;
 }
 
 /** 保存成功结果（fire-and-forget；同键覆盖后置顶，失败静默不影响调用方） */
 export function saveLlmResult(key: string, result: LlmAdviceResult): void {
   void enqueue(async () => {
     await ensureLoaded();
-    cache = [{ key, at: Date.now(), result }, ...cache!.filter((e) => e.key !== key)]
+    cache = [{ key, at: Date.now(), result }, ...cache.filter((e) => e.key !== key)]
       .slice(0, MAX_RESULTS);
+    // 读取未成功（瞬态失败）前不落盘：整键写回会覆盖 kv 里的旧结果；
+    // 会话缓存已更新，下次保存时重试读取 + 落盘
+    if (!kvReadOk) return;
     await idbPutKV(KV_RESULTS, cache);
   });
 }

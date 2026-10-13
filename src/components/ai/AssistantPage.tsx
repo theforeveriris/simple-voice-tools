@@ -33,9 +33,15 @@ import { cn } from '@/lib/utils';
 /** Token 粗估：中英混合按 2 字符 ≈ 1 token（量级参考，用于预算裁剪） */
 const estTokens = (s: string) => Math.ceil(s.length / 2);
 
-/** 用户历史测试记录摘要：按上下文预算（tokens）从最旧开始裁剪 */
-function historySection(budgetTokens: number): string {
-  const records = useHistoryStore.getState().records;
+/**
+ * 用户历史测试记录摘要：按上下文预算（tokens）从最旧开始裁剪。
+ * 全量读取（getAllRecords，不受内存 200 条窗口截断），并等待 hydrate 完成，
+ * 避免应用刚启动时记录未加载导致历史部分为空。
+ */
+async function historySection(budgetTokens: number): Promise<string> {
+  const store = useHistoryStore.getState();
+  if (!store.ready) await store.hydrate();
+  const records = await store.getAllRecords();
   if (records.length === 0) return '';
   const lines = [...records]
     .sort((a, b) => a.createdAt - b.createdAt)
@@ -232,11 +238,19 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
 
   const generate = async (convId: string, history: ChatMessage[]) => {
     if (!cfg || history.length === 0) return;
-    // 上下文预算：历史记录摘要 + 系统提示 + 对话 + 回复余量都要装进窗口
+    // 上下文预算：历史记录摘要 + 系统提示 + 对话 + 回复余量都要装进窗口。
+    // 历史记录预算自适应：对话越短分给记录摘要越多（旧实现固定 40%，
+    // 明明装得下的旧记录也被裁掉，导致 AI 读不到全部历史）
     const context = cfg.contextTokens ?? DEFAULT_CONTEXT_TOKENS;
-    const hist = historySection(Math.max(512, Math.floor(context * 0.4)));
+    const replyReserve = Math.ceil(context * 0.25);
+    const convTokens = history.reduce((n, x) => n + estTokens(x.content), 0);
+    const histBudget = Math.max(
+      512,
+      Math.min(Math.floor(context * 0.6), context - convTokens - replyReserve - 512),
+    );
+    const hist = await historySection(histBudget);
     const sys = systemPrompt(hist);
-    const reserve = estTokens(sys) + Math.ceil(context * 0.25);
+    const reserve = estTokens(sys) + replyReserve;
     let turns = history;
     const maxTok = Math.max(1024, context - reserve);
     const totalOf = (ts: ChatMessage[]) => ts.reduce((n, x) => n + estTokens(x.content), 0);

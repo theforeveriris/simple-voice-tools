@@ -27,6 +27,8 @@ const MAX_CHATS = 30;
 
 let chats: ChatConversation[] | null = null;
 let loaded: Promise<void> | null = null;
+/** kv 是否已成功读取（含确认无数据）；未成功前不落盘，避免覆盖旧历史 */
+let kvReadOk = false;
 const listeners = new Set<() => void>();
 let queue: Promise<void> = Promise.resolve();
 
@@ -59,8 +61,12 @@ async function ensureLoaded(): Promise<void> {
       const stored = await idbGetKV<ChatConversation[]>(KV_CHATS);
       raw = Array.isArray(stored) ? stored.filter(validConversation) : [];
     } catch {
-      raw = []; // IndexedDB 不可用：本会话内仍可对话（内存态）
+      // IndexedDB 瞬态不可用（打开阻塞等）：不把「失败」当成「无数据」缓存，
+      // 置空 loaded 让下一次订阅/写入重试；本会话先以内存态运行
+      loaded = null;
+      return;
     }
+    kvReadOk = true;
     // 加载期间若有写入（createChat 等会先建立空内存列表），按 id 合并而非覆盖，
     // 且内存中的新写入优先
     const byId = new Map<string, ChatConversation>();
@@ -95,6 +101,9 @@ function genId(): string {
 }
 
 async function persist(): Promise<void> {
+  // 读取未成功（瞬态失败 / 尚未完成）前不落盘：此时内存列表不含 kv 里的旧历史，
+  // 整键写回会把它们覆盖掉（历史对话永久丢失）；保持内存态，下次写入重试
+  if (!kvReadOk) return;
   try {
     await idbPutKV(KV_CHATS, chats!);
   } catch {
@@ -110,7 +119,12 @@ function sortAndCap(list: ChatConversation[]): ChatConversation[] {
 
 function commit(next: ChatConversation[]): void {
   chats = sortAndCap(next);
-  void enqueue(persist);
+  // 先补一次加载（读取失败后的重试入口），成功则本次写入立即落盘
+  void enqueue(async () => {
+    await ensureLoaded();
+    if (kvReadOk) notify();
+    await persist();
+  });
   notify();
 }
 
