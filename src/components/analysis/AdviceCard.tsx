@@ -1,7 +1,7 @@
 ﻿/**
  * 璁粌寤鸿鍗★紙瀹為獙鎬э級
  * adviceMode = rules锛氭湰鍦拌鍒欏紩鎿庣敓鎴愶紙lib/advice.ts锛夛紱
- * adviceMode = lua锛氱敤鎴?Lua 鑴氭湰鐢熸垚锛坙ib/lua/advice.ts锛岃剼鏈腑蹇冿級锛?
+ * adviceMode = lua：用户 Lua 脚本生成（lib/lua/advice.ts，脚本中心）；
  * adviceMode = llm锛氳皟鐢?璁剧疆 鈫?澶фā鍨?涓娇鐢ㄤ腑妗ｆ鐨勬帴鍙ｏ紙lib/llm.ts锛夈€?
  * 浼犲叆涓ゆ潯璁板綍鏃讹紙瀵规瘮椤碉級鎸?A / B 鍒嗙粍缁欒鍒欏缓璁紝
  * 澶фā鍨嬪垯鍚堝苟涓や唤缁熻鐢熸垚瀵规瘮鎬у缓璁€?
@@ -113,7 +113,7 @@ function RuleAdvice({ records, target }: { records: AnalysisRecord[]; target: Ad
   );
 }
 
-/** Lua 鑴氭湰鍒ゆ柇锛氬紓姝ヨ窇鍚敤鐨勮剼鏈紙鑴氭湰涓績锛夛紝閿欒鎶樺彔鎻愮ず銆?
+/** Lua 脚本判断：异步跑启用的脚本（脚本中心），错误折叠提示。
  *  鐢?records/target 娲剧敓 key + 璁℃暟鍣ㄥ湪娓叉煋鏈熺敓鎴愯姹傛爣璇嗭紙鏃?effect setState锛夛細
  *  state 瀛樸€屼笂娆″畬鎴愮殑缁撴灉 + 褰撴椂 key銆嶏紝key 涓嶅尮閰嶅嵆瑙嗕负鍔犺浇涓紝鏁版嵁鍒颁綅鍚?setState 钀藉畾銆?*/
 function LuaAdvice({ records, target }: { records: AnalysisRecord[]; target: AdviceTarget }) {

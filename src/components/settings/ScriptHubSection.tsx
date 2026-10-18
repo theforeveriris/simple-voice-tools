@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import {
-  deleteUserScript, exportScripts, importScripts, listScripts,
+  deleteUserScript, exportScripts, importAny, listScripts,
   putUserScript, setScriptEnabled, type LuaScriptView,
 } from '@/lib/lua/scripts';
 import { runLuaFn } from '@/lib/lua/engine';
@@ -102,12 +102,12 @@ export function ScriptHubSection() {
   const doImport = async () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json,application/json';
+    input.accept = '.lua,.json,text/plain,application/json';
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
       try {
-        const n = await importScripts(await file.text());
+        const n = await importAny(file.name, await file.text());
         toast.success(t('labs.scriptImported', { n }));
         reload();
       } catch {

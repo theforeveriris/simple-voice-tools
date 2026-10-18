@@ -31,6 +31,24 @@ import { cn } from '@/lib/utils';
 import { EmptyHero, EMPTY_PRIMARY, EMPTY_SECONDARY } from '@/components/layout/EmptyHero';
 import { useDeferredMount } from '@/hooks/useDeferredMount';
 import { registerBackClose } from '@/lib/backNav';
+import { isLuaFilter, luaFilterExpr, luaFilterRecords } from '@/lib/lua/filter';
+
+/** Lua 过滤器 hook：表达式（去 lua: 前缀后）→ 命中 id 集合 + 首条错误。
+ *  空表达式不进 effect（渲染期短路返回全命中）；异步结果按表达式内容落定。 */
+function useLuaFilter(expr: string, records: AnalysisRecord[]): [Set<string> | null, string | null] {
+  const [state, setState] = useState<{ expr: string; hits: Set<string>; error: string | null } | null>(null);
+  useEffect(() => {
+    if (!expr) return;
+    let alive = true;
+    void luaFilterRecords(records, expr).then((res) => {
+      if (alive) setState({ expr, hits: res.hits, error: res.error });
+    });
+    return () => { alive = false; };
+  }, [expr, records]);
+  if (!expr) return [null, null];
+  // 结果尚未到达（或属于旧表达式）：视为零命中，UI 显示空列表而非闪烁旧结果
+  return state && state.expr === expr ? [state.hits, state.error] : [new Set(), null];
+}
 
 function EmptyHistory() {
   const setTab = useStore((s) => s.setTab);
@@ -95,7 +113,13 @@ export function HistoryPage() {
 
   // 搜索命中串含本地化模式名与日期：语言切换（i18n 版本 bump）后重算
   const i18nVer = getI18nVersion();
+  // lua: 前缀 → Lua 表达式过滤（异步）；否则普通子串搜索
+  const luaMode = isLuaFilter(query);
+  const [luaHits, luaError] = useLuaFilter(luaMode ? luaFilterExpr(query) : '', records);
   const filtered = useMemo(() => {
+    if (luaMode) {
+      return luaHits ? records.filter((r) => luaHits.has(r.id)) : [];
+    }
     const q = query.trim().toLowerCase();
     if (!q) return records;
     return records.filter((r) => {
@@ -110,10 +134,9 @@ export function HistoryPage() {
       return hay.includes(q);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- i18nVer 是有意依赖：语言切换后重算本地化搜索串
-  }, [records, query, i18nVer]);
+  }, [records, query, i18nVer, luaMode, luaHits]);
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
+  const toggleSelect = (id: string) => {    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -263,6 +286,12 @@ export function HistoryPage() {
               </button>
             )}
           </div>
+
+          {luaMode && luaError && (
+            <p className="mx-1 mb-1 rounded-xl bg-[#D66E5B]/10 px-3 py-2 text-[11px] leading-relaxed text-[#B0532F] break-all">
+              {luaError}
+            </p>
+          )}
 
           {filtered.length === 0 ? (
             <p className="py-12 text-center text-sm text-ink-2">{t('history.noMatch', { q: query })}</p>

@@ -212,7 +212,7 @@ export const en = {
   /* ---------- History page ---------- */
   'history.viewList': 'List',
   'history.viewTrend': 'Trend',
-  'history.searchPlaceholder': 'Search notes, dates or modes',
+  'history.searchPlaceholder': 'Search notes, dates or modes (lua: expression filter)',
   'history.emptyTitle': 'No recordings yet',
   'history.emptyDesc': 'Every test is saved as a record - review, compare and track changes anytime',
   'history.noMatch': 'No records matching "{q}"',
@@ -764,6 +764,7 @@ export const en = {
   'share.styleLight': 'Light',
   'share.styleAurora': 'Aurora',
   'share.styleFlower': 'Voice Flower',
+  'share.styleLua': 'Lua template',
   'share.flowerTitle': 'Voice Flower',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': 'Share / Save',

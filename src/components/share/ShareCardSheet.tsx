@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { shareOrDownload, type ShareCardStyle } from '@/lib/export/shareCard';
+import { renderLuaCard } from '@/lib/lua/cardRender';
+import { luaCardEnabled } from '@/lib/lua/card';
 import { cn } from '@/lib/utils';
 
 const STYLE_OPTIONS: { id: ShareCardStyle; labelKey: 'share.styleThemed' | 'share.styleDark' | 'share.styleLight' | 'share.styleAurora' | 'share.styleFlower' }[] = [
@@ -26,33 +28,76 @@ export function ShareCardSheet({
   onClose,
   render,
   filename,
+  luaRecord,
 }: {
   open: boolean;
   onClose: () => void;
   /** 按样式绘制分享卡（预览与导出共用同一渲染入口） */
   render: (style: ShareCardStyle) => HTMLCanvasElement;
   filename: string;
+  /** Lua 模板卡的渲染记录（style = 'lua' 时使用） */
+  luaRecord?: import('@/types').AnalysisRecord | null;
 }) {
   useI18n();
   const [style, setStyle] = useState<ShareCardStyle>('themed');
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Lua 模板可用性：弹层打开时探测一次（有启用的 card 脚本才出现该选项） */
+  const [luaAvailable, setLuaAvailable] = useState(false);
+  /** 异步渲染的 Lua 预览图（与内置样式的同步预览分轨） */
+  const [luaPreview, setLuaPreview] = useState<string | null>(null);
+  /** 触发本次 Lua 渲染的 style 快照（style 切换后丢弃过期结果） */
+  const [luaFor, setLuaFor] = useState<ShareCardStyle | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    // 探测：有启用的 card 脚本才显示「Lua 模板」项
+    void luaCardEnabled().then((v) => {
+      if (alive) setLuaAvailable(v);
+    }).catch(() => setLuaAvailable(false));
+    return () => { alive = false; };
+  }, [open]);
 
   // 切换样式即重渲染预览；render 闭包随父组件更新（开销为一次 Canvas 绘制，可接受）
   useEffect(() => {
     if (!open) return;
+    if (style === 'lua') {
+      // Lua 模板：异步渲染
+      let alive = true;
+      setLuaFor(style);
+      if (!luaRecord) {
+        setLuaPreview(null);
+        return;
+      }
+      void renderLuaCard(luaRecord).then((canvas) => {
+        if (alive) setLuaPreview(canvas?.toDataURL('image/png') ?? null);
+      }).catch(() => {
+        if (alive) setLuaPreview(null);
+      });
+      return () => { alive = false; };
+    }
     try {
       setPreview(render(style).toDataURL('image/png'));
     } catch {
       setPreview(null);
     }
-  }, [open, style, render]);
+  }, [open, style, render, luaRecord]);
 
   const onShare = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      const outcome = await shareOrDownload(render(style), filename);
+      let canvas: HTMLCanvasElement;
+      if (style === 'lua') {
+        if (!luaRecord) throw new Error('no record for lua card');
+        const rendered = await renderLuaCard(luaRecord);
+        if (!rendered) throw new Error('lua card render failed');
+        canvas = rendered;
+      } else {
+        canvas = render(style);
+      }
+      const outcome = await shareOrDownload(canvas, filename);
       if (outcome === 'downloaded') toast.success(t('toast.shareDownloaded'));
     } catch (err) {
       if ((err as Error)?.name !== 'AbortError') toast.error(t('toast.shareFail'));
@@ -83,9 +128,11 @@ export function ShareCardSheet({
           </button>
         </div>
 
-        {preview ? (
+        {(style === 'lua'
+          ? (luaFor === 'lua' ? luaPreview : null)
+          : preview) ? (
           <img
-            src={preview}
+            src={(style === 'lua' ? luaPreview : preview) ?? undefined}
             alt=""
             className="mx-auto max-h-[44dvh] rounded-2xl shadow-[0_4px_24px_rgba(28,25,45,0.14)]"
           />
@@ -110,6 +157,19 @@ export function ShareCardSheet({
               {t(s.labelKey)}
             </button>
           ))}
+          {luaAvailable && (
+            <button
+              onClick={() => setStyle('lua')}
+              className={cn(
+                'shrink-0 rounded-full px-4 py-2 text-xs font-medium transition-colors',
+                style === 'lua'
+                  ? 'bg-accent text-white'
+                  : 'bg-card text-ink-2 shadow-[0_1px_4px_rgba(28,25,45,0.06)]',
+              )}
+            >
+              {t('share.styleLua')}
+            </button>
+          )}
         </div>
 
         <button

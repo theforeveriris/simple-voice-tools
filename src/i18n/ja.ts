@@ -213,7 +213,7 @@ export const ja = {
   /* ---------- 历史页 ---------- */
   'history.viewList': 'リスト',
   'history.viewTrend': '推移',
-  'history.searchPlaceholder': 'メモ・日付・モードを検索',
+  'history.searchPlaceholder': 'メモ・日付・モードを検索（lua: 式フィルタ）',
   'history.emptyTitle': 'まだテスト記録がありません',
   'history.emptyDesc': 'テストはすべて記録として保存され、いつでも見返し・比較・推移を確認できます',
   'history.noMatch': '「{q}」に一致する記録はありません',
@@ -765,6 +765,7 @@ export const ja = {
   'share.styleLight': 'ライト',
   'share.styleAurora': 'オーロラ',
   'share.styleFlower': 'ボイスフラワー',
+  'share.styleLua': 'Lua テンプレート',
   'share.flowerTitle': 'ボイスフラワー',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': '共有 / 保存',

@@ -427,6 +427,7 @@ export function AnalysisPage() {
         onClose={() => setShareOpen(false)}
         render={(style) => renderShareCard(record, style)}
         filename={shareImageFilename(record)}
+        luaRecord={record}
       />
     </div>
   );

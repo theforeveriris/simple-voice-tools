@@ -212,7 +212,7 @@ export const zhTW = {
   /* ---------- 歷史頁 ---------- */
   'history.viewList': '列表',
   'history.viewTrend': '趨勢',
-  'history.searchPlaceholder': '搜尋備註、日期或模式',
+  'history.searchPlaceholder': '搜尋備註、日期或模式（lua: 表達式過濾）',
   'history.emptyTitle': '還沒有測試記錄',
   'history.emptyDesc': '每次測試都會存成一筆記錄，可隨時回看與對比',
   'history.noMatch': '沒有符合「{q}」的記錄',
@@ -764,6 +764,7 @@ export const zhTW = {
   'share.styleLight': '淺色',
   'share.styleAurora': '極光',
   'share.styleFlower': '聲之花',
+  'share.styleLua': 'Lua 範本',
   'share.flowerTitle': '聲之花',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': '分享 / 儲存',

@@ -213,7 +213,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   /* ---------- 历史页 ---------- */
   'history.viewList': '列冊',
   'history.viewTrend': '趨勢',
-  'history.searchPlaceholder': '索註、日期或其式',
+  'history.searchPlaceholder': '索註、日期或其式（lua: 之式濾之）',
   'history.emptyTitle': '尚無試錄',
   'history.emptyDesc': '凡試輒存一錄，可隨時覆觀、相比、察其變',
   'history.noMatch': '無合「{q}」之錄',
@@ -765,6 +765,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'share.styleLight': '淺色',
   'share.styleAurora': '極光',
   'share.styleFlower': '聲之花',
+  'share.styleLua': 'Lua 之範',
   'share.flowerTitle': '聲之花',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': '分享 / 存之',

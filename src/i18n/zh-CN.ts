@@ -213,7 +213,7 @@ export const zhCN = {
   /* ---------- 历史页 ---------- */
   'history.viewList': '列表',
   'history.viewTrend': '趋势',
-  'history.searchPlaceholder': '搜索备注、日期或模式',
+  'history.searchPlaceholder': '搜索备注、日期或模式（lua: 表达式过滤）',
   'history.noMatch': '没有匹配「{q}」的记录',
   'history.deleteAria': '删除该记录',
   'history.selectedCount': '已选 {n} 条',
@@ -766,6 +766,7 @@ export const zhCN = {
   'share.styleLight': '浅色',
   'share.styleAurora': '极光',
   'share.styleFlower': '声之花',
+  'share.styleLua': 'Lua 模板',
   'share.flowerTitle': '声之花',
   'share.flowerLine': '{date} · {mode}',
   'share.shareAction': '分享 / 保存',
