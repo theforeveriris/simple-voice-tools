@@ -371,6 +371,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'vowelLive.hintIdle': '啟麥克風即可即觀 F1/F2 之落點，無庸存錄',
   'vowelLive.hint': '橫軸 F2：愈左則舌愈前 · 縱軸 F1：愈上則口愈斂 · 點跡愈新愈明，× 者心也',
   'vowelLive.recordingBadge': '錄中',
+  'recMini.backToTest': '歸測驗之頁觀活線',
   'vowelLive.noSignal': '俟聲…',
 
   /* ---------- 實驗 · 即時之功 ---------- */

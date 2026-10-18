@@ -371,6 +371,7 @@ export const zhCN = {
   'vowelLive.hintIdle': '开启麦克风即可实时查看 F1/F2 落点，无需保存录音',
   'vowelLive.hint': '横轴 F2：越靠左舌位越前 · 纵轴 F1：越靠上开口越小 · 点迹越新越亮，× 为质心',
   'vowelLive.recordingBadge': '录音中',
+  'recMini.backToTest': '回到测试页查看实时曲线',
   'vowelLive.noSignal': '等待发声…',
 
   /* ---------- 实验性 · 实时功能分区 ---------- */

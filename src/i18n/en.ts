@@ -370,6 +370,7 @@ export const en = {
   'vowelLive.hintIdle': 'Enable the microphone to see your F1/F2 points live — no recording saved',
   'vowelLive.hint': 'X axis F2: left = front tongue · Y axis F1: up = smaller opening · newer points are brighter, × = centroid',
   'vowelLive.recordingBadge': 'Recording',
+  'recMini.backToTest': 'Back to test page for live curves',
   'vowelLive.noSignal': 'Waiting for voice…',
 
   /* ---------- Labs · Realtime tools ---------- */

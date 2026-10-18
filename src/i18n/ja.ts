@@ -371,6 +371,7 @@ export const ja = {
   'vowelLive.hintIdle': 'マイクを許可すると F1/F2 の落点をリアルタイム表示。録音は保存されません',
   'vowelLive.hint': '横軸 F2：左ほど舌が前 · 縦軸 F1：上ほど開口が小さい · 新しい点ほど明るく、× は重心',
   'vowelLive.recordingBadge': '録音中',
+  'recMini.backToTest': 'テストページでライブ曲線を見る',
   'vowelLive.noSignal': '発声を待機中…',
 
   /* ---------- 実験的 · リアルタイム機能 ---------- */

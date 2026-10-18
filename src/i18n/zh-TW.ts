@@ -370,6 +370,7 @@ export const zhTW = {
   'vowelLive.hintIdle': '開啟麥克風即可即時查看 F1/F2 落點，無需保存錄音',
   'vowelLive.hint': '橫軸 F2：越靠左舌位越前 · 縱軸 F1：越靠上開口越小 · 點跡越新越亮，× 為質心',
   'vowelLive.recordingBadge': '錄音中',
+  'recMini.backToTest': '回到測試頁查看即時曲線',
   'vowelLive.noSignal': '等待發聲…',
 
   /* ---------- 實驗性 · 即時功能分區 ---------- */

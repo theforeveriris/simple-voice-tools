@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { BottomBar } from '@/components/layout/BottomBar';
+import { RecordingMiniView } from '@/components/layout/RecordingMiniView';
 import { PageErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { ShortcutsHelpSheet } from '@/components/layout/ShortcutsHelpSheet';
 import { SplashScreen } from '@/components/layout/SplashScreen';
@@ -370,6 +371,9 @@ function App() {
       </main>
 
       <BottomBar />
+
+      {/* 录音浮窗：录音中离开测试页时的全局迷你预览（计时 + 迷你音高图 + 停止） */}
+      <RecordingMiniView />
 
       {/* 快捷键帮助（? 呼出）。面板自身渲染到 body portal，因此不用 AnimatePresence 包裹：
           关闭时直接卸载（入场动画保留），不依赖 portal 内退出动画的上报 */}
