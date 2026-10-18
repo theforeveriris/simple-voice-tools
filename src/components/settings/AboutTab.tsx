@@ -6,9 +6,10 @@
  */
 
 import { useState } from 'react';
-import { BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap, ShieldCheck } from 'lucide-react';
+import { BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap, ShieldCheck, MessageSquareWarning } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { GuideSheet } from './GuideSheet';
+import { FeedbackDialog } from './FeedbackDialog';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui';
@@ -105,6 +106,8 @@ export function AboutTab() {
   const [disclaimerOpen, setDisclaimerOpen] = useState(true);
   // 使用说明（guide.md 应用内查看）
   const [guideOpen, setGuideOpen] = useState(false);
+  // 问题反馈弹窗
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -146,6 +149,14 @@ export function AboutTab() {
             <ShieldCheck size={13} />
             {t('settings.privacyPolicy')}
           </a>
+          {/* 问题反馈：自动收集非敏感诊断，预览确认后才离开设备 */}
+          <button
+            onClick={() => setFeedbackOpen(true)}
+            className="mt-1.5 flex items-center gap-1 font-medium text-accent transition-opacity hover:opacity-70"
+          >
+            <MessageSquareWarning size={13} />
+            {t('settings.feedback')}
+          </button>
         </div>
       </SettingsSection>
 
@@ -174,6 +185,9 @@ export function AboutTab() {
       <AnimatePresence>
         {guideOpen && <GuideSheet onClose={() => setGuideOpen(false)} />}
       </AnimatePresence>
+
+      {/* 问题反馈弹窗 */}
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }

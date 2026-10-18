@@ -1,11 +1,10 @@
-feat(data): restore preview before JSON/ZIP import merge
+feat(settings): in-app feedback entry with diagnostic preview
 
-- parseFullBackupZip: structure-only ZIP parse (no writes), shared by the
-  preview flow
-- RestorePreviewDialog: shows incoming count, per-mode buckets, date range
-  and, importantly, how many records will be ADDED vs SKIPPED as already
-  present - importRecords is add-only by ID (never overwrites), and the
-  dialog now says so explicitly, correcting the common assumption that
-  restoring an old backup rewrites current data
-- JSON and ZIP import paths both route through preview; confirm runs the
-  pending import, cancel discards it; restore.* i18n keys x5 locales
+- Settings > About gains a "Send feedback" action opening a dialog that
+  assembles an issue draft: app version, platform (Web/Android/Tauri),
+  locale, record count (count only - never content), trimmed UA, plus an
+  editable user description and step placeholders
+- everything is shown before leaving the device: Copy to clipboard and
+  Open GitHub Issues are manual; the pre-filled body is only appended to
+  the issue URL under ~8KB, otherwise plain Issues opens
+- feedback.* i18n keys x5 locales; buildFeedbackBody is pure
