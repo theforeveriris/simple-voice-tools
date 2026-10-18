@@ -13,11 +13,12 @@ import { useI18n } from '@/i18n/hook';
 import { shareOrDownload, type ShareCardStyle } from '@/lib/export/shareCard';
 import { cn } from '@/lib/utils';
 
-const STYLE_OPTIONS: { id: ShareCardStyle; labelKey: 'share.styleThemed' | 'share.styleDark' | 'share.styleLight' | 'share.styleAurora' }[] = [
+const STYLE_OPTIONS: { id: ShareCardStyle; labelKey: 'share.styleThemed' | 'share.styleDark' | 'share.styleLight' | 'share.styleAurora' | 'share.styleFlower' }[] = [
   { id: 'themed', labelKey: 'share.styleThemed' },
   { id: 'dark', labelKey: 'share.styleDark' },
   { id: 'light', labelKey: 'share.styleLight' },
   { id: 'aurora', labelKey: 'share.styleAurora' },
+  { id: 'flower', labelKey: 'share.styleFlower' },
 ];
 
 export function ShareCardSheet({

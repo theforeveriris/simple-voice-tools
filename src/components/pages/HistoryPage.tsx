@@ -12,12 +12,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Trash2,
-  Search, ListFilter, TrendingUp, GitCompareArrows, X, ListChecks, History,
+  Search, ListFilter, TrendingUp, GitCompareArrows, X, ListChecks, History, Flower2,
 } from 'lucide-react';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { WeeklyReportCard } from '@/components/history/WeeklyReportCard';
+import { GardenView } from '@/components/flowers/GardenView';
 import { CompareSheet } from './CompareSheet';
 import { RecordCard, removeWithUndo } from './HistoryListItem';
 import { HistoryTrendView } from './HistoryTrendView';
@@ -73,7 +74,7 @@ export function HistoryPage() {
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const setTab = useStore((s) => s.setTab);
 
-  const [view, setView] = useState<'list' | 'trend'>('list');
+  const [view, setView] = useState<'list' | 'trend' | 'garden'>('list');
   const [query, setQuery] = useState('');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -187,6 +188,7 @@ export function HistoryPage() {
           [
             { id: 'list', label: t('history.viewList'), icon: ListFilter },
             { id: 'trend', label: t('history.viewTrend'), icon: TrendingUp },
+            { id: 'garden', label: t('garden.title'), icon: Flower2 },
           ] as const
         ).map((tab) => {
           const active = view === tab.id;
@@ -234,6 +236,12 @@ export function HistoryPage() {
             {/* AI 周报（实验性 · 大模型）：聚合近 7 天出总结 */}
             <WeeklyReportCard records={records} />
           </>
+        )
+      ) : view === 'garden' ? (
+        records.length === 0 ? (
+          <EmptyHistory />
+        ) : (
+          <GardenView records={records} onOpenAnalysis={open} />
         )
       ) : records.length === 0 ? (
         <EmptyHistory />

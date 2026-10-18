@@ -1,16 +1,17 @@
-refactor(assistant): record charts now reuse SeriesChart (pixel parity + interaction)
+feat(garden): voice flowers - stats bloom into generative art
 
-Address two review points on the previous SVG approach:
-- Parity: the inline chart now renders through the exact analysis-page
-  component (SeriesChart -> paintChart), so band backgrounds, grid,
-  ticks, target band and segment coloring are identical to the analysis
-  tab - one painter, zero drift
-- Interaction: each embedded chart owns its time range state with wheel
-  zoom (anchored at cursor), drag pan, and double-click reset - the same
-  interaction grammar as the interactive HTML report; a caption notes
-  the zoomed state (assistant.chartZoomed, i18n x5)
-- vowel maps to SeriesChart's vowelSpace kind (scatter); zoom/pan only
-  apply to the time-series kinds (pitch/energy/formant), matching where
-  a time axis exists
-- chart routing (record:// string parsing) split into
-  assistantChartRoute.ts so the unit tests stay window-free
+- lib/flower.ts: pure mapping record -> Flower params (unit-tested, 12 cases):
+  petals = harmonic entropy from the spectrogram bands (fallback: band-mix
+  diversity), shape = F1/F2 (low F1 = narrow petals, high F2 = long + tilted),
+  hue = male/female band mix (cold blue -> warm pink), stem = MPT for
+  sustained records, core glow = CPPS; graceful degradation everywhere -
+  no audio / no formants never fails to produce a flower
+- FlowerSvg: organic bezier petals (quadratic curves), translucent layering,
+  hue jitter derived from record id so same-band flowers differ; pure-param
+  SVG assembly
+- GardenView: history page gains a third view "Garden" - all records bloom
+  in a date-ordered bed (2/4-col grid), mode filter, tap a flower for a
+  detail sheet (big flower + "which petal is what" facts + jump to analysis)
+- shareCard: 5th style "flower" - large canvas-painted flower + key stats
+  line + legend + QR; ShareCardSheet option added
+- i18n x5 locales; 192 tests green

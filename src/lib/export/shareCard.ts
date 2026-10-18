@@ -8,12 +8,13 @@
 
 import { encode as qrEncode } from 'uqr';
 import { BAND_COLORS, getBandRanges, bandOf, freqToNote } from '@/constants';
+import { flowerOf, hueJitter } from '@/lib/flower';
 // 该文件内 t 已被主题色板局部变量占用，i18n 翻译函数以 ti 引用
 import { t as ti } from '@/i18n';
 import type { AnalysisRecord, PitchBand } from '@/types';
 
-/** 分享图样式：themed 跟随当前主题，其余为固定风格（accent 延续主题维持品牌感） */
-export type ShareCardStyle = 'themed' | 'dark' | 'light' | 'aurora';
+/** 分享图样式：themed 跟随当前主题，其余为固定风格（accent 延续主题维持品牌感）；flower = 声之花卡 */
+export type ShareCardStyle = 'themed' | 'dark' | 'light' | 'aurora' | 'flower';
 
 export const SHARE_CARD_STYLES: ShareCardStyle[] = ['themed', 'dark', 'light', 'aurora'];
 
@@ -359,7 +360,139 @@ export async function shareOrDownload(canvas: HTMLCanvasElement, filename: strin
 
 /** 按样式渲染单条记录分享卡（样式选择弹层的预览与导出共用） */
 export function renderShareCard(record: AnalysisRecord, style: ShareCardStyle): HTMLCanvasElement {
+  if (style === 'flower') return drawFlowerCard(record);
   return drawCard(record, resolvePalette(style));
+}
+
+/* ================================ 声之花卡 ================================ */
+
+/** 有机花瓣（Canvas 贝塞尔，与 FlowerSvg 同几何、不同宿主） */
+function canvasPetal(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number, R: number,
+  angleDeg: number, len: number, width: number, tiltDeg: number,
+  fill: string, stroke: string,
+): void {
+  const a = ((angleDeg + tiltDeg) * Math.PI) / 180;
+  const dx = Math.cos(a);
+  const dy = Math.sin(a);
+  const px = -dy;
+  const py = dx;
+  const tipX = cx + dx * len * R;
+  const tipY = cy + dy * len * R;
+  const midLen = len * R * 0.62;
+  const ctrl = width * 0.42 * R;
+  const c1x = cx + dx * midLen + px * ctrl;
+  const c1y = cy + dy * midLen + py * ctrl;
+  const c2x = cx + dx * midLen - px * ctrl;
+  const c2y = cy + dy * midLen - py * ctrl;
+  const sx = cx + dx * R * 0.12;
+  const sy = cy + dy * R * 0.12;
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  ctx.quadraticCurveTo(c1x, c1y, tipX, tipY);
+  ctx.quadraticCurveTo(c2x, c2y, sx, sy);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+/** 声之花卡：大花居中 + 「花语」关键数字行 + QR */
+function drawFlowerCard(record: AnalysisRecord): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D unavailable');
+  const p = resolvePalette('themed');
+  paintBackground(ctx, p);
+
+  // 页眉（与主卡同款）
+  ctx.fillStyle = p.accent;
+  ctx.beginPath();
+  ctx.arc(PAD + 9, PAD + 14, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = p.ink2;
+  ctx.font = '500 30px "Inter Tight", system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Simple Voice Tool', PAD + 30, PAD + 15);
+  const d = new Date(record.createdAt);
+  ctx.textAlign = 'right';
+  ctx.fillText(ti('share.flowerTitle'), W - PAD, PAD + 15);
+  ctx.strokeStyle = p.line;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(PAD, PAD + 58);
+  ctx.lineTo(W - PAD, PAD + 58);
+  ctx.stroke();
+
+  // 大花：中心 (W/2, 620)，半径 250
+  const f = flowerOf(record);
+  const cx = W / 2;
+  const cy = 600;
+  const R = 250;
+  const hue = f.hue + hueJitter(record.id);
+  // 花心光晕（径向渐变）
+  const glowR = 120 * f.core * (1.4 + f.glow);
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+  glow.addColorStop(0, `hsl(${hue} 80% 78% / ${(0.25 + f.glow * 0.45).toFixed(2)})`);
+  glow.addColorStop(1, 'hsl(0 0% 0% / 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+  ctx.fill();
+  // 花瓣
+  for (let i = 0; i < f.petals; i++) {
+    const angle = (360 / f.petals) * i - 90;
+    const stagger = 0.82 + 0.18 * ((i % 3) / 2);
+    canvasPetal(
+      ctx, cx, cy, R,
+      angle, f.petalLength * stagger, f.petalWidth * stagger, f.petalTiltDeg,
+      `hsl(${hue} ${Math.round(f.saturation * 100)}% 72% / 0.55)`,
+      `hsl(${hue} ${Math.round(f.saturation * 100)}% 55% / 0.5)`,
+    );
+  }
+  // 花心
+  ctx.fillStyle = `hsl(${hue} 70% 62%)`;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 56 * f.core, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `hsl(${hue} 60% 82% / 0.8)`;
+  ctx.beginPath();
+  ctx.arc(cx - 14, cy - 16, 20 * f.core, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 花语（关键数字行）：日期 / 平均基频 / 音区 / 模式
+  const factY = 1010;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = p.ink;
+  ctx.font = '600 44px "Inter Tight", system-ui, sans-serif';
+  ctx.fillText(`${sAvg(record)} Hz`, W / 2, factY);
+  ctx.fillStyle = p.ink2;
+  ctx.font = '400 30px "Inter Tight", system-ui, sans-serif';
+  ctx.fillText(
+    ti('share.flowerLine', {
+      date: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`,
+      mode: record.mode ? ti(`mode.${record.mode}`) : '',
+    }),
+    W / 2, factY + 62,
+  );
+
+  // 花瓣图例（一行小字，呼应花园详情）
+  ctx.font = '400 26px "Inter Tight", system-ui, sans-serif';
+  ctx.fillStyle = p.ink2;
+  ctx.fillText(ti('share.flowerLegend'), W / 2, factY + 116);
+
+  drawFooterQr(ctx, p);
+  return canvas;
+}
+
+function sAvg(record: AnalysisRecord): string {
+  return record.stats.avgF0.toFixed(1);
 }
 
 /** 单条记录分享图文件名 */
