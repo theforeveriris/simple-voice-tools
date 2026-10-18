@@ -1,10 +1,8 @@
-feat(settings): in-app feedback entry with diagnostic preview
+refactor(history): split HistoryPage into list-item and trend-view modules
 
-- Settings > About gains a "Send feedback" action opening a dialog that
-  assembles an issue draft: app version, platform (Web/Android/Tauri),
-  locale, record count (count only - never content), trimmed UA, plus an
-  editable user description and step placeholders
-- everything is shown before leaving the device: Copy to clipboard and
-  Open GitHub Issues are manual; the pre-filled body is only appended to
-  the issue URL under ~8KB, otherwise plain Issues opens
-- feedback.* i18n keys x5 locales; buildFeedbackBody is pure
+- HistoryListItem.tsx: RecordCard, useLongPress gesture hook, formatDate,
+  removeWithUndo (list-row concerns)
+- HistoryTrendView.tsx: trend filters, diary heatmap, trend chart with
+  data-table toggle; filter/metric state moves inside (resetting on
+  view switch is acceptable - it did not persist before either)
+- HistoryPage.tsx 690 -> 313 lines, now page-level orchestration only

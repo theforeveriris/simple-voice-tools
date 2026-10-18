@@ -2,236 +2,34 @@
  * 历史页面
  * 顶部「列表 / 趋势」切换：
  *   列表 — 记录卡片（可搜索、长按进入多选，多选下支持批量删除与两两对比；
- *          删除可在 5 秒内撤销）
+ *          删除可在 5 秒内撤销）——卡片与手势见 HistoryListItem.tsx
  *   趋势 — 跨记录趋势图（平均基频 + P10–P90 音域随日期变化），
- *          支持按测试模式过滤（不同模式的基频不可直接比较）
+ *          支持按测试模式过滤 —— 见 HistoryTrendView.tsx
  * 点击任意记录进入对应分析页。
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Trash2, ChevronRight, History,
-  Search, ListFilter, TrendingUp, GitCompareArrows, X, StickyNote, CalendarDays, ListChecks,
+  Trash2,
+  Search, ListFilter, TrendingUp, GitCompareArrows, X, ListChecks, History,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
-import { MiniSpark } from '@/components/charts/MiniSpark';
-import { TrendChart } from '@/components/charts/TrendChart';
-import { ChartTableToggle, TrendDataTable } from '@/components/charts/DataTableView';
-import { hasTrendMetricData, type TrendMetric } from '@/lib/trendMetric';
 import { WeeklyReportCard } from '@/components/history/WeeklyReportCard';
-import { DiaryHeatmap } from '@/components/charts/DiaryHeatmap';
-import type { DiaryMetric } from '@/components/charts/DiaryHeatmap';
 import { CompareSheet } from './CompareSheet';
-import { freqToNote, bandOf, BAND_COLORS, MAX_HISTORY } from '@/constants';
+import { RecordCard, removeWithUndo } from './HistoryListItem';
+import { HistoryTrendView } from './HistoryTrendView';
+import { MAX_HISTORY } from '@/constants';
 import { t, getI18nVersion } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { localeTag } from '@/i18n';
-import type { AnalysisRecord, TestMode } from '@/types';
+import type { AnalysisRecord } from '@/types';
 import { cn } from '@/lib/utils';
 import { EmptyHero, EMPTY_PRIMARY, EMPTY_SECONDARY } from '@/components/layout/EmptyHero';
 import { useDeferredMount } from '@/hooks/useDeferredMount';
 import { registerBackClose } from '@/lib/backNav';
-
-const LONG_PRESS_MS = 480;
-
-function formatDate(ts: number): { date: string; time: string } {
-  const d = new Date(ts);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return {
-    date: `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
-}
-
-/** 长按进入多选的手势处理（移动距离超阈值视为滚动，取消长按） */
-function useLongPress(onLongPress: () => void) {
-  const timer = useRef<number | null>(null);
-  const fired = useRef(false);
-  const origin = useRef({ x: 0, y: 0 });
-
-  // 卸载时清掉未触发的定时器：长按中卡片被移除/切视图，不应再把页面带入多选
-  useEffect(() => () => {
-    if (timer.current !== null) window.clearTimeout(timer.current);
-  }, []);
-
-  const onPointerDown = (e: ReactPointerEvent) => {
-    if (timer.current !== null) window.clearTimeout(timer.current);
-    fired.current = false;
-    origin.current = { x: e.clientX, y: e.clientY };
-    timer.current = window.setTimeout(() => {
-      fired.current = true;
-      onLongPress();
-      navigator.vibrate?.(12);
-    }, LONG_PRESS_MS);
-  };
-  const onPointerMove = (e: ReactPointerEvent) => {
-    if (timer.current === null) return;
-    if (Math.hypot(e.clientX - origin.current.x, e.clientY - origin.current.y) > 12) {
-      window.clearTimeout(timer.current);
-      timer.current = null;
-    }
-  };
-  const clear = () => {
-    if (timer.current !== null) {
-      window.clearTimeout(timer.current);
-      timer.current = null;
-    }
-  };
-  return {
-    onPointerDown,
-    onPointerMove,
-    onPointerUp: clear,
-    onPointerCancel: clear,
-    onPointerLeave: clear,
-    /** 长按后抬起时的 click 不应触发点击行为 */
-    consumeClick: () => {
-      const was = fired.current;
-      fired.current = false;
-      return was;
-    },
-  };
-}
-
-function RecordCard({
-  record,
-  selected,
-  selectionMode,
-  onOpen,
-  onToggleSelect,
-  onEnterSelection,
-  onDelete,
-}: {
-  record: AnalysisRecord;
-  selected: boolean;
-  selectionMode: boolean;
-  onOpen: () => void;
-  onToggleSelect: () => void;
-  onEnterSelection: () => void;
-  onDelete: () => void;
-}) {
-  const { date, time } = formatDate(record.createdAt);
-  const band = bandOf(record.stats.avgF0);
-  const note = freqToNote(record.stats.avgF0);
-  const press = useLongPress(onEnterSelection);
-  // 移动端整行迷你曲线开关（设置 → 外观；桌面端内联曲线不受影响）
-  const mobileSpark = useStore((s) => s.settings.mobileSpark);
-
-  const handleClick = () => {
-    if (press.consumeClick()) return;
-    if (selectionMode) onToggleSelect();
-    else onOpen();
-  };
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      onClick={handleClick}
-      onKeyDown={(e) => {
-        // 键盘等价操作：Enter/Space 打开（多选模式下切换选中）
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleClick();
-        }
-      }}
-      onContextMenu={(e) => e.preventDefault()}
-      role="button"
-      tabIndex={0}
-      className={cn(
-        'group flex cursor-pointer select-none flex-col gap-1.5 rounded-[20px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-shadow hover:shadow-[0_6px_24px_rgba(28,25,45,0.09),0_2px_6px_rgba(28,25,45,0.05)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/70 sm:flex-row sm:items-center sm:gap-4',
-        selectionMode && selected && 'ring-2 ring-accent',
-      )}
-      {...(selectionMode ? {} : press)}
-    >
-      {/* 日期栏（桌面端左侧；移动端并入下方信息行） */}
-      <div className="hidden w-16 shrink-0 text-center sm:block">
-        <p className="text-xs font-semibold tabular-nums text-ink">{date}</p>
-        <p className="text-lg font-semibold tabular-nums leading-tight text-ink">{time}</p>
-        <p className="text-[10px] tabular-nums text-ink-2">{record.stats.durationSec.toFixed(0)} s</p>
-      </div>
-
-      <div className="hidden h-10 w-px shrink-0 bg-black/[0.05] sm:block" />
-
-      {/* 波形与概要 + 操作（移动端同一行，操作靠右） */}
-      <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-        <MiniSpark series={record.series} className="hidden shrink-0 sm:block" />
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-baseline gap-x-2 gap-y-0.5 flex-wrap">
-            <span className="text-base font-semibold tabular-nums text-ink">
-              {record.stats.avgF0.toFixed(1)}
-            </span>
-            <span className="text-[11px] text-ink-2">Hz</span>
-            <span className="text-[11px] font-semibold text-accent">{note.name}</span>
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-ink-2">
-              <span className="size-1.5 rounded-full" style={{ background: BAND_COLORS[band] }} />
-              {t(`band.${band}`)}
-            </span>
-            {record.mode && (
-              <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-on-accent-soft">
-                {t(`mode.${record.mode}`)}
-              </span>
-            )}
-          </div>
-          <p className="mt-0.5 truncate text-[11px] text-ink-2">
-            {/* 移动端显示日期与时长（日期栏已隐藏），桌面端显示区间统计 */}
-            <span className="sm:hidden">
-              {date} {time} · {record.stats.durationSec.toFixed(0)} s · {record.stats.avgDb.toFixed(0)} dB
-            </span>
-            <span className="hidden sm:inline">
-              {t('band.male')} {record.stats.malePct}% · {t('band.female')} {record.stats.femalePct}% · {record.stats.avgDb.toFixed(0)} dB
-            </span>
-          </p>
-          {record.note && (
-            <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-accent">
-              <StickyNote size={11} className="shrink-0" />
-              {record.note}
-            </p>
-          )}
-        </div>
-
-        {/* 操作 */}
-        <div className="flex shrink-0 items-center gap-1">
-          {selectionMode ? (
-            <span
-              className={cn(
-                'grid size-6 place-items-center rounded-full border-2 transition-colors',
-                selected ? 'border-accent bg-accent text-on-accent' : 'border-black/20',
-              )}
-              aria-hidden
-            >
-              {selected && <span className="text-[11px] font-bold leading-none">✓</span>}
-            </span>
-          ) : (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                className="grid size-8 place-items-center text-ink-2 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"
-                aria-label={t('history.deleteAria')}
-              >
-                <Trash2 size={15} />
-              </button>
-              <ChevronRight size={17} className="text-ink-2" />
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* 基频曲线（移动端：信息行下方整行铺满，可在设置 → 外观关闭；桌面端内联在信息行左侧） */}
-      {mobileSpark && <MiniSpark full series={record.series} className="sm:hidden" />}
-    </motion.div>
-  );
-}
 
 function EmptyHistory() {
   const setTab = useStore((s) => s.setTab);
@@ -265,58 +63,6 @@ function EmptyHistory() {
   );
 }
 
-/** 删除并支持 5 秒内撤销：预取音频 Blob 留在内存，撤销时原样恢复 */
-async function removeWithUndo(
-  list: AnalysisRecord[],
-  store: {
-    removeRecord: (id: string) => void;
-    addRecord: (record: AnalysisRecord, audioBlob?: Blob) => void;
-    getAudio: (id: string) => Promise<Blob | null>;
-  },
-) {
-  // 音频预取：数量多时可能占用大量内存，仅少量记录保留音频，多量只恢复记录本身
-  const audio = new Map<string, Blob>();
-  if (list.length <= 20) {
-    for (const r of list) {
-      const blob = await store.getAudio(r.id);
-      if (blob) audio.set(r.id, blob);
-    }
-  }
-  for (const r of list) store.removeRecord(r.id);
-  toast.success(list.length > 1 ? t('toast.deletedMany', { n: list.length }) : t('toast.deletedOne'), {
-    duration: 6000,
-    action: {
-      label: t('common.undo'),
-      onClick: () => {
-        for (const r of list) store.addRecord(r, audio.get(r.id));
-        toast.success(t('toast.undoDone'));
-      },
-    },
-  });
-}
-
-/** 趋势图的测试模式过滤：不同模式（朗读/长音/滑音）的基频统计不可直接比较 */
-const TREND_FILTERS: { id: 'all' | TestMode; labelKey: 'common.all' | 'mode.reading' | 'mode.sustained' | 'mode.glide' }[] = [
-  { id: 'all', labelKey: 'common.all' },
-  { id: 'reading', labelKey: 'mode.reading' },
-  { id: 'sustained', labelKey: 'mode.sustained' },
-  { id: 'glide', labelKey: 'mode.glide' },
-];
-
-/** 用声日记的指标切换 */
-const DIARY_METRICS: { id: DiaryMetric; labelKey: 'history.diaryMetricCount' | 'history.diaryMetricDuration' | 'history.diaryMetricF0' }[] = [
-  { id: 'count', labelKey: 'history.diaryMetricCount' },
-  { id: 'duration', labelKey: 'history.diaryMetricDuration' },
-  { id: 'avgF0', labelKey: 'history.diaryMetricF0' },
-];
-
-/** 趋势图纵轴指标切换：平均基频 / 最长声时 MPT（长音）/ CPPS（需录音音频） */
-const TREND_METRICS: { id: TrendMetric; labelKey: 'history.trendMetricF0' | 'history.trendMetricMpt' | 'history.trendMetricCpps' }[] = [
-  { id: 'f0', labelKey: 'history.trendMetricF0' },
-  { id: 'mpt', labelKey: 'history.trendMetricMpt' },
-  { id: 'cpps', labelKey: 'history.trendMetricCpps' },
-];
-
 export function HistoryPage() {
   useI18n();
   const records = useHistoryStore((s) => s.records);
@@ -332,11 +78,6 @@ export function HistoryPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [comparePair, setComparePair] = useState<[AnalysisRecord, AnalysisRecord] | null>(null);
-  const [trendFilter, setTrendFilter] = useState<'all' | TestMode>('all');
-  const [trendMetric, setTrendMetric] = useState<TrendMetric>('f0');
-  const [diaryMetric, setDiaryMetric] = useState<DiaryMetric>('count');
-  // 趋势图的数据表视图（无障碍 / 复制数据）
-  const [trendTableOn, setTrendTableOn] = useState(false);
   const contentReady = useDeferredMount();
 
   // 对比浮层的返回手势：系统返回 / 侧滑关闭对比，浮层内返回按钮走 history.back()
@@ -369,11 +110,6 @@ export function HistoryPage() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- i18nVer 是有意依赖：语言切换后重算本地化搜索串
   }, [records, query, i18nVer]);
-
-  const trendRecords = useMemo(
-    () => (trendFilter === 'all' ? records : records.filter((r) => r.mode === trendFilter)),
-    [records, trendFilter],
-  );
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -494,96 +230,9 @@ export function HistoryPage() {
           <EmptyHistory />
         ) : (
           <>
-          <div className="card-surface p-4">
-            {/* 两套筛选地位平等（一个过滤记录、一个切纵轴）：同款分段控件 + 小标签，
-                窄屏整组换行而不是组内拆散 */}
-            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-ink-2">{t('history.trendModeLabel')}</span>
-                <div className="flex items-center rounded-full bg-surface-hi p-0.5" role="group" aria-label={t('history.trendModeLabel')}>
-                  {TREND_FILTERS.map((f) => (
-                    <button
-                      key={f.id}
-                      onClick={() => setTrendFilter(f.id)}
-                      aria-pressed={trendFilter === f.id}
-                      className={cn(
-                        'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
-                        trendFilter === f.id ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
-                      )}
-                    >
-                      {t(f.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-ink-2">{t('history.trendMetricLabel')}</span>
-                <div className="flex items-center rounded-full bg-surface-hi p-0.5" role="group" aria-label={t('history.trendMetricLabel')}>
-                  {TREND_METRICS.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => setTrendMetric(m.id)}
-                      aria-pressed={trendMetric === m.id}
-                      className={cn(
-                        'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
-                        trendMetric === m.id ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
-                      )}
-                    >
-                      {t(m.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            {trendRecords.length === 0 ? (
-              <p className="py-16 text-center text-sm text-ink-2">{t('history.trendEmpty')}</p>
-            ) : !hasTrendMetricData(trendRecords, trendMetric) ? (
-              <p className="py-16 text-center text-sm text-ink-2">{t('history.trendMetricEmpty')}</p>
-            ) : (
-              <>
-                {/* 用声日记：日历热力图（打卡概览，跟随当前模式过滤） */}
-                <div className="mb-4">
-                  <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-                      <CalendarDays size={13} className="text-accent" />
-                      {t('history.diary')}
-                    </span>
-                    <div className="flex items-center rounded-full bg-surface-hi p-0.5">
-                      {DIARY_METRICS.map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => setDiaryMetric(m.id)}
-                          className={cn(
-                            'rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors',
-                            diaryMetric === m.id ? 'bg-card text-ink shadow-sm' : 'text-ink-2 hover:text-ink',
-                          )}
-                        >
-                          {t(m.labelKey)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <DiaryHeatmap records={trendRecords} metric={diaryMetric} />
-                </div>
-                <div className="mb-3 border-t border-black/[0.04]" />
-                <div className="mb-1 flex items-center justify-end">
-                  <ChartTableToggle on={trendTableOn} onToggle={() => setTrendTableOn((v) => !v)} />
-                </div>
-                {trendTableOn ? (
-                  <TrendDataTable records={trendRecords} metric={trendMetric} />
-                ) : (
-                  <>
-                    <TrendChart records={trendRecords} connectLine={trendFilter !== 'all'} metric={trendMetric} onOpen={open} />
-                    <p className="mt-1 text-center text-[10px] text-ink-2">
-                      {t(trendMetric === 'f0' ? 'history.trendHint' : 'history.trendHintMetric')}
-                    </p>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-          {/* AI 周报（实验性 · 大模型）：聚合近 7 天出总结 */}
-          <WeeklyReportCard records={records} />
+            <HistoryTrendView records={records} onOpen={open} />
+            {/* AI 周报（实验性 · 大模型）：聚合近 7 天出总结 */}
+            <WeeklyReportCard records={records} />
           </>
         )
       ) : records.length === 0 ? (
