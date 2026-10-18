@@ -12,19 +12,15 @@
  * （本地自动备份已移至 数据管理 子页面）
  */
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, SlidersHorizontal, Ruler, RotateCcw, LocateFixed, FileAudio,
+  ArrowLeft, SlidersHorizontal, Ruler, RotateCcw, LocateFixed,
   Radar, AudioWaveform, Waves, LayoutGrid, Cog,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useStore } from '@/store/useStore';
-import { useHistoryStore } from '@/store/useHistoryStore';
 import { DEFAULT_BAND_BOUNDS } from '@/constants';
-import { analyzeAudioFile, importErrorKey } from '@/lib/audio/importAudio';
 import { ALGO_PARAM_DEFAULTS } from '@/lib/audio/algoParams';
-import { maybeAutoBackup } from '@/lib/backup/local';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AdviceMode, AppSettings, PitchAlgorithm } from '@/types';
@@ -36,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
 import { SettingsSection, SettingRow } from './rows';
 import { GithubBackupSection } from './GithubBackupSection';
+import { ImportAudioSection } from './ImportAudioSection';
 import { InfoTip } from './InfoTip';
 
 /** 算法参数的档位下拉（数字值 ↔ 字符串键；当前值不在档位内时补入，防导入的任意值显示为空） */
@@ -72,19 +69,12 @@ export function LabsPage({
   onBack: () => void;
 }) {
   useI18n();
-  const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
-  const setTab = useStore((s) => s.setTab);
 
   // 实时功能子页面（一次一个）
   const [vowelLiveOpen, setVowelLiveOpen] = useState(false);
   const [f0LiveOpen, setF0LiveOpen] = useState(false);
   const [specLiveOpen, setSpecLiveOpen] = useState(false);
   const [vrpLiveOpen, setVrpLiveOpen] = useState(false);
-  // 导入音频离线分析
-  const [importBusy, setImportBusy] = useState(false);
-  const [importPct, setImportPct] = useState(0);
-  const [importDragOver, setImportDragOver] = useState(false);
-  const audioInputRef = useRef<HTMLInputElement>(null);
 
   /* ------------------------------ 自定义音区边界（实验性） ------------------------------ */
 
@@ -106,32 +96,6 @@ export function LabsPage({
     if (!settings.bandBounds) return;
     update({ bandBounds: undefined });
     toast.success(t('toast.bandResetDone'));
-  };
-
-  /* ------------------------------ 导入音频离线分析（实验性） ------------------------------ */
-
-  const runAudioImport = (file: File) => {
-    if (importBusy) return;
-    setImportBusy(true);
-    setImportPct(0);
-    void (async () => {
-      try {
-        const { record, audio, truncated } = await analyzeAudioFile(file, {
-          targetRange: settings.targetEnabled ? [settings.targetF0Min, settings.targetF0Max] : null,
-          saveAudio: settings.audioSave,
-          onProgress: setImportPct,
-        });
-        useHistoryStore.getState().addRecord(record, audio ?? undefined);
-        setCurrentAnalysis(record);
-        setTab('analysis');
-        void maybeAutoBackup('record');
-        toast.success(truncated ? t('toast.importAudioTruncated') : t('toast.importAudioDone'));
-      } catch (err) {
-        toast.error(t(importErrorKey(err)));
-      } finally {
-        setImportBusy(false);
-      }
-    })();
   };
 
   return (
@@ -456,49 +420,7 @@ export function LabsPage({
         </SettingsSection>
 
         {/* 导入音频离线分析 */}
-        <SettingsSection icon={FileAudio} title={t('settings.importAudio')}>
-          <SettingRow stacked label={<InfoTip label={t('settings.importAudio')} text={t('settings.importAudioDesc')} />}>
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setImportDragOver(true);
-              }}
-              onDragLeave={() => setImportDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setImportDragOver(false);
-                const file = e.dataTransfer.files?.[0];
-                if (file) runAudioImport(file);
-              }}
-              className={cn(
-                'flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-colors',
-                importDragOver ? 'border-accent bg-accent-soft/40' : 'border-black/10 bg-surface-hi/40',
-              )}
-            >
-              <button
-                onClick={() => audioInputRef.current?.click()}
-                disabled={importBusy}
-                className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-on-accent transition-opacity hover:opacity-90 disabled:opacity-60"
-              >
-                {importBusy
-                  ? `${t('importAudio.processing')} ${Math.round(importPct * 100)}%`
-                  : t('settings.importAudioPick')}
-              </button>
-              <p className="text-[10px] text-ink-2">{t('settings.importAudioHint')}</p>
-            </div>
-          </SettingRow>
-          <input
-            ref={audioInputRef}
-            type="file"
-            accept="audio/*,.amr,.3gp,.m4a,.aac"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) runAudioImport(file);
-              e.target.value = '';
-            }}
-          />
-        </SettingsSection>
+        <ImportAudioSection settings={settings} />
 
         {/* GitHub 云备份 */}
         <GithubBackupSection settings={settings} update={update} />
