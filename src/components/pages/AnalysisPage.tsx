@@ -120,6 +120,29 @@ export function AnalysisPage() {
     void togglePlay();
   }, [pendingAutoReplay, audioUrl, clearPendingAutoReplay, togglePlay]);
 
+  // R = 回放 / 暂停当前记录（页面级快捷键；输入控件聚焦或对话框打开时不接管，
+  // 与历史页 / 测试页快捷键同一豁免口径）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+      if (e.key !== 'r' && e.key !== 'R') return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target
+        && (target.tagName === 'INPUT'
+          || target.tagName === 'TEXTAREA'
+          || target.tagName === 'SELECT'
+          || target.tagName === 'BUTTON'
+          || target.isContentEditable)
+      ) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+      e.preventDefault();
+      void togglePlay();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [togglePlay]);
+
   // 区间联动统计：跟随音高曲线的区间（联动模式下即共享区间）。
   // 统一由序列重算（含全段）：保证与区间统计口径一致（如响度只计发声帧）；
   // 嗓音质量四项与靶标达成率是整段录音的临床指标，沿用录音时的整段值

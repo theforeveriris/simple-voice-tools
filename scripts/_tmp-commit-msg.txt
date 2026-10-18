@@ -1,13 +1,8 @@
-docs: privacy policy page, demo-first install section, contributor quickstart, references
+feat(input): S = record from any tab, R = replay on analysis page
 
-- public/privacy-policy.md: what data goes where (local-first default; AI
-  stats-only, user-configured endpoints; user-owned cloud backups; update
-  checks), zh full text + EN summary; published at the PWA origin (store
-  compliance requires a public URL); precached by SW; linked from
-  Settings > About, both READMEs, in-app guide
-- README x2: "try it first" demo link (?demo=1) above the install badges
-- DEVELOPMENT.md: 15-minute contributor quickstart (env, dev, test,
-  audio-only tests, known Windows AV/esbuild pitfall, pre-commit checklist)
-- documentation/REFERENCES.md: literature registry (YIN/pYIN/MPM, LPC,
-  Peterson and Barney, Baken and Orlikoff, Hillenbrand 1994/1995, UEP
-  phonetogram, Praat); PARAMETERS-GUIDE/YIN/CPPS now cite it
+- S (global, App.tsx): start/stop recording from any tab; same input-focus
+  exemption as tab switching; complements the test-page Space binding
+- R (AnalysisPage): toggle playback of the current record; standard
+  page-level exemptions (input focus, open dialogs)
+- ShortcutsHelpSheet: new S row in Global group, new Analysis group with R
+- i18n keys for 5 locales; README feature lines updated

@@ -15,6 +15,7 @@ const GROUPS: { titleKey: DictKey; rows: [string, DictKey][] }[] = [
     titleKey: 'shortcuts.groupGlobal',
     rows: [
       ['1 – 4', 'shortcuts.tabs'],
+      ['S', 'shortcuts.recordGlobal'],
       ['?', 'shortcuts.help'],
     ],
   },
@@ -24,6 +25,12 @@ const GROUPS: { titleKey: DictKey; rows: [string, DictKey][] }[] = [
       ['Space', 'shortcuts.record'],
       ['M', 'shortcuts.mode'],
       ['1 / 2 / 3', 'shortcuts.modePick'],
+    ],
+  },
+  {
+    titleKey: 'shortcuts.groupAnalysis',
+    rows: [
+      ['R', 'shortcuts.replay'],
     ],
   },
   {

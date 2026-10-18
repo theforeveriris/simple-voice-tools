@@ -194,6 +194,15 @@ function App() {
       if (/^[1-4]$/.test(e.key)) {
         e.preventDefault();
         useStore.getState().setTab(TABS[Number(e.key) - 1]);
+        return;
+      }
+      // S = 开始 / 停止录音（任意页签；与测试页 Space 等价的全局键位，
+      // 输入控件聚焦的豁免已在函数头部统一处理）
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        const { isRecording, startRecording, stopRecording } = useStore.getState();
+        if (isRecording) void stopRecording();
+        else void startRecording().catch(() => toast.error(t('toast.micError')));
       }
     };
     window.addEventListener('keydown', onKey);
