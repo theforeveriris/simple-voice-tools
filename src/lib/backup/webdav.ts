@@ -20,6 +20,12 @@ import { t } from '@/i18n';
 
 const KV_CONFIG = 'webdav:config';
 const KV_LAST_PUSH = 'webdav:lastPush';
+/** 上次成功推送的内容指纹（明文 SHA-256 + 加密开关状态），跳过无变化上传用 */
+interface LastPushFingerprint {
+  sha256: string;
+  encrypted: boolean;
+}
+const KV_LAST_FINGERPRINT = 'webdav:lastFingerprint';
 
 /** 云端固定文件名（同步语义：始终覆盖为最新一次上传） */
 export const WEBDAV_BACKUP_NAME = 'voice-backup-latest.zip';
@@ -44,6 +50,19 @@ export async function saveWebdavConfig(cfg: WebdavConfig): Promise<void> {
 
 export async function getWebdavLastPush(): Promise<number | null> {
   return (await idbGetKV<number>(KV_LAST_PUSH)) ?? null;
+}
+
+/** 远端固定名文件是否存在（HEAD；网络错误按不存在处理，回落为正常推送） */
+async function remoteExists(cfg: WebdavConfig): Promise<boolean> {
+  try {
+    const res = await fetch(remoteUrl(cfg, WEBDAV_BACKUP_NAME), {
+      method: 'HEAD',
+      headers: { Authorization: authHeader(cfg) },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /** 已带本地化文案的错误（网络层兜底时原样放行） */
@@ -93,16 +112,32 @@ export async function testWebdav(cfg: WebdavConfig): Promise<void> {
 export interface WebdavPushResult {
   records: number;
   audio: number;
+  /** true = 内容与上次推送一致且远端存在文件，已跳过上传（省流量与服务器写入） */
+  skipped: boolean;
 }
 
-/** 上传完整备份（记录 + 全部录音音频 ZIP），覆盖云端固定名文件；加密开启时整体加密 */
+/** 上传完整备份（记录 + 全部录音音频 ZIP），覆盖云端固定名文件；加密开启时整体加密。
+ *  内容指纹与上次一致且远端存在文件时跳过 PUT（加密开关变化会强制重传，保证云端与本地口径一致） */
 export async function pushWebdavBackup(cfg: WebdavConfig): Promise<WebdavPushResult> {
   const built = await buildFullBackupZip();
   if (!built) throw new WebdavError(t('toast.nothingToExport'));
+  const encrypted = await isBackupEncryptionEnabled();
+  // 指纹比较用明文 SHA（built.sha256）；加密是确定性的，但云端字节随开关变化，
+  // 故把加密状态并入指纹，开关切换后必然重传一次
+  const lastFp = await idbGetKV<LastPushFingerprint>(KV_LAST_FINGERPRINT);
+  if (
+    built.sha256
+    && lastFp?.sha256 === built.sha256
+    && lastFp.encrypted === encrypted
+    && (await remoteExists(cfg))
+  ) {
+    await idbPutKV(KV_LAST_PUSH, Date.now());
+    return { records: built.records, audio: built.audio, skipped: true };
+  }
   let body: BodyInit = built.blob;
   let contentType = 'application/zip';
   // 加密在联网前完成：未解锁时抛 BackupLockedError，由 UI 弹口令框后重试
-  if (await isBackupEncryptionEnabled()) {
+  if (encrypted) {
     body = await encryptForBackup(new Uint8Array(await built.blob.arrayBuffer()));
     contentType = 'application/octet-stream';
   }
@@ -116,8 +151,12 @@ export async function pushWebdavBackup(cfg: WebdavConfig): Promise<WebdavPushRes
   } catch (err) {
     netFail(err);
   }
+  // 推送成功才落指纹；WebCrypto 不可用（sha256 为空）时静默退回每次全量上传
+  if (built.sha256) {
+    await idbPutKV(KV_LAST_FINGERPRINT, { sha256: built.sha256, encrypted });
+  }
   await idbPutKV(KV_LAST_PUSH, Date.now());
-  return { records: built.records, audio: built.audio };
+  return { records: built.records, audio: built.audio, skipped: false };
 }
 
 /** 从 WebDAV 拉取备份并合并到本地（加密包自动检测并解密） */

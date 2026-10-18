@@ -912,6 +912,7 @@ export const zhCN = {
   'settings.webdavHint': '把完整备份（含录音音频）存到你自己的 WebDAV 网盘或 NAS，凭据仅保存在本机；浏览器直连需要服务器允许跨域（CORS），坚果云等部分服务商可能不支持',
   'toast.webdavTestOk': '连接成功',
   'toast.webdavPushDone': '已上传备份（{records} 条记录、{audio} 段音频）',
+  'toast.webdavPushSkipped': '备份与上次一致，已跳过上传（{records} 条记录、{audio} 段音频）',
   'toast.webdavPullDone': '已恢复 {records} 条记录，挂载 {audio} 段音频',
   'toast.webdavPullSame': '备份内容与本地数据一致',
   'toast.webdavFail': 'WebDAV 操作失败',

@@ -910,6 +910,7 @@ export const en = {
   'settings.webdavHint': 'Store the full backup (with audio) on your own WebDAV drive or NAS; credentials stay on this device. Browser-direct connections require the server to allow CORS — some providers (e.g. Jianguoyun) may not support it',
   'toast.webdavTestOk': 'Connection OK',
   'toast.webdavPushDone': 'Backup uploaded ({records} records, {audio} audio clips)',
+  'toast.webdavPushSkipped': 'Backup unchanged since last push — upload skipped ({records} records, {audio} audio clips)',
   'toast.webdavPullDone': 'Restored {records} records, attached {audio} audio clips',
   'toast.webdavPullSame': 'Backup matches local data',
   'toast.webdavFail': 'WebDAV operation failed',

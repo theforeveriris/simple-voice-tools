@@ -910,6 +910,7 @@ export const zhTW = {
   'settings.webdavHint': '把完整備份（含錄音音訊）存到你自己的 WebDAV 網碟或 NAS，憑據僅存在本機；瀏覽器直連需要伺服器允許跨域（CORS），坚果雲等部分服務商可能不支援',
   'toast.webdavTestOk': '連線成功',
   'toast.webdavPushDone': '已上傳備份（{records} 筆記錄、{audio} 段音訊）',
+  'toast.webdavPushSkipped': '備份與上次相同，已略過上傳（{records} 筆記錄、{audio} 段音訊）',
   'toast.webdavPullDone': '已還原 {records} 筆記錄，掛載 {audio} 段音訊',
   'toast.webdavPullSame': '備份內容與本機資料一致',
   'toast.webdavFail': 'WebDAV 操作失敗',

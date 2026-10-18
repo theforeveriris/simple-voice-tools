@@ -911,6 +911,7 @@ export const ja = {
   'settings.webdavHint': '完全バックアップ（録音音声を含む）を自分の WebDAV ストレージや NAS に保存します。資格情報は端末内にのみ保存されます。ブラウザーからの直接接続にはサーバー側の CORS 許可が必要で、一部のサービス（坚果雲など）では利用できない場合があります',
   'toast.webdavTestOk': '接続に成功しました',
   'toast.webdavPushDone': 'バックアップをアップロードしました（{records} 件の記録、{audio} 件の音声）',
+  'toast.webdavPushSkipped': '前回から変化なし — アップロードをスキップしました（{records} 件の記録、{audio} 件の音声）',
   'toast.webdavPullDone': '{records} 件の記録を復元し、{audio} 件の音声を紐付けました',
   'toast.webdavPullSame': 'バックアップはローカルデータと一致しています',
   'toast.webdavFail': 'WebDAV 操作に失敗しました',

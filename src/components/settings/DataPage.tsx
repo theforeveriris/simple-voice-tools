@@ -133,7 +133,12 @@ export function DataPage({
         } else if (kind === 'push') {
           const res = await pushWebdavBackup(cfg);
           setWebdavLast(Date.now());
-          toast.success(t('toast.webdavPushDone', { records: res.records, audio: res.audio }));
+          // 内容未变化时跳过了上传：提示口径不同（避免用户以为推了完整包）
+          if (res.skipped) {
+            toast.info(t('toast.webdavPushSkipped', { records: res.records, audio: res.audio }));
+          } else {
+            toast.success(t('toast.webdavPushDone', { records: res.records, audio: res.audio }));
+          }
         } else {
           const res = await pullWebdavBackup(cfg);
           if (res.records > 0 || res.audio > 0) {

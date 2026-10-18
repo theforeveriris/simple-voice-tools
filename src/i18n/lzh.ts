@@ -911,6 +911,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.webdavHint': '以全備（音聲俱存）寄諸爾之 WebDAV 網碟或 NAS，憑據惟存本機；瀏覽器直達，須伺者許跨域之請（CORS），坚果雲之屬或莫之許',
   'toast.webdavTestOk': '通矣',
   'toast.webdavPushDone': '備已書於雲（記 {records} 條、音 {audio} 段）',
+  'toast.webdavPushSkipped': '備無所易，不復書（記 {records} 條、音 {audio} 段）',
   'toast.webdavPullDone': '復得記 {records} 條，繫音 {audio} 段',
   'toast.webdavPullSame': '雲中之備與本機同',
   'toast.webdavFail': 'WebDAV 之事不成',

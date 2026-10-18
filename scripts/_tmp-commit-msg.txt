@@ -1,8 +1,11 @@
-feat(history): weekly AI usage summary on the weekly report card
+feat(backup): skip unchanged WebDAV pushes via content fingerprint
 
-- usageSince(snap, ms): pure helper filtering the usage log by time window
-  (unit-tested; only totals into the all-bucket)
-- WeeklyReportCard shows a footer line after a successful report: calls +
-  tokens over the last 7 days, same compact token formatting as
-  LlmUsageSection, so "what did AI cost me lately" is visible where it is
-  spent instead of only in settings
+- buildFullBackupZip now returns sha256 (SHA-256 of the zipSync bytes,
+  plaintext fingerprint); sha256Hex helper with graceful '' when
+  WebCrypto is unavailable
+- WebDAV push stores {sha256, encrypted} after success; skips PUT when
+  fingerprint + encryption state match the last push and the remote file
+  exists (HEAD). Encryption toggle change forces one re-upload so the
+  cloud ciphertext always matches the local policy
+- Push toast distinguishes skipped vs uploaded; i18n x5 locales
+- GitHub side already had per-file git blob SHA skipping (unchanged)

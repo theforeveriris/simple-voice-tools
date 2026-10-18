@@ -94,6 +94,8 @@ export interface FullBackupZip {
   audio: number;
   /** 建议的文件名（按天命名，自动备份同日覆盖） */
   filename: string;
+  /** zipSync 产物字节级 SHA-256 hex（加密前的明文指纹；同步类调用方据此跳过无变化上传） */
+  sha256: string;
 }
 
 /**
@@ -131,7 +133,18 @@ export async function buildFullBackupZip(): Promise<FullBackupZip | null> {
     records: records.length,
     audio,
     filename: `voice-backup-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.zip`,
+    /** 内容指纹（zipSync 产物字节级 SHA-256 hex）：同步类调用方据此跳过无变化上传 */
+    sha256: await sha256Hex(zipped),
   };
+}
+
+/** 字节 → SHA-256 hex（WebCrypto；不可用时返回空串，调用方跳过指纹比较） */
+export async function sha256Hex(data: Uint8Array): Promise<string> {
+  if (!crypto?.subtle) return '';
+  const buf = new Uint8Array(data.length);
+  buf.set(data);
+  const digest = await crypto.subtle.digest('SHA-256', buf.buffer as ArrayBuffer);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
