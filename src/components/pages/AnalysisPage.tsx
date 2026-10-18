@@ -24,8 +24,10 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { computeStats } from '@/lib/audio/recorder';
 import { downloadText, recordToFrameCsv } from '@/lib/export/csv';
+import { downloadBlob } from '@/lib/file';
 import { recordToPitchTier, recordToFormant } from '@/lib/export/praat';
 import { luaExportEnabled, luaExportOf } from '@/lib/lua/export';
+import { midiBlob } from '@/lib/export/midi';
 import { ShareCardSheet } from '@/components/share/ShareCardSheet';
 import { renderShareCard, shareImageFilename } from '@/lib/export/shareCard';
 import { exportInteractiveHtml } from '@/lib/export/interactiveHtml';
@@ -46,6 +48,7 @@ import { PitchAlgorithmCard } from '@/components/analysis/PitchAlgorithmCard';
 import { ReanalyzeDialog } from '@/components/analysis/ReanalyzeDialog';
 import { AnalysisChart, FormantCard, SpecCard, VrpCard } from '@/components/analysis/ChartCards';
 import { NoteDialog } from '@/components/analysis/NoteDialog';
+import { TemplateManager } from '@/components/analysis/TemplateManager';
 import { EmptyState } from '@/components/analysis/EmptyState';
 import { usePlayback } from '@/components/analysis/usePlayback';
 
@@ -182,6 +185,13 @@ export function AnalysisPage() {
   const onExportCsv = () => {
     downloadText(`voice-frames-${record.id.slice(0, 8)}.csv`, recordToFrameCsv(record));
     toast.success(t('toast.frameCsvExported'));
+  };
+
+  /** MIDI 导出（音高曲线 → 音符 + 弯音） */
+  const onExportMidi = () => {
+    downloadBlob(`voice-${record.id.slice(0, 8)}.mid`, midiBlob(record));
+    toast.success(t('toast.midiExported'));
+    setExportOpen(false);
   };
 
   /** Praat 对象导出（PitchTier = 基频曲线；Formant = 逐帧 F1/F2） */
@@ -432,6 +442,13 @@ export function AnalysisPage() {
               <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportCsvDesc')}</span>
             </button>
             <button
+              onClick={onExportMidi}
+              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+            >
+              <span className="block text-sm font-medium text-ink">{t('analysis.exportMidi')}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportMidiDesc')}</span>
+            </button>
+            <button
               onClick={() => onExportPraat('pitchTier')}
               className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
             >
@@ -455,6 +472,7 @@ export function AnalysisPage() {
                 <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportLuaDesc')}</span>
               </button>
             )}
+            <TemplateManager record={record} onDone={() => setExportOpen(false)} />
           </div>
         </DialogContent>
       </Dialog>

@@ -10,9 +10,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Image as ImageIcon, Palette, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, Download, Image as ImageIcon, Palette, Share2, SlidersHorizontal, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { applyPrideParams, applyTheme, presetSpec } from '@/lib/theme/monet';
+import { buildThemeExport, parseThemeFile, themeFileName } from '@/lib/theme/themeShare';
+import { downloadBlob } from '@/lib/file';
 import {
   getBgImageUrl,
   loadBgImage,
@@ -479,7 +481,83 @@ export function AppearancePage({
             />
           </SettingRow>
         </SettingsSection>
+
+        {/* 主题分享（.svt-theme 导入导出） */}
+        <ThemeShareSection settings={settings} update={update} applyPreset={applyPreset} />
       </motion.div>
     </div>
+  );
+}
+
+/**
+ * 主题分享区块：把外观设置打包成 .svt-theme JSON 分享 / 导入他人主题包。
+ * 导入经 parseThemeFile 白名单校验后走 applyPreset 立即重放色板。
+ */
+function ThemeShareSection({
+  settings, applyPreset,
+}: {
+  settings: AppSettings;
+  update: (patch: Partial<AppSettings>) => void;
+  applyPreset: (next: Partial<AppSettings>) => void;
+}) {
+  useI18n();
+  const [name, setName] = useState('');
+
+  const doExport = () => {
+    const exp = buildThemeExport(settings, name || t('themeShare.exportName'));
+    downloadBlob(themeFileName(exp.name), new Blob([JSON.stringify(exp, null, 2)], { type: 'application/json' }));
+    toast.success(t('themeShare.exported'));
+    setName('');
+  };
+
+  const doImport = () => {
+    if (!confirm(t('themeShare.overwrite'))) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.svt-theme,.svt-theme.json,.json,application/json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const parsed = parseThemeFile(await file.text());
+      if (!parsed) {
+        toast.error(t('themeShare.importFail'));
+        return;
+      }
+      applyPreset(parsed.patch);
+      toast.success(t('themeShare.imported', { name: parsed.name }));
+    };
+    input.click();
+  };
+
+  return (
+    <SettingsSection icon={Share2} title={t('themeShare.title')}>
+      <p className="mb-2 px-0.5 text-[11px] leading-relaxed text-ink-2">{t('themeShare.desc')}</p>
+      <SettingRow label={t('themeShare.exportName')}>
+        <div className="flex items-center gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('themeShare.exportName')}
+            className="w-32 rounded-xl border border-black/10 bg-card px-3 py-1.5 text-xs text-ink outline-none focus:border-accent"
+          />
+          <button
+            onClick={doExport}
+            className="flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium text-on-accent transition-transform active:scale-95"
+          >
+            <Download size={13} />
+            {t('common.export')}
+          </button>
+        </div>
+      </SettingRow>
+      <SettingRow label={t('themeShare.importPick')}>
+        <button
+          onClick={doImport}
+          className="flex items-center gap-1.5 rounded-full border border-black/10 bg-surface-hi px-3.5 py-1.5 text-xs font-medium text-ink transition-colors hover:border-accent"
+        >
+          <Upload size={13} />
+          {t('common.import')}
+        </button>
+      </SettingRow>
+    </SettingsSection>
   );
 }

@@ -10,6 +10,8 @@ export const zhCN = {
   'common.save': '保存',
   'common.delete': '删除',
   'common.reset': '重置',
+  'common.edit': '编辑',
+  'common.new': '新建',
   'common.undo': '撤销',
   'common.close': '关闭',
   'common.all': '全部',
@@ -1178,6 +1180,39 @@ export const zhCN = {
   'shortcuts.crosshair': '移动十字线读数',
   'shortcuts.crosshairFast': '快速移动十字线',
   'shortcuts.crosshairEdge': '跳到开头 / 结尾',
+
+  /* ---------- 导出 MIDI ---------- */
+  'analysis.exportMidi': 'MIDI 文件',
+  'analysis.exportMidiDesc': '音高曲线量化为音符 + 弯音，导入 DAW 与原曲对照',
+  'toast.midiExported': '已导出 MIDI 文件',
+
+  /* ---------- 导出模板 ---------- */
+  'template.title': '自定义模板',
+  'template.desc': '用 {{stats.avgF0}} 这类占位符组装任意文本格式，无需编程',
+  'template.namePlaceholder': '模板名称（如：随访单）',
+  'template.bodyPlaceholder': '嗓音随访单\n日期：{{date}} {{time}}\n平均 F0：{{stats.avgF0|%.0f|}} Hz\nCPPS：{{stats.cppsDb|%.1f|}} dB',
+  'template.empty': '还没有自定义模板，新建一个或导入他人分享的 .svt-template 文件',
+  'template.previewTitle': '预览（示例数据）',
+  'template.saved': '模板已保存',
+  'template.deleted': '模板已删除',
+  'template.deleteConfirm': '删除模板「{name}」？',
+  'template.imported': '已导入模板「{name}」',
+  'template.importFail': '模板文件无效（需要 .svt-template JSON）',
+  'template.exported': '模板文件已下载',
+  'template.fieldsHint': '可用字段：{{date}} {{time}} {{mode|label}} {{note}} {{stats.avgF0}} {{stats.cppsDb|%.1f|}} 等；缺失字段自动留空',
+  'template.apply': '用此模板导出当前记录',
+  'template.needRecord': '请先在分析页打开一条记录再使用模板导出',
+  'toast.templateExported': '模板导出完成',
+
+  /* ---------- 主题分享 ---------- */
+  'themeShare.title': '主题分享',
+  'themeShare.desc': '把当前外观打包成 .svt-theme 文件与他人互传；导入会覆盖外观设置（不含背景图片本体与私密数据）',
+  'themeShare.exportName': '主题名称',
+  'themeShare.exported': '主题文件已下载',
+  'themeShare.importPick': '导入 .svt-theme 文件',
+  'themeShare.imported': '已应用主题「{name}」',
+  'themeShare.importFail': '主题文件无效（需要 .svt-theme JSON）',
+  'themeShare.overwrite': '导入将立即覆盖当前外观设置，继续？',
 } as const;
 
 export type DictKey = keyof typeof zhCN;
