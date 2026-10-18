@@ -1,24 +1,23 @@
-refactor(flower): true top-down spectral fingerprint redesign
+perf(garden): virtualized month-sectioned flower bed
 
-Design reworked after review - the flower is now genuinely what its
-parameters claim to be:
+The garden previously rendered every record as its own motion+SVG node -
+a few thousand records would stack thousands of components and tens of
+thousands of path nodes, and even flowerOf was recomputed every render.
 
-- composition: true top-down view, petals radiating from the center, no
-  stem (MPT moved to garden card sub-text and detail sheet side stats)
-- each petal = one spectrogram band: length = that band's energy
-  (normalized), angle = low freq at 12 o'clock clockwise (polar
-  spectrum), petal count = band count (not entropy); spectral flatness
-  shows as length variance instead - flat spectrum = even petals, peaky
-  = ragged
-- core radius = F1 (opening), petal baseline length scales with F2
-  (resonance forward = wider spread); F2 baseline drawn as a dashed
-  reference ring for readout
-- color: theme hue (monet) - same hue per flower, lightness distinguishes
-  bands (low bright -> high dark)
-- no-spectrogram records: template rhythm petals (8, sine-modulated),
-  F1/F2 core/ring still render - a flower always exists
-- FlowerSvg + canvas flower card re-derived from the same geometry;
-  hueJitter -> rotationJitter (whole-flower rotation +-10deg);
-  rotation applied via SVG transform group
-- 12 unit tests rewritten for the new semantics (angle order, energy
-  peak = longest petal, flatness variance bounds, log-frequency axis)
+- virtual scrolling: fixed-height rows (4 cols desktop / 2 mobile),
+  only viewport +/- 3 buffer rows render; rows are absolutely positioned
+  inside a total-height spacer, scroll listener rAF-throttled, window
+  located by binary search over row offsets - render cost is constant
+  regardless of record count
+- month section headers as rows in the same virtual list (YYYY/M)
+- flowerOf mapping memoized in row build (useMemo on records/filter),
+  not per render; per-flower framer-motion layout animation removed
+  (disastrous under virtualization), entrance fade dropped for plain
+  hover states
+- inner fixed-height scroll area (62dvh, overscroll-contain) so the
+  virtual window works inside the page-level scroll
+- data-range honesty: when the in-memory window (MAX_HISTORY=200) is
+  smaller than the total count, a caption states the garden shows the
+  latest N of M (same semantics as the list view); full data still in
+  exports/backups
+- i18n x5 for the caption; tsc + 192 tests green

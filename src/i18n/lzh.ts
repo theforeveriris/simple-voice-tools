@@ -505,6 +505,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'garden.filterLabel': '以法擇之',
   'garden.empty': '園中尚無花——錄一條，開其首朵',
   'garden.legend': '俯觀譜之紋 · 每瓣 = 一帶（瓣長 = 其能）· 花心 = F1 · 虛圈 = F2',
+  'garden.truncated': '園中示近 {shown} 朵（庫凡 {total} 條，錄出/全備皆含之）',
   'garden.openAnalysis': '觀此錄之析',
   'garden.openDetail': '觀花之詳',
   'timelapse.title': '時光之機',

@@ -505,6 +505,7 @@ export const ja = {
   'garden.filterLabel': 'モードで絞り込み',
   'garden.empty': 'まだ花がありません - 1 回録音して最初の花を咲かせましょう',
   'garden.legend': '真上からのスペクトル指紋 · 花びら = 周波数帯（長さ = エネルギー）· 花心 = F1 · 破線円 = F2',
+  'garden.truncated': '最新の {shown} 朵を表示（全 {total} 件 - 書き出し/バックアップには全て含まれます）',
   'garden.openAnalysis': 'この記録の分析を開く',
   'garden.openDetail': '花の詳細を見る',
   'timelapse.title': 'タイムマシン',

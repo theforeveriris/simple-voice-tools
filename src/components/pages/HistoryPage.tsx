@@ -241,7 +241,7 @@ export function HistoryPage() {
         records.length === 0 ? (
           <EmptyHistory />
         ) : (
-          <GardenView records={records} onOpenAnalysis={open} />
+          <GardenView records={records} totalCount={totalCount} onOpenAnalysis={open} />
         )
       ) : records.length === 0 ? (
         <EmptyHistory />

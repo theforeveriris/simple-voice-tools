@@ -504,6 +504,7 @@ export const zhTW = {
   'garden.filterLabel': '依模式過濾',
   'garden.empty': '這裡還沒有花——去錄一條，開出第一朵',
   'garden.legend': '俯視頻譜指紋 · 每瓣 = 一個頻帶（瓣長 = 能量）· 花心 = F1 開口度 · 虛線圈 = F2 共鳴位',
+  'garden.truncated': '花園顯示最近 {shown} 朵（全庫共 {total} 條，匯出/備份包含全部）',
   'garden.openAnalysis': '查看這條記錄的分析',
   'garden.openDetail': '查看花朵詳情',
   'timelapse.title': '時光機',

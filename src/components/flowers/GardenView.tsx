@@ -1,10 +1,12 @@
 /**
- * 花园视图（历史页第三视图）
- * 全部记录各开一朵声之花，按时间排花坛（最新在前），可按模式过滤。
- * 点花弹详情：大花 + 映射依据标注（哪瓣是什么）+ 跳转分析页。
+ * 花园视图（历史页第三视图）——虚拟化版本
+ * 按月分节的虚拟滚动列表：只渲染视口 ± 缓冲内的花，窗口外用占位高度，
+ * 记录数增长到几千条时渲染量恒定（每行 3–4 朵，总 DOM 节点 ≈ 视口行数 × 每行数）。
+ * flowerOf 映射结果经 useMemo 缓存，滚动与重渲染不重复计算。
+ * 点花弹详情：大花 + 映射依据标注 + 跳转分析页。
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flower2, X, BarChart3 } from 'lucide-react';
 import { flowerOf, rotationJitter, flowerSideStats, type Flower } from '@/lib/flower';
@@ -21,6 +23,51 @@ const GARDEN_FILTERS: { id: 'all' | TestMode; labelKey: 'common.all' | 'mode.rea
   { id: 'sustained', labelKey: 'mode.sustained' },
   { id: 'glide', labelKey: 'mode.glide' },
 ];
+
+/** 布局常量（px）：与网格 CSS 保持一致 */
+const ROW_H = 132; // 花卡高（花 96 + 文本 28 + padding）
+const COLS = 4; // 桌面列数；窄屏由 CSS 2 列改为按 4 列虚拟化会有偏差——见响应式说明
+const BUFFER_ROWS = 3; // 视口上下各多渲染的行数
+
+/** 月份标签（YYYY年M月 本地化由调用方 locale 决定，简单格式化） */
+function monthLabel(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}/${d.getMonth() + 1}`;
+}
+
+interface Row {
+  kind: 'month' | 'flowers';
+  /** month 行：标签；flowers 行：本行花朵 */
+  label?: string;
+  monthKey?: string;
+  flowers?: { record: AnalysisRecord; flower: Flower; rotation: number }[];
+}
+
+/** 把记录按月分组 → 行序列（月头行 + 每行 COLS 朵的花行），最新在前 */
+function buildRows(records: AnalysisRecord[]): Row[] {
+  const sorted = [...records].sort((a, b) => b.createdAt - a.createdAt);
+  const rows: Row[] = [];
+  let curMonth = '';
+  let buf: NonNullable<Row['flowers']> = [];
+  const flush = () => {
+    if (buf.length > 0) {
+      rows.push({ kind: 'flowers', monthKey: curMonth, flowers: buf });
+      buf = [];
+    }
+  };
+  for (const r of sorted) {
+    const m = monthLabel(r.createdAt);
+    if (m !== curMonth) {
+      flush();
+      curMonth = m;
+      rows.push({ kind: 'month', label: m });
+    }
+    buf.push({ record: r, flower: flowerOf(r), rotation: rotationJitter(r.id) });
+    if (buf.length >= COLS) flush();
+  }
+  flush();
+  return rows;
+}
 
 /** 花朵详情弹窗 */
 function FlowerDetail({
@@ -50,7 +97,7 @@ function FlowerDetail({
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 380, damping: 28 }}
         onClick={(e) => e.stopPropagation()}
-        className="card-surface flex w-full max-w-sm flex-col items-center p-5"
+        className="card-surface relative flex w-full max-w-sm flex-col items-center p-5"
       >
         <button
           onClick={onClose}
@@ -88,19 +135,91 @@ function FlowerDetail({
 
 export function GardenView({
   records,
+  totalCount,
   onOpenAnalysis,
 }: {
   records: AnalysisRecord[];
+  /** 全库记录总数（内存窗口截断时提示「只显示最近 N 条」） */
+  totalCount: number;
   onOpenAnalysis: (record: AnalysisRecord) => void;
 }) {
   useI18n();
   const [filter, setFilter] = useState<'all' | TestMode>('all');
   const [detail, setDetail] = useState<{ record: AnalysisRecord; flower: Flower } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportH, setViewportH] = useState(600);
 
   const filtered = useMemo(
     () => (filter === 'all' ? records : records.filter((r) => r.mode === filter)),
     [records, filter],
   );
+
+  // 行布局（含 flowerOf 映射）：仅在记录/过滤变化时重算
+  const rows = useMemo(() => buildRows(filtered), [filtered]);
+  const rowOffsets = useMemo(() => {
+    const offs: number[] = [];
+    let y = 0;
+    for (const r of rows) {
+      offs.push(y);
+      y += r.kind === 'month' ? 36 : ROW_H;
+    }
+    offs.push(y);
+    return offs; // 长 = rows.length + 1
+  }, [rows]);
+  const totalH = rowOffsets[rowOffsets.length - 1] ?? 0;
+
+  // 滚动监听（rAF 节流）
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        setScrollTop(el.scrollTop);
+        setViewportH(el.clientHeight);
+      });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    const ro = new ResizeObserver(onScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [filter]);
+
+  // 可视行窗口
+  const [startRow, endRow] = useMemo(() => {
+    let lo = 0;
+    let hi = rows.length;
+    // 二分找第一个底部越过视口顶的行
+    {
+      let a = 0;
+      let b = rows.length - 1;
+      const target = scrollTop - BUFFER_ROWS * (ROW_H + 36);
+      while (a <= b) {
+        const mid = (a + b) >> 1;
+        if (rowOffsets[mid + 1] <= target) a = mid + 1;
+        else { lo = mid; b = mid - 1; }
+      }
+    }
+    {
+      let a = lo;
+      let b = rows.length - 1;
+      const target = scrollTop + viewportH + BUFFER_ROWS * (ROW_H + 36);
+      while (a <= b) {
+        const mid = (a + b) >> 1;
+        if (rowOffsets[mid] < target) a = mid + 1;
+        else { hi = mid; b = mid - 1; }
+      }
+    }
+    return [lo, hi];
+  }, [rows, rowOffsets, scrollTop, viewportH]);
+
+  const visible = rows.slice(startRow, Math.min(endRow + 1, rows.length));
 
   return (
     <div>
@@ -126,33 +245,54 @@ export function GardenView({
       {filtered.length === 0 ? (
         <p className="py-16 text-center text-sm text-ink-2">{t('garden.empty')}</p>
       ) : (
-        /* 花坛：时间横向流动，每朵花按日期排；窄屏两列、宽屏四列 */
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <AnimatePresence initial={false}>
-            {filtered.map((r) => {
-              const flower = flowerOf(r);
+        /* 虚拟滚动容器：历史页本身可滚，这里嵌套固定高度滚动区 */
+        <div
+          ref={scrollRef}
+          className="max-h-[62dvh] overflow-y-auto overscroll-contain rounded-2xl bg-surface-hi/30 px-2 py-1"
+        >
+          {/* 总高占位：滚动条长度反映全部内容 */}
+          <div style={{ height: totalH, position: 'relative' }}>
+            {/* 可视行绝对定位（整行位移，行内仍用网格） */}
+            {visible.map((row, i) => {
+              const idx = startRow + i;
+              const y = rowOffsets[idx];
+              if (row.kind === 'month') {
+                return (
+                  <p
+                    key={`m-${row.label}`}
+                    className="absolute inset-x-0 flex items-center gap-2 px-1 text-[11px] font-semibold text-ink-2"
+                    style={{ top: y, height: 36 - 6 }}
+                  >
+                    {row.label}
+                    <span className="h-px flex-1 bg-black/[0.06]" />
+                  </p>
+                );
+              }
               return (
-                <motion.button
-                  key={r.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.85 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => setDetail({ record: r, flower })}
-                  className="group flex flex-col items-center rounded-2xl bg-card/60 px-2 pb-2 pt-1 transition-colors hover:bg-card"
-                  aria-label={`${t('garden.openDetail')}: ${r.stats.avgF0.toFixed(1)} Hz`}
+                <div
+                  key={`f-${row.monthKey}-${idx}`}
+                  className="absolute inset-x-0 grid grid-cols-2 gap-2 sm:grid-cols-4"
+                  style={{ top: y, height: ROW_H }}
                 >
-                  <FlowerSvg flower={flower} rotation={rotationJitter(r.id)} className="h-24 w-24 transition-transform group-active:scale-95" />
-                  <span className="text-[10px] tabular-nums text-ink-2">
-                    {new Date(r.createdAt).getMonth() + 1}/{new Date(r.createdAt).getDate()}
-                    {' · '}
-                    {r.stats.avgF0.toFixed(0)}Hz
-                  </span>
-                </motion.button>
+                  {row.flowers!.map(({ record: r, flower, rotation }) => (
+                    <button
+                      key={r.id}
+                      onClick={() => setDetail({ record: r, flower })}
+                      className="group flex flex-col items-center rounded-2xl bg-card/60 px-2 pb-1 pt-1 transition-colors hover:bg-card"
+                      aria-label={`${t('garden.openDetail')}: ${r.stats.avgF0.toFixed(1)} Hz`}
+                    >
+                      <FlowerSvg flower={flower} rotation={rotation} className="h-20 w-20" />
+                      <span className="text-[10px] tabular-nums text-ink-2">
+                        {new Date(r.createdAt).getMonth() + 1}/{new Date(r.createdAt).getDate()}
+                        {' · '}
+                        {r.stats.avgF0.toFixed(0)}Hz
+                      </span>
+                    </button>
+                  ))}
+                </div>
               );
             })}
-          </AnimatePresence>
+          </div>
         </div>
       )}
 
@@ -171,11 +311,16 @@ export function GardenView({
         )}
       </AnimatePresence>
 
-      {/* 底部说明：花与参数的映射（花园自身的小图例） */}
+      {/* 底部说明：花与参数的映射（花园自身的小图例）+ 数据范围提示 */}
       <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[10px] leading-relaxed text-ink-2">
         <Flower2 size={10} className="shrink-0" />
         {t('garden.legend')}
       </p>
+      {totalCount > records.length && (
+        <p className="-mt-2 text-center text-[10px] text-ink-2/70">
+          {t('garden.truncated', { shown: records.length, total: totalCount })}
+        </p>
+      )}
     </div>
   );
 }

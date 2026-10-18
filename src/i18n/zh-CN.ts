@@ -505,6 +505,7 @@ export const zhCN = {
   'garden.filterLabel': '按模式过滤',
   'garden.empty': '这里还没有花——去录一条，开出第一朵',
   'garden.legend': '俯视频谱指纹 · 每瓣 = 一个频带（瓣长 = 能量）· 花心 = F1 开口度 · 虚线圈 = F2 共鸣位',
+  'garden.truncated': '花园显示最近的 {shown} 朵（全库共 {total} 条，导出/备份包含全部）',
   'garden.openAnalysis': '查看这条记录的分析',
   'garden.openDetail': '查看花朵详情',
   'timelapse.title': '时间机器',
