@@ -227,6 +227,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // 实验性功能
   showSpectrogram: true,
   siRenameEnabled: false,
+  gardenColumns: 4,
+  gardenMonthSections: true,
   liveSpectrum: false,
   pitchAlgorithm: 'yin',
   pitchCompareEnabled: true,

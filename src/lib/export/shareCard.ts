@@ -399,15 +399,18 @@ function canvasPetal(
 }
 
 /** 主题色相（与 FlowerSvg 同源：设置 hue；无 DOM 回退 285） */
+/** 主题色相：从持久化设置读（与 store 同一 localStorage 键；解析失败回退 285）。
+ *  不 import useStore——shareCard 保持与 React/store 解耦（e2e/离线渲染也可用） */
 function themeHue(): number {
   try {
-    const s = getComputedStyle(document.documentElement).getPropertyValue('--c-accent').trim();
-    // accent 是 oklch/hsl 字符串——直接取花色用固定主题色变量更稳：解析不出时回退
-    return 285;
-    void s;
-  } catch {
-    return 285;
-  }
+    const raw = localStorage.getItem('svt:settings:v1');
+    if (raw) {
+      const parsed = JSON.parse(raw) as { state?: { settings?: { hue?: number } } };
+      const hue = parsed.state?.settings?.hue;
+      if (typeof hue === 'number' && isFinite(hue)) return hue;
+    }
+  } catch { /* fallthrough */ }
+  return 285;
 }
 
 /** 声之花卡：俯视频谱指纹大花居中 + 「花语」关键数字行 + QR */
@@ -463,8 +466,9 @@ function drawFlowerCard(record: AnalysisRecord): HTMLCanvasElement {
   }
 
   // 花瓣（低频正上顺时针；明度低频亮 → 高频深；整体旋转 rot）
+  // 注意：canvasPetal 内部会乘 R（与 FlowerSvg 的 viewBox 几何一致），此处传系数不传像素
   for (const pt of f.petals) {
-    const len = (baseline * 0.55 + pt.length * baseline * 0.45) * R;
+    const len = baseline * 0.55 + pt.length * baseline * 0.45;
     const light = 82 - pt.lightness * 34;
     canvasPetal(
       ctx, cx, cy, R,

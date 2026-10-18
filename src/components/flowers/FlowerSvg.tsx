@@ -46,10 +46,12 @@ export interface FlowerSvgProps {
   /** 整体旋转微调（花园防同姿态，±10°） */
   rotation?: number;
   className?: string;
+  /** 内联样式（花园按行高缩放花尺寸用） */
+  style?: React.CSSProperties;
 }
 
 /** 声之花 SVG（俯视频谱指纹） */
-export function FlowerSvg({ flower: f, rotation = 0, className }: FlowerSvgProps) {
+export function FlowerSvg({ flower: f, rotation = 0, className, style }: FlowerSvgProps) {
   const hue = useThemeHue();
   // 花心半径（F1）
   const coreR = 12 * f.coreF1;
@@ -85,6 +87,7 @@ export function FlowerSvg({ flower: f, rotation = 0, className }: FlowerSvgProps
     <svg
       viewBox={`0 0 ${VB} ${VB}`}
       className={className}
+      style={style}
       role="img"
       aria-label="voice flower"
       dangerouslySetInnerHTML={{

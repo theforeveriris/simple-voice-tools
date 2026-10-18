@@ -1,23 +1,17 @@
-perf(garden): virtualized month-sectioned flower bed
+fix(share): flower card double-scaled geometry; feat(garden): layout settings
 
-The garden previously rendered every record as its own motion+SVG node -
-a few thousand records would stack thousands of components and tens of
-thousands of path nodes, and even flowerOf was recomputed every render.
+Share card fix:
+- canvasPetal receives a length COEFFICIENT (0-1, like the SVG viewBox
+  geometry) and multiplies by R internally - drawFlowerCard was passing a
+  pre-multiplied pixel length, so the whole flower was painted at 250x
+  and flew off-canvas; now the share flower matches the garden SVG
+- themeHue() now reads the persisted settings hue (svt:settings:v1) so
+  the card follows the user's monet hue instead of a hardcoded 285
 
-- virtual scrolling: fixed-height rows (4 cols desktop / 2 mobile),
-  only viewport +/- 3 buffer rows render; rows are absolutely positioned
-  inside a total-height spacer, scroll listener rAF-throttled, window
-  located by binary search over row offsets - render cost is constant
-  regardless of record count
-- month section headers as rows in the same virtual list (YYYY/M)
-- flowerOf mapping memoized in row build (useMemo on records/filter),
-  not per render; per-flower framer-motion layout animation removed
-  (disastrous under virtualization), entrance fade dropped for plain
-  hover states
-- inner fixed-height scroll area (62dvh, overscroll-contain) so the
-  virtual window works inside the page-level scroll
-- data-range honesty: when the in-memory window (MAX_HISTORY=200) is
-  smaller than the total count, a caption states the garden shows the
-  latest N of M (same semantics as the list view); full data still in
-  exports/backups
-- i18n x5 for the caption; tsc + 192 tests green
+Garden layout settings (view-level, persisted):
+- flowers-per-row 2/3/4/5 chip selector + month-sections toggle inline in
+  the garden header (gardenColumns / gardenMonthSections settings)
+- rows scale with column count (rowH = 132 * sqrt(4/cols)), flowers size
+  with rowH, narrow screens cap at 2 cols; virtualization math (offsets,
+  binary-search window) fully derives from these constants
+- FlowerSvg gains a style prop for row-height-driven sizing
