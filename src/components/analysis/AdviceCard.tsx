@@ -1,16 +1,18 @@
-/**
- * 训练建议卡（实验性）
- * adviceMode = rules：本地规则引擎生成（lib/advice.ts）；
- * adviceMode = llm：调用 设置 → 大模型 中使用中档案的接口（lib/llm.ts）。
- * 传入两条记录时（对比页）按 A / B 分组给规则建议，
- * 大模型则合并两份统计生成对比性建议。
+﻿/**
+ * 璁粌寤鸿鍗★紙瀹為獙鎬э級
+ * adviceMode = rules锛氭湰鍦拌鍒欏紩鎿庣敓鎴愶紙lib/advice.ts锛夛紱
+ * adviceMode = lua锛氱敤鎴?Lua 鑴氭湰鐢熸垚锛坙ib/lua/advice.ts锛岃剼鏈腑蹇冿級锛?
+ * adviceMode = llm锛氳皟鐢?璁剧疆 鈫?澶фā鍨?涓娇鐢ㄤ腑妗ｆ鐨勬帴鍙ｏ紙lib/llm.ts锛夈€?
+ * 浼犲叆涓ゆ潯璁板綍鏃讹紙瀵规瘮椤碉級鎸?A / B 鍒嗙粍缁欒鍒欏缓璁紝
+ * 澶фā鍨嬪垯鍚堝苟涓や唤缁熻鐢熸垚瀵规瘮鎬у缓璁€?
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Lightbulb, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { buildAdvice, type AdviceTarget } from '@/lib/advice';
+import { buildLuaAdvice, type LuaAdviceItem } from '@/lib/lua/advice';
 import {
   cachedLlmAdvice, fetchLlmAdvice, hasCachedLlmAdvice, llmAdviceKey,
   type LlmConfig, type LlmPromptOptions,
@@ -22,7 +24,7 @@ import { t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 import { LlmResultView, StreamPreview } from '@/components/analysis/LlmResultView';
 
-/** 建议卡通用骨架：标题行 + 内容 + 底部提示 */
+/** 寤鸿鍗￠€氱敤楠ㄦ灦锛氭爣棰樿 + 鍐呭 + 搴曢儴鎻愮ず */
 export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   const adviceMode = useStore((s) => s.settings.adviceMode);
   const targetEnabled = useStore((s) => s.settings.targetEnabled);
@@ -40,7 +42,7 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   );
   if (adviceMode === 'none') return null;
   const target: AdviceTarget = { enabled: targetEnabled, min: targetMin, max: targetMax };
-  // 基线 Δ 只在单记录（分析页）且非自身时附带
+  // 鍩虹嚎 螖 鍙湪鍗曡褰曪紙鍒嗘瀽椤碉級涓旈潪鑷韩鏃堕檮甯?
   const baseline =
     records.length === 1 && baselineRecord && baselineRecord.id !== records[0].id
       ? baselineRecord
@@ -64,15 +66,23 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
             prompt={{ extraRules, promptOverride, goal: userGoal, ageGroup }}
           />
         )
-        : <RuleAdvice records={records} target={target} />}
+        : adviceMode === 'lua'
+          ? <LuaAdvice records={records} target={target} />
+          : <RuleAdvice records={records} target={target} />}
       <p className="mt-2 px-0.5 text-[10px] leading-relaxed text-ink-2">
-        {t(adviceMode === 'llm' ? 'analysis.adviceHintLlm' : 'analysis.adviceHint')}
+        {t(
+          adviceMode === 'llm'
+            ? 'analysis.adviceHintLlm'
+            : adviceMode === 'lua'
+              ? 'analysis.adviceHintLua'
+              : 'analysis.adviceHint',
+        )}
       </p>
     </div>
   );
 }
 
-/** 规则判断：本地逐条生成；两条记录时按 A / B 分组 */
+/** 瑙勫垯鍒ゆ柇锛氭湰鍦伴€愭潯鐢熸垚锛涗袱鏉¤褰曟椂鎸?A / B 鍒嗙粍 */
 function RuleAdvice({ records, target }: { records: AnalysisRecord[]; target: AdviceTarget }) {
   const paired = records.length > 1;
   return (
@@ -103,9 +113,66 @@ function RuleAdvice({ records, target }: { records: AnalysisRecord[]; target: Ad
   );
 }
 
-/** 大模型判断：点击触发后异步生成（会话内缓存，失败可重试）。
- *  付费调用仅由用户显式发起（不上传音频，仅统计指标；卸载不中断，跑完照常进缓存）；
- *  键变化（重算/改备注）后的免费重取与手动重取门控见 useLlmStream。 */
+/** Lua 鑴氭湰鍒ゆ柇锛氬紓姝ヨ窇鍚敤鐨勮剼鏈紙鑴氭湰涓績锛夛紝閿欒鎶樺彔鎻愮ず銆?
+ *  鐢?records/target 娲剧敓 key + 璁℃暟鍣ㄥ湪娓叉煋鏈熺敓鎴愯姹傛爣璇嗭紙鏃?effect setState锛夛細
+ *  state 瀛樸€屼笂娆″畬鎴愮殑缁撴灉 + 褰撴椂 key銆嶏紝key 涓嶅尮閰嶅嵆瑙嗕负鍔犺浇涓紝鏁版嵁鍒颁綅鍚?setState 钀藉畾銆?*/
+function LuaAdvice({ records, target }: { records: AnalysisRecord[]; target: AdviceTarget }) {
+  // 璁板綍缁勫悎鐨勭ǔ瀹氭爣璇嗭紙id 鎷兼帴 + 鐩爣鍊硷級锛岄┍鍔ㄩ噸鏂拌姹?
+  const reqKey = `${records.map((r) => `${r.id}:${r.reanalyzedAt ?? 0}`).join('|')}#${target.enabled}:${target.min}:${target.max}`;
+  const [done, setDone] = useState<{ key: string; tips: LuaAdviceItem[]; errors: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const merged: LuaAdviceItem[] = [];
+      let errs = 0;
+      for (const rec of records) {
+        const res = await buildLuaAdvice(rec, target);
+        if (!alive) return;
+        merged.push(...res.tips);
+        errs += res.errors.length;
+      }
+      if (alive) setDone({ key: reqKey, tips: merged.slice(0, 3), errors: errs });
+    })();
+    return () => { alive = false; };
+  }, [reqKey, records, target]);
+  if (done?.key !== reqKey) {
+    return (
+      <div className="flex items-center gap-2 px-0.5 text-xs text-ink-2">
+        <Loader2 size={13} className="animate-spin text-accent" />
+        {t('analysis.adviceLlmLoading')}
+      </div>
+    );
+  }
+  return (
+    <div>
+      {done.tips.length === 0
+        ? (
+          <p className="px-0.5 text-xs leading-relaxed text-ink-2">
+            {t('analysis.adviceGood')}
+          </p>
+        )
+        : (
+          <ul className="flex flex-col gap-1.5">
+            {done.tips.map((tip, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-ink">
+                <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${tip.level === 'warn' ? 'bg-[#D66E5B]' : 'bg-accent'}`} />
+                <span>{tip.text}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      {done.errors > 0 && (
+        <p className="mt-1.5 px-0.5 text-[10px] text-ink-2">
+          {t('analysis.adviceLuaError', { n: done.errors })}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** 澶фā鍨嬪垽鏂細鐐瑰嚮瑙﹀彂鍚庡紓姝ョ敓鎴愶紙浼氳瘽鍐呯紦瀛橈紝澶辫触鍙噸璇曪級銆?
+ *  浠樿垂璋冪敤浠呯敱鐢ㄦ埛鏄惧紡鍙戣捣锛堜笉涓婁紶闊抽锛屼粎缁熻鎸囨爣锛涘嵏杞戒笉涓柇锛岃窇瀹岀収甯歌繘缂撳瓨锛夛紱
+ *  閿彉鍖栵紙閲嶇畻/鏀瑰娉級鍚庣殑鍏嶈垂閲嶅彇涓庢墜鍔ㄩ噸鍙栭棬鎺ц useLlmStream銆?*/
 function LlmAdvice({
   records,
   target,
@@ -120,7 +187,7 @@ function LlmAdvice({
   prompt: LlmPromptOptions;
 }) {
   const key = cfg ? llmAdviceKey(cfg, records, target, { baseline, prompt }) : null;
-  // effect 按缓存键（值稳定）触发，输入经 ref 传递：键值不变则不重复请求
+  // effect 鎸夌紦瀛橀敭锛堝€肩ǔ瀹氾級瑙﹀彂锛岃緭鍏ョ粡 ref 浼犻€掞細閿€间笉鍙樺垯涓嶉噸澶嶈姹?
   const latest = useRef({ records, target, cfg, baseline, prompt });
   useEffect(() => {
     latest.current = { records, target, cfg, baseline, prompt };
@@ -173,7 +240,7 @@ function LlmAdvice({
     );
   }
   if (stale) {
-    // 键变化后未自动重取（缓存未命中）：展示旧结果并给手动重取入口，不自动消耗付费额度
+    // 閿彉鍖栧悗鏈嚜鍔ㄩ噸鍙栵紙缂撳瓨鏈懡涓級锛氬睍绀烘棫缁撴灉骞剁粰鎵嬪姩閲嶅彇鍏ュ彛锛屼笉鑷姩娑堣€椾粯璐归搴?
     return (
       <div className="flex flex-col gap-1.5 px-0.5">
         {state.result && <LlmResultView result={state.result} />}

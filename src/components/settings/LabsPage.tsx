@@ -33,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch }
 import { SettingsSection, SettingRow } from './rows';
 import { GithubBackupSection } from './GithubBackupSection';
 import { ImportAudioSection } from './ImportAudioSection';
+import { ScriptHubSection } from './ScriptHubSection';
 import { InfoTip } from './InfoTip';
 
 /** 算法参数的档位下拉（数字值 ↔ 字符串键；当前值不在档位内时补入，防导入的任意值显示为空） */
@@ -149,6 +150,7 @@ export function LabsPage({
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
                 <SelectItem value="none">{t('settings.adviceModeNone')}</SelectItem>
                 <SelectItem value="rules">{t('settings.adviceModeRules')}</SelectItem>
+                <SelectItem value="lua">{t('settings.adviceModeLua')}</SelectItem>
                 <SelectItem value="llm">{t('settings.adviceModeLlm')}</SelectItem>
               </SelectContent>
             </Select>
@@ -370,9 +372,11 @@ export function LabsPage({
           </SettingRow>
         </SettingsSection>
 
+        {/* 脚本中心（Lua 建议脚本管理） */}
+        <ScriptHubSection />
+
         {/* 实时功能：元音落点 / F0 曲线 / 声谱图 / 声域图 + 音高算法 */}
-        <SettingsSection icon={Radar} title={t('labs.realtime')}>
-          <SettingRow label={<InfoTip label={t('labs.rtVowel')} text={t('labs.rtVowelDesc')} />}>
+        <SettingsSection icon={Radar} title={t('labs.realtime')}>          <SettingRow label={<InfoTip label={t('labs.rtVowel')} text={t('labs.rtVowelDesc')} />}>
             <button
               onClick={() => setVowelLiveOpen(true)}
               className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"

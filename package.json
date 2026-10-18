@@ -38,6 +38,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "uqr": "^0.1.3",
+    "wasmoon": "^1.16.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

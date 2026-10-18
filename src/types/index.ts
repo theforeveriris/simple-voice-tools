@@ -50,9 +50,9 @@ export type SpecColormap = 'magma' | 'gray' | 'accent';
 
 /**
  * 训练建议生成方式
- * none 关闭；rules 本地规则引擎；llm 调用大模型接口（见 lib/llm.ts）
+ * none 关闭；rules 本地规则引擎；lua 用户 Lua 脚本（脚本中心）；llm 调用大模型接口（见 lib/llm.ts）
  */
-export type AdviceMode = 'none' | 'rules' | 'llm';
+export type AdviceMode = 'none' | 'rules' | 'lua' | 'llm';
 
 /**
  * 实时音高检测算法（实验性）

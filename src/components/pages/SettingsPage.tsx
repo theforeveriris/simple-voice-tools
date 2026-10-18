@@ -79,6 +79,7 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.liveSpectrum' },
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceMode' },
   { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceOnCompare' },
+  { page: 'labs', sectionKey: 'labs.scripts', labelKey: 'labs.scripts' },
   { page: 'labs', sectionKey: 'settings.llmSection', labelKey: 'settings.llmBaseUrl' },
   { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmProfiles' },
   { page: 'labs', sectionKey: 'settings.llmUsageTitle', labelKey: 'settings.llmUsageTitle' },
