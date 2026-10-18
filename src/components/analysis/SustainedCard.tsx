@@ -13,7 +13,7 @@ import type { AnalysisRecord } from '@/types';
 export function SustainedCard({ record }: { record: AnalysisRecord }) {
   const m = useMemo(() => computeSustainedMetrics(record), [record]);
   return (
-    <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+    <div className="card-surface p-4">
       <div className="mb-2.5 flex items-center justify-between px-0.5">
         <span className="text-xs font-semibold text-ink">{t('analysis.sustainedTitle')}</span>
         {record.mode && <span className="text-[10px] text-ink-2">{t(`mode.${record.mode}`)}</span>}

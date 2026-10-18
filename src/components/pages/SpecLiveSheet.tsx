@@ -148,7 +148,7 @@ export function SpecLiveSheet({ onClose }: { onClose: () => void }) {
         </div>
       }
     >
-      <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+      <div className="mt-3.5 card-surface p-4">
         <canvas
           ref={attachCanvas}
           className="block h-[62vh] min-h-[380px] w-full"

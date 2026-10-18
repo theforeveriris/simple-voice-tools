@@ -103,7 +103,7 @@ export function HeroSummary({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="rounded-[22px] bg-card p-5 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]"
+      className="card-surface p-5"
     >
       {/* 标签行：平均基频 + 区间/模式徽标，右侧为分享 / CSV / 备注操作 */}
       <div className="flex items-center justify-between gap-2">

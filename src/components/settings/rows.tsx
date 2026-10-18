@@ -15,7 +15,7 @@ export function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-[22px] bg-card p-5 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+    <div className="card-surface p-5">
       <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
         <Icon size={15} className="text-accent" />
         {title}

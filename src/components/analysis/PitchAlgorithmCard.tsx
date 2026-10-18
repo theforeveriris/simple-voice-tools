@@ -160,7 +160,7 @@ export function PitchAlgorithmCard({ record }: { record: AnalysisRecord }) {
   if (!hasAudio) return null; // 无录音音频：不占版面（卡片语义见设置内说明）
 
   return (
-    <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+    <div className="card-surface p-4">
       <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
         <span className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-ink-2">
           <FlaskConical size={13} />

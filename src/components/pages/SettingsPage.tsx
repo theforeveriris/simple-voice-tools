@@ -183,7 +183,7 @@ export function SettingsPage() {
   const entry = (label: string, icon: typeof Palette, onOpen: () => void) => (
     <button
       onClick={onOpen}
-      className="flex w-full items-center justify-between rounded-[22px] bg-card px-5 py-4 text-left shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-[0.99]"
+      className="flex w-full items-center justify-between card-surface px-5 py-4 text-left transition-transform active:scale-[0.99]"
       aria-label={label}
     >
       <span className="flex items-center gap-2 text-sm font-semibold text-ink">
@@ -250,11 +250,11 @@ export function SettingsPage() {
           {searching ? (
             /* 搜索结果：设置项索引，点击直达子页面 */
             results.length === 0 ? (
-              <p className="rounded-[22px] bg-card px-5 py-6 text-center text-xs text-ink-2 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+              <p className="card-surface px-5 py-6 text-center text-xs text-ink-2">
                 {t('history.noMatch', { q: query.trim() })}
               </p>
             ) : (
-              <div className="rounded-[22px] bg-card px-5 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+              <div className="card-surface px-5">
                 {results.map((e) => (
                   <button
                     key={`${e.page}.${e.labelKey}`}

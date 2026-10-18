@@ -494,7 +494,7 @@ export function HistoryPage() {
           <EmptyHistory />
         ) : (
           <>
-          <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+          <div className="card-surface p-4">
             {/* 两套筛选地位平等（一个过滤记录、一个切纵轴）：同款分段控件 + 小标签，
                 窄屏整组换行而不是组内拆散 */}
             <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">

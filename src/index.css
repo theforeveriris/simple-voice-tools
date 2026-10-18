@@ -133,6 +133,22 @@
   }
 }
 
+@layer components {
+  /*
+   * 卡片表面：全应用统一的卡片视觉（圆角 + 卡色 + 双层柔和投影）。
+   * 历史上这串类名在各组件里复制粘贴了 26+ 处，现收敛为一处；
+   * 内边距等布局属性由使用处按需追加。
+   * 注意 pride / 背景图主题的毛玻璃规则（下方 .bg-card 选择器）同步命中本类。
+   */
+  .card-surface {
+    border-radius: 22px;
+    background-color: rgb(var(--c-card-rgb));
+    box-shadow:
+      0 2px 14px rgba(28, 25, 45, 0.05),
+      0 1px 3px rgba(28, 25, 45, 0.04);
+  }
+}
+
 @keyframes pulseSoft {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
@@ -339,15 +355,20 @@ html.bg-image .bg-surface:not(.app-root) {
   -webkit-backdrop-filter: blur(calc(var(--pride-glass-blur, 18px) + 6px)) saturate(1.1);
 }
 
-/* 卡片毛玻璃：半透明 + 背景模糊，隐隐透出底层渐变（强度可调） */
+/* 卡片毛玻璃：半透明 + 背景模糊，隐隐透出底层渐变（强度可调）。
+   .card-surface 是 bg-card 卡片的统一收敛类，同样命中 */
 html.theme-pride .bg-card,
-html.bg-image .bg-card {
+html.theme-pride .card-surface,
+html.bg-image .bg-card,
+html.bg-image .card-surface {
   background-color: rgb(var(--c-card-rgb) / 0.55);
   backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
   -webkit-backdrop-filter: blur(var(--pride-glass-blur, 18px)) saturate(1.15);
 }
 html.theme-pride.dark .bg-card,
-html.bg-image.dark .bg-card {
+html.theme-pride.dark .card-surface,
+html.bg-image.dark .bg-card,
+html.bg-image.dark .card-surface {
   background-color: rgb(var(--c-card-rgb) / 0.45);
 }
 /* 卡内的输入框 / 药丸 / 分段控件：轻微透明保持同气质（不加模糊，控制模糊层数量） */

@@ -53,7 +53,7 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
   const hasWeek = weekRecords(records).length > 0;
 
   return (
-    <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+    <div className="card-surface p-4">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
           <CalendarRange size={13} className="text-accent" />

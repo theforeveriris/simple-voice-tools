@@ -86,7 +86,7 @@ export function LlmPage({
         {/* AI 助手入口 */}
         <button
           onClick={() => setAssistantOpen(true)}
-          className="flex items-center gap-3 rounded-[22px] bg-card p-4 text-left shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-[0.99]"
+          className="flex items-center gap-3 card-surface p-4 text-left transition-transform active:scale-[0.99]"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
             <Sparkles size={19} />

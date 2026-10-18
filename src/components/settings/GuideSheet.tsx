@@ -120,7 +120,7 @@ export function GuideSheet({ onClose }: { onClose: () => void }) {
             <ArrowLeft size={18} />
           </button>
         </div>
-        <div className="rounded-[22px] bg-card p-5 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+        <div className="card-surface p-5">
           {failed ? (
             <p className="py-12 text-center text-xs text-ink-2">{t('settings.guideLoadFail')}</p>
           ) : md == null ? (

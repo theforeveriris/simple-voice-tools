@@ -53,7 +53,7 @@ export function AnalysisChart({
   // 数据表视图：与画布互斥切换，共用同一区间选择器（表格随区间联动）
   const [showTable, setShowTable] = useState(false);
   return (
-    <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+    <div className="card-surface p-4">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
         <span className="text-xs font-medium tracking-wide text-ink-2">{title}</span>
         <div className="flex items-center gap-2.5">
@@ -93,7 +93,7 @@ export function FormantCard({ record, range, onRangeChange, playhead }: RangedCa
     [record, formantTargetEnabled],
   );
   return (
-    <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+    <div className="card-surface p-4">
       <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
         <span className="text-xs font-medium tracking-wide text-ink-2">{t('analysis.titleFormant')}</span>
         <div className="flex shrink-0 items-center gap-2.5">
@@ -165,7 +165,7 @@ export function FormantCard({ record, range, onRangeChange, playhead }: RangedCa
 
 export function SpecCard({ record, range, onRangeChange, playhead }: RangedCardProps) {
   return (
-    <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+    <div className="card-surface p-4">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
         <span className="text-xs font-medium tracking-wide text-ink-2">{t('analysis.titleSpec')}</span>
         <div className="flex items-center gap-3 text-[11px] text-ink-2">
@@ -191,7 +191,7 @@ export function SpecCard({ record, range, onRangeChange, playhead }: RangedCardP
 
 export function VrpCard({ record, range, onRangeChange, playhead }: RangedCardProps) {
   return (
-    <div className="rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+    <div className="card-surface p-4">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
         <span className="text-xs font-medium tracking-wide text-ink-2">{t('analysis.titleVrp')}</span>
         <span className="text-[10px] text-ink-2">{t('analysis.vrpDepthHint')}</span>

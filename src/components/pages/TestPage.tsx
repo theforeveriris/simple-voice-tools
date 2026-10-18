@@ -36,7 +36,7 @@ function ChartCard({
   return (
     <div
       className={cn(
-        'relative flex min-h-0 flex-col rounded-[22px] bg-card p-3.5 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]',
+        'relative flex min-h-0 flex-col card-surface p-3.5',
         className,
       )}
     >

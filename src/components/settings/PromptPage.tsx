@@ -102,7 +102,7 @@ export function PromptPage({
         </div>
 
         {/* 状态卡：覆写生效 / 内置标准 */}
-        <div className="rounded-[22px] bg-card px-4 py-3 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+        <div className="card-surface px-4 py-3">
           {override ? (
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

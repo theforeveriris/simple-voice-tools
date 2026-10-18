@@ -269,7 +269,7 @@ export function CompareSheet({
         </div>
 
         {/* 叠加曲线 */}
-        <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+        <div className="mt-3.5 card-surface p-4">
           <div className="mb-1.5 flex items-center justify-between px-0.5">
             <span className="text-xs font-medium tracking-wide text-ink-2">{t('compare.overlayTitle')}</span>
             <div className="flex items-center gap-3 text-[11px] text-ink-2">
@@ -283,7 +283,7 @@ export function CompareSheet({
 
         {/* 元音空间叠加（任一记录有共振峰数据时显示） */}
         {hasVowel && (
-          <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+          <div className="mt-3.5 card-surface p-4">
             <div className="mb-1.5 flex items-center justify-between px-0.5">
               <span className="text-xs font-medium tracking-wide text-ink-2">{t('compare.vowelTitle')}</span>
               <div className="flex items-center gap-3 text-[11px] text-ink-2">
@@ -299,7 +299,7 @@ export function CompareSheet({
         )}
 
         {/* 指标对比表 */}
-        <div className="mt-3.5 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05)]">
+        <div className="mt-3.5 card-surface p-4">
           <table className="w-full">
             <thead>
               <tr className="text-[11px] text-ink-2">

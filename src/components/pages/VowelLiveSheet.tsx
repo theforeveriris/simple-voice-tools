@@ -82,7 +82,7 @@ export function VowelLiveSheet({ onClose }: { onClose: () => void }) {
       onClose={onClose}
     >
       {/* 元音空间画布 */}
-      <div className="mt-4 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+      <div className="mt-4 card-surface p-4">
         <canvas ref={attachCanvas} className="block h-[46vh] min-h-[280px] w-full" aria-label={t('vowelLive.title')} />
         <p className="mt-2 text-center text-[10px] leading-relaxed text-ink-2">{t('vowelLive.hint')}</p>
       </div>

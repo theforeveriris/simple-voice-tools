@@ -74,7 +74,7 @@ export function VrpLiveSheet({ onClose }: { onClose: () => void }) {
       startLabel={t('vrpLive.start')}
       onClose={onClose}
     >
-      <div className="mt-4 rounded-[22px] bg-card p-4 shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)]">
+      <div className="mt-4 card-surface p-4">
         <canvas
           ref={attachCanvas}
           className="block h-[58vh] min-h-[340px] w-full"
