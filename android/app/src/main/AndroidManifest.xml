@@ -54,6 +54,42 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- 快捷磁贴（下拉通知栏，API 24+）：RouteTileService 基类 + 三枚路由写死的空壳子类。
+             标签随系统语言取 strings.xml；用户可在系统磁贴编辑器中自由增删。 -->
+        <service
+            android:name=".RecordTileService"
+            android:label="@string/shortcut_record_short"
+            android:icon="@drawable/ic_shortcut_record"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.ACTIVE_TILE" android:value="true" />
+        </service>
+        <service
+            android:name=".HistoryTileService"
+            android:label="@string/shortcut_history_short"
+            android:icon="@drawable/ic_shortcut_history"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.ACTIVE_TILE" android:value="true" />
+        </service>
+        <service
+            android:name=".SettingsTileService"
+            android:label="@string/shortcut_settings_short"
+            android:icon="@drawable/ic_shortcut_settings"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.ACTIVE_TILE" android:value="true" />
+        </service>
     </application>
 
     <!-- Permissions -->

@@ -1,16 +1,16 @@
-refactor(llm): split the 911-line llm.ts into client/advice/cache modules
+feat(android): quick-settings tiles for record / history / settings
 
-- llmClient.ts (355): dual-protocol request assembly (OpenAI-compatible +
-  Anthropic), SSE stream parsing, usage extraction, connection test,
-  resolveLlmConfig
-- llmAdvice.ts (456): analysis-standard system prompt, record/baseline/
-  weekly payload assembly, buildSystemPrompt, structured result parsing,
-  fetchLlmAdvice / fetchWeeklyReport
-- llmCache.ts (107): in-memory + kv two-level cache instances, cache keys
-  (API key hashed), cachedWithStore / hasCached
-- llm.ts (36): pure re-export facade - all existing import sites
-  (AdviceCard / WeeklyReportCard / AssistantPage / aiLocale /
-  llmProfiles / useLlmStream / LlmPage / LlmProfilesSection /
-  LlmResultView / aiTranslateTask) unchanged
-- motivation: the last llm bug fix (47179d7) had to touch three concerns
-  in one file; future fixes land in exactly one layer
+- RouteTileService (TileService base, API 24+): click opens the app via
+  the same simplevoicetool:// deep-link the app shortcuts use, so cold
+  start queues the route for getInitialRoute() and warm start pushes the
+  shortcutRoute event - zero new Web-side code
+- three manifest services with routes hardcoded in trivial subclasses
+  (RecordTileService / HistoryTileService / SettingsTileService); labels
+  follow system language via the existing shortcut_* strings
+- visibility and ordering are user-configurable in the system tile editor
+  (standard TileService behavior); pre-API-24 devices never instantiate
+  the services, so minSdk 23 stays unchanged
+- compiled against the project SDK (gradle :app:compileDebugJavaWithJavac
+  passes; only the intentional pre-29 startActivityAndCollapse deprecation
+  warning remains)
+- GUIDE-CAPACITOR: new quick-settings tiles section

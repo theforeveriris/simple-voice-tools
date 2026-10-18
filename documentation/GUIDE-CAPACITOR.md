@@ -118,6 +118,18 @@ storeFile/storePassword/keyAlias/keyPassword，并在 `android/app/build.gradle`
 - Web 侧：`main.tsx` 把路由落到对应页签；与 PWA manifest shortcuts 共用
   同一套 `#/hash` 语义（见 GUIDE-PWA.md）。
 
+## 快捷磁贴（Quick Settings tiles，API 24+）
+
+下拉通知栏的磁贴编辑器里可添加三枚磁贴（测试录音 / 历史 / 设置，文案随系统语言）：
+
+- 原生侧：`RouteTileService`（TileService 基类，点击以 `simplevoicetool://open/#/…`
+  VIEW intent 拉起 MainActivity）+ 三个路由写死的空壳子类
+  （`RecordTileService` / `HistoryTileService` / `SettingsTileService`），
+  路由复用 AppShortcutPlugin 的同一分发链（冷启动暂存 / 热启动推事件）。
+- 用户在系统磁贴编辑器中自由增删与排序（TileService 标准行为）；
+  minSdk 23 的更旧设备上系统不会实例化（TileService 本身即 API 24），
+  无兼容成本。
+
 ## 系统栏配色跟随主题（SystemBarsPlugin）
 
 Android 15 强制 edge-to-edge，`statusBarColor` 被忽略；WebView 被
