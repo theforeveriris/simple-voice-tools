@@ -9,7 +9,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, BarChart3 } from 'lucide-react';
-import { flowerOf, rotationJitter, flowerSideStats, type Flower } from '@/lib/flower';
+import { flowerOf, rotationJitter, flowerSideStats, _internal, type Flower } from '@/lib/flower';
+import { applyLuaFlowers, computeLuaFlowers } from '@/lib/lua/flower';
 import { FlowerSvg } from '@/components/flowers/FlowerSvg';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
@@ -163,6 +164,18 @@ export function GardenView({
     [records, filter],
   );
 
+  // Lua 花朵脚本：记录集变化时异步预计算，完成后注入槽位（flowerOf 内部消费）
+  const [luaVersion, setLuaVersion] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    void computeLuaFlowers(filtered, (r) => _internal.bandEnergies(r)).then((map) => {
+      if (!alive) return;
+      applyLuaFlowers(map);
+      setLuaVersion((n) => n + 1); // 触发 rows 重算（Lua 花生效）
+    });
+    return () => { alive = false; };
+  }, [filtered]);
+
   // 窄屏列数减半（下限 1）；行高随列数缩放（花尺寸随行宽变化）
   const cols = useMemo(() => {
     const cap = isNarrow() ? Math.min(COLS, MOBILE_COLS_CAP) : COLS;
@@ -171,8 +184,9 @@ export function GardenView({
   const rowH = Math.round(BASE_ROW_H * (4 / cols) ** 0.5);
   const monthH = 36;
 
-  // 行布局（含 flowerOf 映射）：仅在记录/过滤/布局变化时重算
-  const rows = useMemo(() => buildRows(filtered, cols, monthSections), [filtered, cols, monthSections]);
+  // 行布局（含 flowerOf 映射）：luaVersion 有意依赖（Lua 花异步就绪后重算）
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- luaVersion 是有意依赖：Lua 花就绪后用槽位重映射
+  const rows = useMemo(() => buildRows(filtered, cols, monthSections), [filtered, cols, monthSections, luaVersion]);
   const rowOffsets = useMemo(() => {
     const offs: number[] = [];
     let y = 0;

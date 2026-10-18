@@ -25,6 +25,7 @@ import { useHistoryStore } from '@/store/useHistoryStore';
 import { computeStats } from '@/lib/audio/recorder';
 import { downloadText, recordToFrameCsv } from '@/lib/export/csv';
 import { recordToPitchTier, recordToFormant } from '@/lib/export/praat';
+import { luaExportEnabled, luaExportOf } from '@/lib/lua/export';
 import { ShareCardSheet } from '@/components/share/ShareCardSheet';
 import { renderShareCard, shareImageFilename } from '@/lib/export/shareCard';
 import { exportInteractiveHtml } from '@/lib/export/interactiveHtml';
@@ -88,8 +89,19 @@ export function AnalysisPage() {
   // 交互 HTML 报告：含音频与否的选择弹窗（无音频记录直接导出）
   const [htmlDialogOpen, setHtmlDialogOpen] = useState(false);
   const [htmlBusy, setHtmlBusy] = useState(false);
-  // 帧数据导出（CSV / Praat PitchTier / Praat Formant）三选一弹窗
+  // 帧数据导出（CSV / Praat PitchTier / Praat Formant / Lua 自定义格式）弹窗
   const [exportOpen, setExportOpen] = useState(false);
+  // Lua 自定义格式导出（脚本中心 export 脚本；入口可用性由探测 state 控制）
+  const [luaExportAvailable, setLuaExportAvailable] = useState(false);
+  const [luaExportBusy, setLuaExportBusy] = useState(false);
+  const recordId = record?.id ?? null;
+  useEffect(() => {
+    let alive = true;
+    void luaExportEnabled().then((v) => {
+      if (alive) setLuaExportAvailable(v);
+    }).catch(() => setLuaExportAvailable(false));
+    return () => { alive = false; };
+  }, [recordId]);
 
   const fullRange = useMemo<[number, number]>(() => [0, record?.durationSec ?? 0], [record?.durationSec]);
   const getRange = (kind: RangedKind): [number, number] =>
@@ -182,6 +194,24 @@ export function AnalysisPage() {
     }
     toast.success(t('toast.praatExported'));
     setExportOpen(false);
+  };
+
+  /** Lua 自定义格式导出（脚本中心 export 脚本） */
+  const onExportLua = async () => {
+    if (!record || luaExportBusy) return;
+    setLuaExportBusy(true);
+    try {
+      const result = await luaExportOf(record);
+      if (!result) {
+        toast.error(t('toast.luaExportFail'));
+        return;
+      }
+      downloadText(result.filename, result.content);
+      toast.success(t('toast.luaExported'));
+      setExportOpen(false);
+    } finally {
+      setLuaExportBusy(false);
+    }
   };
 
   /** 交互 HTML 报告导出（withAudio 决定是否内嵌录音） */
@@ -386,7 +416,7 @@ export function AnalysisPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 帧数据导出：CSV / Praat PitchTier / Praat Formant */}
+      {/* 帧数据导出：CSV / Praat PitchTier / Praat Formant /（Lua 自定义格式，有启用脚本时出现） */}
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>
         <DialogContent className="max-w-sm rounded-3xl">
           <DialogHeader>
@@ -415,6 +445,16 @@ export function AnalysisPage() {
               <span className="block text-sm font-medium text-ink">{t('analysis.exportFormant')}</span>
               <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportFormantDesc')}</span>
             </button>
+            {luaExportAvailable && (
+              <button
+                onClick={() => void onExportLua()}
+                disabled={luaExportBusy}
+                className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent disabled:opacity-50"
+              >
+                <span className="block text-sm font-medium text-ink">{t('analysis.exportLua')}</span>
+                <span className="mt-0.5 block text-xs text-ink-2">{t('analysis.exportLuaDesc')}</span>
+              </button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

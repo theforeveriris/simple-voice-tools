@@ -17,6 +17,7 @@
  */
 
 import type { AnalysisRecord } from '@/types';
+import { luaTakeFlower } from '@/lib/lua/flower';
 
 /** 单片花瓣的绘制参数（角度制，0° = 正上方，顺时针） */
 export interface Petal {
@@ -93,8 +94,13 @@ function bandEnergies(rec: AnalysisRecord): { hz: number[]; energy: number[] } |
 /** 模版瓣（无语谱退化）：固定韵律（正弦调制瓣长），圆花感 */
 const TEMPLATE_PETALS = 8;
 
-/** 主入口：记录 → 俯视频谱指纹花 */
+/** 主入口：记录 → 俯视频谱指纹花。
+ *  Lua 花朵脚本（脚本中心）启用时优先用其产出（applyLuaFlowers 预注入槽位），
+ *  槽位为空时走内置算法 —— 花永不失败。 */
 export function flowerOf(rec: AnalysisRecord): Flower {
+  const lua = luaTakeFlower(rec.id);
+  if (lua) return lua;
+
   const s = rec.stats;
   const basis: Flower['basis'] = { petalsFrom: 'template', facts: [] };
   const petals: Petal[] = [];

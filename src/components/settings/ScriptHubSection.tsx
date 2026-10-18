@@ -20,6 +20,14 @@ import type { AdviceTarget } from '@/lib/advice';
 import type { VoiceStats } from '@/types';
 import { Switch } from '../ui';
 import { cn } from '@/lib/utils';
+/** 脚本类型徽标（列表里区分消费方） */
+const KIND_LABEL: Record<LuaScriptView['kind'], string> = {
+  advice: '建议',
+  card: '卡片',
+  flower: '花朵',
+  export: '导出',
+};
+
 /** 试运行用的示例统计（与真实 VoiceStats 同形） */
 const DEMO_STATS: VoiceStats = {
   durationSec: 12.4,
@@ -86,9 +94,44 @@ export function ScriptHubSection() {
     reload();
   };
 
-  const testRun = async (code: string) => {
+  const testRun = async (code: string, kind: LuaScriptView['kind'] = 'advice') => {
     setTesting(true);
-    const res = await runLuaFn<unknown>(code, 'advise', [
+    if (kind === 'flower') {
+      // 花朵脚本：喂 demo stats（含频带摘要），校验返回结构
+      const res = await runLuaFn<unknown>(code, 'flower', [{
+        ...DEMO_STATS, f2f1GapHz: null, jitterPct: null, shimmerPct: null, hnrDb: null, cppsDb: null,
+        bands: { hz: {}, energy: {} },
+      }]);
+      setTesting(false);
+      const ok = res.ok && res.value && typeof res.value === 'object' && Array.isArray((res.value as { petals?: unknown[] }).petals);
+      if (ok) toast.success(t('labs.scriptTestOk', { n: (res.value as { petals: unknown[] }).petals.length }));
+      else toast.error(`${t('labs.scriptTestFail')}${res.ok ? '' : `：${res.error}`}`);
+      return;
+    }
+    if (kind === 'export') {
+      // 导出脚本：喂 demo record 视图（含 series.frames）；时间戳取固定值保持渲染纯净
+      const res = await runLuaFn<unknown>(code, 'export', [{
+        id: 'demo12345678', createdAt: 1735689600000, dateStr: '2025/1/1 12:00',
+        durationSec: DEMO_STATS.durationSec, mode: 'reading', note: '',
+        stats: { ...DEMO_STATS, target: DEMO_TARGET },
+        series: {
+          frames: [
+            { t: 0, f0: 170, rmsDb: -30, f1: 610, f2: 1890 },
+            { t: 0.033, f0: 175, rmsDb: -28, f1: 600, f2: 1920 },
+          ],
+        },
+      }]);
+      setTesting(false);
+      const v = res.ok ? res.value as { filename?: unknown; content?: unknown } : null;
+      if (v && typeof v.content === 'string' && v.content.length > 0) {
+        toast.success(t('labs.scriptTestOk', { n: 1 }));
+      } else {
+        toast.error(`${t('labs.scriptTestFail')}${res.ok ? '' : `：${res.error}`}`);
+      }
+      return;
+    }
+    // advice（与 card 类默认）：
+    const res = await runLuaFn<unknown>(code, kind === 'card' ? 'template' : 'advise', [
       { ...DEMO_STATS, target: DEMO_TARGET },
     ]);
     setTesting(false);
@@ -148,10 +191,12 @@ export function ScriptHubSection() {
           >
             <span className="min-w-0 flex-1 truncate text-xs text-ink">
               {s.name}
-              {s.builtin && <span className="ml-1.5 text-[10px] text-ink-2">内置</span>}
+              <span className="ml-1.5 text-[10px] text-ink-2">
+                {s.builtin ? `内置 · ${KIND_LABEL[s.kind]}` : KIND_LABEL[s.kind]}
+              </span>
             </span>
             <button
-              onClick={() => void testRun(s.code)}
+              onClick={() => void testRun(s.code, s.kind)}
               disabled={testing}
               aria-label={t('labs.scriptTest')}
               className="grid size-7 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-black/5 hover:text-accent disabled:opacity-40"
@@ -234,7 +279,7 @@ export function ScriptHubSection() {
               {t('common.save')}
             </button>
             <button
-              onClick={() => void testRun(draft.code)}
+              onClick={() => void testRun(draft.code, 'advice')}
               disabled={testing}
               className="flex items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-40"
             >

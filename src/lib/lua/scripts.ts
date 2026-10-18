@@ -6,14 +6,17 @@
  */
 
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
-import { BUILTIN_SCRIPTS, BUILTIN_CARD_SCRIPTS, type BuiltinScriptMeta } from './builtins';
+import {
+  BUILTIN_SCRIPTS, BUILTIN_CARD_SCRIPTS, BUILTIN_EXPORT_SCRIPTS,
+  type BuiltinScriptMeta,
+} from './builtins';
 
 /** 一条用户脚本（内置脚本以 builtin id 引用，不存这里） */
 export interface LuaUserScript {
   id: string;
   name: string;
-  /** 消费方：advice = 建议规则；card = 分享卡模板（filter/flower/praat 后续扩展） */
-  kind: 'advice' | 'card';
+  /** 消费方：advice 建议规则 / card 分享卡模板 / flower 花朵生成 / export 自定义格式导出桥 */
+  kind: 'advice' | 'card' | 'flower' | 'export';
   code: string;
   createdAt: number;
   updatedAt: number;
@@ -23,7 +26,7 @@ export interface LuaUserScript {
 export interface LuaScriptView {
   id: string;
   name: string;
-  kind: 'advice' | 'card';
+  kind: 'advice' | 'card' | 'flower' | 'export';
   code: string;
   builtin: boolean;
   enabled: boolean;
@@ -99,7 +102,7 @@ export async function setScriptEnabled(id: string, enabled: boolean): Promise<vo
  */
 export async function listScripts(): Promise<LuaScriptView[]> {
   const [users, enabled] = await Promise.all([getUserScripts(), getEnabledMap()]);
-  const fromBuiltin = (b: BuiltinScriptMeta, kind: 'advice' | 'card'): LuaScriptView => ({
+  const fromBuiltin = (b: BuiltinScriptMeta, kind: LuaScriptView['kind']): LuaScriptView => ({
     id: b.id,
     name: b.name,
     kind,
@@ -110,6 +113,7 @@ export async function listScripts(): Promise<LuaScriptView[]> {
   const builtins = [
     ...BUILTIN_SCRIPTS.map((b) => fromBuiltin(b, 'advice')),
     ...BUILTIN_CARD_SCRIPTS.map((b) => fromBuiltin(b, 'card')),
+    ...BUILTIN_EXPORT_SCRIPTS.map((b) => fromBuiltin(b, 'export')),
   ];
   const userViews: LuaScriptView[] = users.map((u) => ({
     id: u.id,
@@ -125,7 +129,7 @@ export async function listScripts(): Promise<LuaScriptView[]> {
 /** 导入格式（分享 = 一段 JSON；宽松校验，坏数据逐条丢弃） */
 export interface LuaScriptExport {
   version: 1;
-  scripts: Array<{ name: string; kind: 'advice' | 'card'; code: string }>;
+  scripts: Array<{ name: string; kind: 'advice' | 'card' | 'flower' | 'export'; code: string }>;
 }
 
 /** 新脚本 id（导入/新建共用） */

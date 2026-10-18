@@ -79,6 +79,44 @@ end
 `record` 表字段：`stats`（同上表）、`mode`、`note`、`createdAt`（epoch ms）、
 `dateStr`（宿主预格式化的日期串）、`id`。指令数上限 500。
 
+## flower/ — 花朵生成脚本
+
+定义全局函数 `flower(stats)` 返回与内置算法同构的花参数（花园/花卡共用渲染）：
+
+```lua
+function flower(stats)
+  local petals = {}
+  local n = #stats.bands.energy  -- 频带数（无语谱时为 0，可自定瓣数）
+  for i = 1, math.max(n, 12) do
+    local e = stats.bands.energy[i]  -- 1 基索引
+    table.insert(petals, {
+      angleDeg = (i - 1) * 360 / math.max(n, 12),  -- 0 = 正上，顺时针
+      length = e and (0.18 + 0.82 * e) or 0.5,     -- 0.15–1
+      lightness = i / math.max(n, 12),             -- 0–1（低频亮 → 高频深）
+      bandHz = stats.bands.hz[i],                  -- 可选
+    })
+  end
+  return {
+    petals = petals,
+    coreF1 = 0.8,        -- 0.3–1.2（内置：F1 开口度映射）
+    baselineF2 = 0.8,    -- 0.4–1（内置：F2 外推）
+    tipSharpness = 0.5,  -- 0–1（内置：F2 瓣尖映射）
+  }
+end
+```
+
+`stats.bands = { hz = {...}, energy = {...} }` 是记录语谱的频带能量摘要（能量已
+按最大值归一化到 0–1；无语谱为空表，脚本可自定瓣数）。花瓣上限 96。
+
+## export/ — 自定义格式导出脚本（数据格式桥）
+
+定义全局函数 `export(record)` 返回 `{ filename = "...", content = "..." }`，
+导出菜单出现「Lua 自定义格式」入口，一键下载脚本产出的任意文本格式。
+`record.series.frames` 是帧数组：`{ t, f0, rmsDb, f1, f2 }`（null = 未检出），
+`record.stats` 同 advice 表。内容上限 4MB。内置示例 `praat-bundle.lua`
+生成「在 Praat 中 Run 即重建 PitchTier 并出图」的脚本——其他生态
+（Emu/MOR/CHAT/自定义 CSV 方言）同理接入。
+
 ## History 过滤器表达式
 
 搜索框输入 `lua:` 开头的表达式即可按数据过滤记录（无需保存为脚本）：
