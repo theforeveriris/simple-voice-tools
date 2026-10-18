@@ -5,34 +5,12 @@
  * MPM：麦克劳德音高法（McLeod Pitch Method），归一化平方差函数 NSDF
  *       取首个 ≥ 0.9×全局峰的关键极大值，对低频与脉冲串更敏感。
  * 两者与 detectPitchYin 同构：同一输入输出 PitchEstimate，可互换（音高算法对比）。
+ * 差分/CMND/插值/复用缓冲等公共件见 pitchCore.ts。
  */
 
 import { detectPitchYin, type PitchEstimate } from './pitch';
+import { computeCmnd, ensurePitchScratch, parabolicRefine, pitchScratch, tauRange } from './pitchCore';
 import type { PitchAlgorithm } from '@/types';
-
-/* ------------------------------ 复用缓冲 ------------------------------ */
-/**
- * 实时循环 60fps 逐帧调用，工作数组按需增长 + 模块级复用，稳态零分配。
- * 同一线程内调用严格串行（实时循环 / 离线管线 / Worker 各自独占本线程），复用安全。
- */
-let diffBuf = new Float32Array(0);
-let cmndBuf = new Float32Array(0);
-let nsdfBuf = new Float32Array(0);
-/** 极值候选池（tau/val 平行数组 + 计数），pYIN 存谷、MPM 存峰 */
-let extTau = new Float64Array(0);
-let extVal = new Float64Array(0);
-
-function ensureScratch(len: number): void {
-  if (diffBuf.length < len) {
-    diffBuf = new Float32Array(len);
-    cmndBuf = new Float32Array(len);
-  }
-  if (extTau.length < len) {
-    extTau = new Float64Array(len);
-    extVal = new Float64Array(len);
-  }
-  if (nsdfBuf.length < len) nsdfBuf = new Float32Array(len);
-}
 
 /* ---------------------------------- pYIN ---------------------------------- */
 
@@ -68,28 +46,14 @@ export function detectPitchPyin(
   minHz = 60,
   maxHz = 600,
 ): PitchEstimate | null {
-  const half = samples.length >> 1;
-  const tauMax = Math.min(half - 1, Math.floor(sampleRate / minHz));
-  const tauMin = Math.max(2, Math.floor(sampleRate / maxHz));
-  if (tauMax <= tauMin) return null;
-  ensureScratch(tauMax + 1);
-  const diff = diffBuf;
-  const cmnd = cmndBuf;
+  const range = tauRange(samples, sampleRate, minHz, maxHz);
+  if (!range) return null;
+  const [tauMin, tauMax] = range;
+  ensurePitchScratch(tauMax + 1);
+  const { cmnd, extTau, extVal } = pitchScratch();
 
-  // 1. 差分函数 + 累积均值归一化（与 YIN 相同的白色谱处理）
-  for (let tau = tauMin; tau <= tauMax; tau++) {
-    let sum = 0;
-    for (let i = 0; i < half; i++) {
-      const delta = samples[i] - samples[i + tau];
-      sum += delta * delta;
-    }
-    diff[tau] = sum;
-  }
-  let runningSum = 0;
-  for (let tau = tauMin; tau <= tauMax; tau++) {
-    runningSum += diff[tau];
-    cmnd[tau] = runningSum === 0 ? 1 : (diff[tau] * (tau - tauMin + 1)) / runningSum;
-  }
+  // 1. 差分函数 + 累积均值归一化（与 YIN 相同的白色谱处理，写入共享缓冲）
+  computeCmnd(samples, tauMin, tauMax);
 
   // 2. 收集 CMND 的局部极小（候选周期的谷）
   let nMinima = 0;
@@ -130,14 +94,7 @@ export function detectPitchPyin(
   if (bestTau < 0 || bestP <= unvoiced) return null;
 
   // 4. 抛物线插值细化（与 YIN 同款）
-  let betterTau = bestTau;
-  if (bestTau > tauMin && bestTau < tauMax) {
-    const s0 = cmnd[bestTau - 1];
-    const s1 = cmnd[bestTau];
-    const s2 = cmnd[bestTau + 1];
-    const denom = 2 * (2 * s1 - s2 - s0);
-    if (Math.abs(denom) > 1e-9) betterTau = bestTau + (s2 - s0) / denom;
-  }
+  const betterTau = parabolicRefine(cmnd, bestTau, tauMin, tauMax);
 
   const freq = sampleRate / betterTau;
   if (freq < minHz || freq > maxHz) return null;
@@ -157,12 +114,12 @@ export function detectPitchMpm(
   minHz = 60,
   maxHz = 600,
 ): PitchEstimate | null {
+  const range = tauRange(samples, sampleRate, minHz, maxHz);
+  if (!range) return null;
+  const [tauMin, tauMax] = range;
+  ensurePitchScratch(tauMax + 1);
+  const { nsdf, extTau, extVal } = pitchScratch();
   const half = samples.length >> 1;
-  const tauMax = Math.min(half - 1, Math.floor(sampleRate / minHz));
-  const tauMin = Math.max(2, Math.floor(sampleRate / maxHz));
-  if (tauMax <= tauMin) return null;
-  ensureScratch(tauMax + 1);
-  const nsdf = nsdfBuf;
 
   // 1. 归一化平方差函数
   for (let tau = tauMin; tau <= tauMax; tau++) {
@@ -208,14 +165,7 @@ export function detectPitchMpm(
   if (chosenTau < 0 || chosenVal < 0.5) return null;
 
   // 4. 抛物线插值细化
-  let betterTau = chosenTau;
-  if (chosenTau > tauMin && chosenTau < tauMax) {
-    const s0 = nsdf[chosenTau - 1];
-    const s1 = nsdf[chosenTau];
-    const s2 = nsdf[chosenTau + 1];
-    const denom = 2 * (2 * s1 - s2 - s0);
-    if (Math.abs(denom) > 1e-9) betterTau = chosenTau + (s2 - s0) / denom;
-  }
+  const betterTau = parabolicRefine(nsdf, chosenTau, tauMin, tauMax);
 
   const freq = sampleRate / betterTau;
   if (freq < minHz || freq > maxHz) return null;
