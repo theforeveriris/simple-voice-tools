@@ -970,6 +970,8 @@ export const zhCN = {
   'privacy.encRow': '云备份加密',
   'privacy.encOn': '已开启（已解锁）',
   'privacy.encLocked': '已开启（已锁定）',
+  'privacy.encLockNow': '立即锁定',
+  'privacy.encLockedNow': '备份加密已锁定，下次云备份需重新输入口令',
   'privacy.encOff': '未开启',
   'privacy.llmLogTitle': 'AI 请求日志',
   'privacy.llmLog': 'AI 请求日志（最近 {n} 次）',

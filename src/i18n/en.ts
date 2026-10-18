@@ -968,6 +968,8 @@ export const en = {
   'privacy.encRow': 'Cloud backup encryption',
   'privacy.encOn': 'On (unlocked)',
   'privacy.encLocked': 'On (locked)',
+  'privacy.encLockNow': 'Lock now',
+  'privacy.encLockedNow': 'Backup encryption locked; enter the passphrase again before the next cloud backup',
   'privacy.encOff': 'Off',
   'privacy.llmLogTitle': 'AI request log',
   'privacy.llmLog': 'AI request log (last {n})',

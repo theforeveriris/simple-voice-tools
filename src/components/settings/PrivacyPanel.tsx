@@ -6,11 +6,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, Ellipsis, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Copy, Ellipsis, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { getStoredLogin } from '@/lib/backup/github';
 import { getWebdavConfig } from '@/lib/backup/webdav';
-import { getBackupCryptoConfig, isBackupEncryptionUnlocked } from '@/lib/backup/crypto';
+import { getBackupCryptoConfig, isBackupEncryptionUnlocked, lockBackupEncryption } from '@/lib/backup/crypto';
 import { BACKUP_CHANGED_EVENT } from '@/lib/backup/bus';
 import { clearLlmRequestLog, readLlmRequestLog, type LlmRequestLogEntry } from '@/lib/llmRequestLog';
 import { t } from '@/i18n';
@@ -73,10 +73,21 @@ export function PrivacyPanel() {
       {/* 云备份现状 */}
       <SettingRow label={t('privacy.ghRow')} desc={ghLogin ? t('privacy.ghConnected', { login: ghLogin }) : t('privacy.ghNot')} />
       <SettingRow label={t('privacy.webdavRow')} desc={webdavOn ? t('privacy.webdavOn') : t('privacy.webdavOff')} />
-      <SettingRow
-        label={t('privacy.encRow')}
-        desc={!encOn ? t('privacy.encOff') : isBackupEncryptionUnlocked() ? t('privacy.encOn') : t('privacy.encLocked')}
-      />
+      <SettingRow label={t('privacy.encRow')} desc={!encOn ? t('privacy.encOff') : isBackupEncryptionUnlocked() ? t('privacy.encOn') : t('privacy.encLocked')}>
+        {/* 已解锁时提供「立即锁定」：清掉内存口令，之后云备份操作需重新输入 */}
+        {encOn && isBackupEncryptionUnlocked() && (
+          <button
+            onClick={() => {
+              lockBackupEncryption();
+              toast.success(t('privacy.encLockedNow'));
+            }}
+            className="flex items-center gap-1 px-1 py-1 text-[11px] font-medium text-ink-2 transition-opacity hover:opacity-70"
+          >
+            <Lock size={11} />
+            {t('privacy.encLockNow')}
+          </button>
+        )}
+      </SettingRow>
 
       {/* AI 请求日志 */}
       <div className="mt-1 border-t border-black/[0.04] px-1 pt-3">

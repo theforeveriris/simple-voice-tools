@@ -969,6 +969,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'privacy.encRow': '雲備加密',
   'privacy.encOn': '已啟（已解）',
   'privacy.encLocked': '已啟（鎖矣）',
+  'privacy.encLockNow': '即鎖',
+  'privacy.encLockedNow': '備份之鎖已閉，異日雲備份當復輸辭',
   'privacy.encOff': '未啟',
   'privacy.llmLogTitle': 'AI 請求之誌',
   'privacy.llmLog': 'AI 請求之誌（近 {n} 次）',

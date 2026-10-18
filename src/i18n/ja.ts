@@ -969,6 +969,8 @@ export const ja = {
   'privacy.encRow': 'クラウドバックアップの暗号化',
   'privacy.encOn': 'オン（解除済み）',
   'privacy.encLocked': 'オン（ロック中）',
+  'privacy.encLockNow': '今すぐロック',
+  'privacy.encLockedNow': 'バックアップ暗号化をロックしました。次回のクラウドバックアップ時にパスフレーズを再入力してください',
   'privacy.encOff': 'オフ',
   'privacy.llmLogTitle': 'AI リクエストログ',
   'privacy.llmLog': 'AI リクエストログ（最近 {n} 件）',

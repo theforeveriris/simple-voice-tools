@@ -968,6 +968,8 @@ export const zhTW = {
   'privacy.encRow': '雲端備份加密',
   'privacy.encOn': '已開啟（已解鎖）',
   'privacy.encLocked': '已開啟（已鎖定）',
+  'privacy.encLockNow': '立即鎖定',
+  'privacy.encLockedNow': '備份加密已鎖定，下次雲端備份需重新輸入密語',
   'privacy.encOff': '未開啟',
   'privacy.llmLogTitle': 'AI 請求日誌',
   'privacy.llmLog': 'AI 請求日誌（最近 {n} 次）',
