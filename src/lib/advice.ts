@@ -30,6 +30,8 @@ const JITTER_MAX_PCT = 1.04;
 const F0_CV_MAX = 0.22;
 /** 有效发声占比下限（%），过低说明录音中停顿多 */
 const VOICED_MIN_PCT = 35;
+/** F2−F1 间距参考下限（Hz）：女性化共鸣常引 ≥1000Hz；低于此提示收前共鸣（MtF 方向） */
+const F2F1_GAP_MIN_HZ = 1000;
 
 /**
  * 由记录统计生成建议（最多 3 条，按重要性排序）；全部通过时返回「保持」一条
@@ -70,6 +72,12 @@ export function buildAdvice(record: AnalysisRecord, target: AdviceTarget): Advic
   const voicedPct = s.totalSamples > 0 ? (s.voicedSamples / s.totalSamples) * 100 : 100;
   if (s.totalSamples > 30 && voicedPct < VOICED_MIN_PCT) {
     tips.push({ key: 'analysis.adviceVoiced', params: { n: Math.round(voicedPct) } });
+  }
+
+  // 6. 共鸣间距偏窄（F2−F1）：元音空间偏后/开口偏大，提示收前共鸣。
+  //    仅 MtF 方向消费（FtM 的共鸣方向相反）；参考线取女性化目标的中低段
+  if (record.stats.f2f1GapHz != null && record.stats.f2f1GapHz < F2F1_GAP_MIN_HZ) {
+    tips.push({ key: 'analysis.adviceResonance', params: { n: Math.round(record.stats.f2f1GapHz) } });
   }
 
   if (tips.length === 0) {

@@ -61,6 +61,13 @@ export function StatsTable({ record }: { record: AnalysisRecord }) {
           [t('analysis.rowAvgF2'), fmtHz(s.avgF2, 0)],
           [t('analysis.rowF2Range'), s.f2Range ? `${s.f2Range[0].toFixed(0)} – ${s.f2Range[1].toFixed(0)} Hz` : '—'],
           [t('analysis.rowF1F2Ratio'), s.avgF1 && s.avgF2 ? (s.avgF2 / s.avgF1).toFixed(2) : '—'],
+          // 共鸣感知指标（旧记录无此字段显示 —；用「重新分析」可补算）
+          ...(s.f2f1GapHz != null
+            ? ([[t('analysis.rowF2f1Gap'), `${s.f2f1GapHz.toFixed(0)} Hz（中位 ${s.f2f1GapMedianHz?.toFixed(0) ?? '—'}）`]] as [string, ReactNode][])
+            : []),
+          ...(s.spectralTiltDbOct != null
+            ? ([[t('analysis.rowSpectralTilt'), `${s.spectralTiltDbOct.toFixed(1)} dB/oct`]] as [string, ReactNode][])
+            : []),
         ]}
       />
       <StatGroup

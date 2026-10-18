@@ -151,6 +151,12 @@ export interface VoiceStats {
   avgF1: number | null;
   /** 平均第二共振峰 Hz */
   avgF2: number | null;
+  /** F2−F1 同帧间距均值（Hz）：女性化共鸣的核心量化（间距越大元音空间越靠前），旧记录为 undefined */
+  f2f1GapHz?: number | null;
+  /** F2−F1 同帧间距中位数（Hz） */
+  f2f1GapMedianHz?: number | null;
+  /** 谱倾斜（dB/octave，负=高频衰减快、音色暗），需录音音频（离线管线计算），旧记录为 undefined */
+  spectralTiltDbOct?: number | null;
   /** F1 波动范围 [min, max] */
   f1Range: [number, number] | null;
   /** F2 波动范围 [min, max] */

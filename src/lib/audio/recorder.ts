@@ -12,6 +12,7 @@ import { extractFormants } from './formants';
 import { runVqMetrics } from './analysisClient';
 import { getAlgoParams } from './algoParams';
 import { spectrumRowToBands, base64FromBytes } from './spectrogram';
+import { f2f1Gaps, aggregateResonance } from './resonance';
 import { SPEC_BANDS, SPEC_MAX_ROWS, getBandRanges, getPitchAlgorithm } from '@/constants';
 import type { AnalysisRecord, RecordSeries, TestMode, VoiceStats } from '@/types';
 
@@ -96,6 +97,8 @@ export function computeStats(series: RecordSeries, sampleHz: number): VoiceStats
     avgF2: f2s.length ? mean(f2s) : null,
     f1Range: f1s.length ? [Math.min(...f1s), Math.max(...f1s)] : null,
     f2Range: f2s.length ? [Math.min(...f2s), Math.max(...f2s)] : null,
+    // F2−F1 同帧间距（共鸣感知指标；谱倾斜需逐帧谱，由管线 metrics 下发）
+    ...aggregateResonance(f2f1Gaps(series.f1, series.f2), []),
     avgDb: activeDb.length ? mean(activeDb) : -90,
     peakDb: rmsVals.length ? Math.max(...rmsVals) : -90,
     jitterPct: null,

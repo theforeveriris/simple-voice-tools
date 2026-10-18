@@ -13,6 +13,7 @@ import { computeVoiceQuality } from './voiceQuality';
 import { computeCpps, fft } from './cpp';
 import { getAlgoParams } from './algoParams';
 import { spectrumRowToBands } from './spectrogram';
+import { frameSpectralTilt, aggregateResonance, type ResonanceStats } from './resonance';
 import { SPEC_BANDS } from '@/constants';
 import type { PitchAlgorithm } from '@/types';
 
@@ -37,12 +38,18 @@ export interface FrameAnalysisBuffers {
   specRows: number;
 }
 
-/** 嗓音质量四项（与 VoiceStats 对应字段同构） */
+/** 嗓音质量四项 + 共鸣指标（与 VoiceStats 对应字段同构） */
 export interface VqMetrics {
   jitterPct: number | null;
   shimmerPct: number | null;
   hnrDb: number | null;
   cppsDb: number | null;
+  /** F2−F1 间距均值（Hz），有声帧统计；无共振峰帧时为 null */
+  f2f1GapHz?: number | null;
+  /** F2−F1 间距中位数（Hz） */
+  f2f1GapMedianHz?: number | null;
+  /** 谱倾斜均值（dB/octave；越负越暗），有声帧统计 */
+  spectralTiltDbOct?: number | null;
 }
 
 export interface FrameAnalysisResult extends FrameAnalysisBuffers {
@@ -87,6 +94,9 @@ export function analyzePcmFrames(
   const row = new Uint8Array(SPEC_BANDS);
   let smoothF1: number | null = null;
   let smoothF2: number | null = null;
+  // 有声帧的共振峰间距与谱倾斜（聚合进 metrics；倾斜复用本帧已算好的 dB 谱，零额外 FFT）
+  const gaps: number[] = [];
+  const tilts: number[] = [];
   // 算法参数（实验性）：主线程由 syncModuleSettings 维护，Worker 侧随请求快照写入
   const { pitchMinHz, pitchMaxHz, voicedGateDb } = getAlgoParams();
 
@@ -123,6 +133,15 @@ export function analyzePcmFrames(
     spectrumRowToBands(specDb, binHz, row);
     specFlat.set(row, k * SPEC_BANDS);
 
+    // 共鸣指标（有声帧）：F2−F1 同帧间距 + 谱倾斜（复用本帧 specDb）
+    if (pitch) {
+      if (smoothF1 != null && smoothF2 != null) {
+        const gap = smoothF2 - smoothF1;
+        if (gap > 0) gaps.push(gap);
+      }
+      const tilt = frameSpectralTilt(specDb, binHz);
+      if (tilt != null) tilts.push(tilt);
+    }
     t.push(Math.round(now * 1000) / 1000);
     f0.push(pitch ? pitch.freq : NaN);
     db.push(dbFrame);
@@ -135,7 +154,11 @@ export function analyzePcmFrames(
   }
   onProgress?.(1);
 
-  return { t, f0, db, f1, f2, specFlat, specRows: frames, metrics: computeVqMetrics(pcm, PIPELINE_HZ) };
+  const resonance: ResonanceStats = aggregateResonance(gaps, tilts);
+  return {
+    t, f0, db, f1, f2, specFlat, specRows: frames,
+    metrics: { ...computeVqMetrics(pcm, PIPELINE_HZ), ...resonance },
+  };
 }
 
 /** 嗓音质量四项（Jitter/Shimmer/HNR + CPPS），任意采样率的单声道 PCM */

@@ -1,11 +1,13 @@
-feat(backup): skip unchanged WebDAV pushes via content fingerprint
+feat(analysis): F2-F1 resonance gap + spectral tilt metrics
 
-- buildFullBackupZip now returns sha256 (SHA-256 of the zipSync bytes,
-  plaintext fingerprint); sha256Hex helper with graceful '' when
-  WebCrypto is unavailable
-- WebDAV push stores {sha256, encrypted} after success; skips PUT when
-  fingerprint + encryption state match the last push and the remote file
-  exists (HEAD). Encryption toggle change forces one re-upload so the
-  cloud ciphertext always matches the local policy
-- Push toast distinguishes skipped vs uploaded; i18n x5 locales
-- GitHub side already had per-file git blob SHA skipping (unchanged)
+- new lib/audio/resonance.ts: f2f1Gaps (per-voiced-frame F2-F1, same-frame
+  pairing), frameSpectralTilt (dB/octave least-squares over 200-5000 Hz),
+  aggregateResonance; unit-tested (5 new cases)
+- pipeline: tilt computed per frame from the already-produced FFT dB bins
+  (zero extra FFTs), aggregated into VqMetrics alongside VQ; gap aggregated
+  in computeStats from the frame series, so live recording, import and
+  reanalysis all pick it up through the existing paths
+- StatsTables formant group shows both rows when present (old records show
+  nothing - use Reanalyze to backfill); VoiceStats fields optional
+- rule engine: MtF-oriented advice when the gap is < 1000 Hz
+- PARAMETERS-GUIDE sections 2.6 / 2.7; i18n x5 locales
