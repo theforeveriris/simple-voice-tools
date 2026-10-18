@@ -203,6 +203,9 @@ export const ja = {
   'html.withoutAudioDesc': '最小サイズ：曲線・統計・スペクトログラムのみ',
   'html.zoomHint': 'ホイールで拡大縮小 · ドラッグで移動 · ダブルクリックでリセット',
   'toast.htmlExported': 'インタラクティブレポートを書き出しました',
+  'html.clinical': '臨床レポート（PDF として印刷）',
+  'html.clinicalDesc': '静的レイアウト：全統計 + 3 曲線。ブラウザで開いて印刷すれば A4 版面になり、医師や言語聴覚士への提出に適します',
+  'toast.clinicalExported': '臨床レポートを書き出しました（開いて Ctrl/Cmd+P で PDF 保存）',
   'toast.htmlExportFail': 'インタラクティブレポートの生成に失敗しました',
 
   /* ---------- 历史页 ---------- */
@@ -709,6 +712,10 @@ export const ja = {
   'share.styleAurora': 'オーロラ',
   'share.shareAction': '共有 / 保存',
   'report.footer': 'Simple Voice Tool · ローカル分析、データは一切アップロードされません',
+  'report.clinicalTitle': '音声分析レポート',
+  'report.sectionStats': '測定結果',
+  'report.sectionCurves': '曲線（全時間軸）',
+  'report.disclaimer': 'Simple Voice Tool による生成。すべての数値はセルフ測定の参考値で、臨床検証はなく医学的診断を構成しません。音量は較正されていない相対値（dBFS）です。専門家が臨床所見と併せて解釈してください。',
   'share.shareTitle': 'Simple Voice Tool · 分析レポート',
   'share.compareTitle': '比較レポート',
 

@@ -28,6 +28,7 @@ import { recordToPitchTier, recordToFormant } from '@/lib/export/praat';
 import { ShareCardSheet } from '@/components/share/ShareCardSheet';
 import { renderShareCard, shareImageFilename } from '@/lib/export/shareCard';
 import { exportInteractiveHtml } from '@/lib/export/interactiveHtml';
+import { exportClinicalReport } from '@/lib/export/clinicalReport';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AnalysisRecord, RecordSeries } from '@/types';
@@ -368,6 +369,18 @@ export function AnalysisPage() {
             >
               <span className="block text-sm font-medium text-ink">{t('html.withoutAudio')}</span>
               <span className="mt-0.5 block text-xs text-ink-2">{t('html.withoutAudioDesc')}</span>
+            </button>
+            {/* 临床报告：静态排版（打印为 PDF），面向医生 / 言语治疗师的存档格式 */}
+            <button
+              onClick={() => {
+                setHtmlDialogOpen(false);
+                exportClinicalReport(record);
+                toast.success(t('toast.clinicalExported'));
+              }}
+              className="rounded-2xl border border-black/10 bg-surface-hi px-4 py-3 text-left transition-colors hover:border-accent"
+            >
+              <span className="block text-sm font-medium text-ink">{t('html.clinical')}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{t('html.clinicalDesc')}</span>
             </button>
           </div>
         </DialogContent>

@@ -203,6 +203,9 @@ export const zhCN = {
   'html.withoutAudioDesc': '文件最小，只含曲线、统计与语谱图',
   'html.zoomHint': '滚轮缩放 · 拖动平移 · 双击复位',
   'toast.htmlExported': '交互报告已导出',
+  'html.clinical': '临床报告（打印为 PDF）',
+  'html.clinicalDesc': '静态排版：全部统计 + 三条曲线，浏览器打开后打印即 A4 版式，适合交给医生或言语治疗师存档',
+  'toast.clinicalExported': '临床报告已导出（浏览器打开后 Ctrl/Cmd+P 另存为 PDF）',
   'toast.htmlExportFail': '交互报告生成失败',
 
   /* ---------- 历史页 ---------- */
@@ -710,6 +713,10 @@ export const zhCN = {
   'share.styleAurora': '极光',
   'share.shareAction': '分享 / 保存',
   'report.footer': 'Simple Voice Tool · 本地分析，不上传任何数据',
+  'report.clinicalTitle': '嗓音分析报告',
+  'report.sectionStats': '测量结果',
+  'report.sectionCurves': '曲线（时间轴全程）',
+  'report.disclaimer': '本报告由 Simple Voice Tool 生成，所有数值为自助测量参考，未经临床验证，不构成医学诊断；响度为未校准的相对值（dBFS）。请结合临床表现与其他检查由专业人士解读。',
   'share.shareTitle': 'Simple Voice Tool · 分析报告',
   'share.compareTitle': '对比报告',
 

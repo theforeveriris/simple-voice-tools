@@ -203,6 +203,9 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'html.withoutAudioDesc': '卷至簡，惟曲線、統計、語譜而已',
   'html.zoomHint': '輪以縮 · 曳以移 · 再擊以復',
   'toast.htmlExported': '可動之報已錄出',
+  'html.clinical': '醫家之報（印為 PDF）',
+  'html.clinicalDesc': '靜態之式：諸統計並三曲線。啟於瀏覽而印之，則成 A4 之頁，可奉醫者存之',
+  'toast.clinicalExported': '醫家之報已錄出（啟而按 Ctrl/Cmd+P 存為 PDF）',
   'toast.htmlExportFail': '可動之報生之不成',
 
   /* ---------- 历史页 ---------- */
@@ -709,6 +712,10 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'share.styleAurora': '極光',
   'share.shareAction': '分享 / 存之',
   'report.footer': 'Simple Voice Tool · 析於本機，數不上傳',
+  'report.clinicalTitle': '聲之析報',
+  'report.sectionStats': '所測',
+  'report.sectionCurves': '曲線（全程）',
+  'report.disclaimer': '此報出 Simple Voice Tool，諸值自測之參，未經醫驗，非為診斷；聲之強弱乃相對之數。宜就醫者並諸診而讀之。',
   'share.shareTitle': 'Simple Voice Tool · 析之報',
   'share.compareTitle': '比之報',
 

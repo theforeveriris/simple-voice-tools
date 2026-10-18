@@ -1,16 +1,11 @@
-feat(android): quick-settings tiles for record / history / settings
+feat(export): clinical report (print-to-PDF HTML) in the HTML export dialog
 
-- RouteTileService (TileService base, API 24+): click opens the app via
-  the same simplevoicetool:// deep-link the app shortcuts use, so cold
-  start queues the route for getInitialRoute() and warm start pushes the
-  shortcutRoute event - zero new Web-side code
-- three manifest services with routes hardcoded in trivial subclasses
-  (RecordTileService / HistoryTileService / SettingsTileService); labels
-  follow system language via the existing shortcut_* strings
-- visibility and ordering are user-configurable in the system tile editor
-  (standard TileService behavior); pre-API-24 devices never instantiate
-  the services, so minSdk 23 stays unchanged
-- compiled against the project SDK (gradle :app:compileDebugJavaWithJavac
-  passes; only the intentional pre-29 startActivityAndCollapse deprecation
-  warning remains)
-- GUIDE-CAPACITOR: new quick-settings tiles section
+- lib/export/clinicalReport.ts: static, zero-JS single-file report -
+  header with record metadata, full measurement table (incl. the new
+  F2-F1 gap / spectral tilt rows when present), pitch / formant / energy
+  curves as embedded SVG (print-faithful), disclaimer footer
+- entry: AnalysisPage HTML export dialog gains a third option; opens in
+  the browser, Ctrl/Cmd+P yields a clean A4 sheet (@page rule +
+  break-inside avoid) for doctors / speech-language pathologists
+- complements the interactive HTML report (that one is for exploring,
+  this one is for filing); i18n x5 locales
