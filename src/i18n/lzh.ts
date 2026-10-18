@@ -1209,4 +1209,16 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'themeShare.imported': '已施色貌「{name}」',
   'themeShare.importFail': '其檔非效（須 .svt-theme JSON）',
   'themeShare.overwrite': '入之即覆今色貌之設，行之乎？',
+
+  'sibilance.title': '咝音之析（/s/ 之刃）',
+  'sibilance.explain': '咝音（/s/ /x/ /sh/ 之屬）之譜重心與音色男女之感繫焉：高者清亮，低者沉濁。其據自此錄中自擇之摩擦音帧，以資練習之參，非醫家之指。',
+  'sibilance.needAudio': '析咝音須錄音之音（與嗓音諸指同例）',
+  'sibilance.analyzing': '方析咝音之帧…',
+  'sibilance.centroid': '咝音譜之重心',
+  'sibilance.range': '重心之布 P10–P90',
+  'sibilance.ref': '參之所在（{range}）',
+  'sibilance.refNone': '所得之帧',
+  'sibilance.khz': '{n} kHz',
+  'sibilance.hz': '{n} Hz',
+  'sibilance.frames': '{n} 帧',
 };

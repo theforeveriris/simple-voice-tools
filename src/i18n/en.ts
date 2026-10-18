@@ -1208,4 +1208,16 @@ export const en = {
   'themeShare.imported': 'Theme "{name}" applied',
   'themeShare.importFail': 'Invalid theme file (a .svt-theme JSON is expected)',
   'themeShare.overwrite': 'Importing will overwrite your current appearance settings. Continue?',
+
+  'sibilance.title': 'Sibilance analysis (/s/ blade)',
+  'sibilance.explain': 'The spectral centroid of sibilants (/s/ /x/ /sh/ fricatives) correlates directly with the gender perception of timbre: higher = brighter, lower = darker. Statistics come from fricative frames auto-detected in this recording; for training reference only, not a medical metric.',
+  'sibilance.needAudio': 'Sibilance analysis needs the saved audio (same requirement as voice-quality metrics)',
+  'sibilance.analyzing': 'Analyzing sibilant frames…',
+  'sibilance.centroid': 'Sibilant spectral centroid',
+  'sibilance.range': 'Centroid P10–P90',
+  'sibilance.ref': 'Reference position ({range})',
+  'sibilance.refNone': 'Detected frames',
+  'sibilance.khz': '{n} kHz',
+  'sibilance.hz': '{n} Hz',
+  'sibilance.frames': '{n} frames',
 } as const;

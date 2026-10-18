@@ -42,6 +42,7 @@ import { HeroSummary } from '@/components/analysis/HeroCard';
 import { BaselineStrip } from '@/components/analysis/BaselineStrip';
 import { PlaybackCard } from '@/components/analysis/PlaybackCard';
 import { SustainedCard } from '@/components/analysis/SustainedCard';
+import { SibilanceCard } from '@/components/analysis/SibilanceCard';
 import { AdviceCard } from '@/components/analysis/AdviceCard';
 import { StatsTable } from '@/components/analysis/StatsTables';
 import { PitchAlgorithmCard } from '@/components/analysis/PitchAlgorithmCard';
@@ -325,6 +326,7 @@ export function AnalysisPage() {
         onSeek={playback.seekPlay}
       />
       {record.mode === 'sustained' && <SustainedCard record={record} />}
+      <SibilanceCard record={record} />
       {settings.pitchCompareEnabled && <PitchAlgorithmCard record={record} />}
       <StatsTable record={recordWithStats} />
       <AdviceCard records={[record]} />

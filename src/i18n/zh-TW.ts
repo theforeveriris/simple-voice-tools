@@ -1208,4 +1208,16 @@ export const zhTW = {
   'themeShare.imported': '已套用主題「{name}」',
   'themeShare.importFail': '主題檔案無效（需要 .svt-theme JSON）',
   'themeShare.overwrite': '匯入將立即覆蓋目前外觀設定，繼續？',
+
+  'sibilance.title': '咝音分析（/s/ 之刃）',
+  'sibilance.explain': '咝音（/s/ /x/ /sh/ 等摩擦音）的頻譜重心與音色性別感知直接相關：重心越高越清亮，越低越沉。統計取自本條錄音中自動檢出的摩擦音帧，僅供訓練參考，非醫療指標。',
+  'sibilance.needAudio': '需要錄音音訊才能分析咝音（與嗓音品質指標同口徑）',
+  'sibilance.analyzing': '正在分析咝音帧…',
+  'sibilance.centroid': '咝音頻譜重心',
+  'sibilance.range': '重心分佈 P10–P90',
+  'sibilance.ref': '參考位置（{range}）',
+  'sibilance.refNone': '檢出帧數',
+  'sibilance.khz': '{n} kHz',
+  'sibilance.hz': '{n} Hz',
+  'sibilance.frames': '{n} 帧',
 } as const;

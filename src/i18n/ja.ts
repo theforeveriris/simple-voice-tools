@@ -1209,4 +1209,16 @@ export const ja = {
   'themeShare.imported': 'テーマ「{name}」を適用しました',
   'themeShare.importFail': 'テーマファイルが無効です（.svt-theme JSON が必要）',
   'themeShare.overwrite': '取り込むと現在の外観設定が上書きされます。続行しますか？',
+
+  'sibilance.title': '咝音分析（/s/ ブレード）',
+  'sibilance.explain': '咝音（/s/ /x/ /sh/ などの摩擦音）のスペクトル重心は音色の性別知覚と直接関係します：高いほど明るく、低いほど沈みます。統計はこの録音から自動検出した摩擦音フレームに基づきます。トレーニング参考用であり医療指標ではありません。',
+  'sibilance.needAudio': '咝音分析には録音音声が必要です（音声品質指標と同じ条件）',
+  'sibilance.analyzing': '咝音フレームを分析中…',
+  'sibilance.centroid': '咝音スペクトル重心',
+  'sibilance.range': '重心分布 P10–P90',
+  'sibilance.ref': '参照位置（{range}）',
+  'sibilance.refNone': '検出フレーム数',
+  'sibilance.khz': '{n} kHz',
+  'sibilance.hz': '{n} Hz',
+  'sibilance.frames': '{n} フレーム',
 } as const;

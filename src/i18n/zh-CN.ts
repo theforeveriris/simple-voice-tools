@@ -1213,6 +1213,19 @@ export const zhCN = {
   'themeShare.imported': '已应用主题「{name}」',
   'themeShare.importFail': '主题文件无效（需要 .svt-theme JSON）',
   'themeShare.overwrite': '导入将立即覆盖当前外观设置，继续？',
+
+  /* ---------- 咝音分析器 ---------- */
+  'sibilance.title': '咝音分析（/s/ 之刃）',
+  'sibilance.explain': '咝音（/s/ /x/ /sh/ 等摩擦音）的频谱重心与音色性别感知直接相关：重心越高越清亮，越低越沉。统计取自本条录音中自动检出的摩擦音帧，仅供训练参考，非医疗指标。',
+  'sibilance.needAudio': '需要录音音频才能分析咝音（与嗓音质量指标同口径）',
+  'sibilance.analyzing': '正在分析咝音帧…',
+  'sibilance.centroid': '咝音频谱重心',
+  'sibilance.range': '重心分布 P10–P90',
+  'sibilance.ref': '参考位置（{range}）',
+  'sibilance.refNone': '检出帧数',
+  'sibilance.khz': '{n} kHz',
+  'sibilance.hz': '{n} Hz',
+  'sibilance.frames': '{n} 帧',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

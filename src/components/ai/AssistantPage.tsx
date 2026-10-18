@@ -27,6 +27,7 @@ import {
   addMessage, createChat, deleteChat, getChat, setMessages, useChats, type ChatMessage,
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
+import { retrieveDocs } from '@/lib/docKnowledge';
 import { RecordImage } from '@/lib/assistantCharts';
 import { renderAssistantContent } from '@/lib/assistantChartRoute';
 import { useStore } from '@/store/useStore';
@@ -81,8 +82,8 @@ async function historySection(budgetTokens: number): Promise<string> {
   return `\n\n## 用户历史测试记录（共 ${lines.length} 条${omitted > 0 ? `，以下为最近 ${kept.length} 条` : ''}，时间从旧到新）\n${kept.join('\n')}`;
 }
 
-/** 助手系统提示词：定位与边界 + 历史记录使用规则，按界面语言回答 */
-function systemPrompt(history: string): string {
+/** 助手系统提示词：定位与边界 + 历史记录使用规则 + 内置文档摘录，按界面语言回答 */
+function systemPrompt(history: string, docs = ''): string {
   return [
     '你是 Simple Voice Tool 内置的 AI 助手——一个严肃的嗓音测量、分析与训练追踪工具。',
     '回答简洁、务实、有依据；涉及嗓音训练时给出可操作的练习建议；',
@@ -93,6 +94,7 @@ function systemPrompt(history: string): string {
       ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
       : '',
     history,
+    docs,
     `使用「${languageName()}」回答。`,
   ].filter(Boolean).join('\n');
 }
@@ -278,7 +280,10 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
       Math.min(Math.floor(context * 0.6), context - convTokens - replyReserve - 512),
     );
     const hist = await historySection(histBudget);
-    const sys = systemPrompt(hist);
+    // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
+    const lastUser = [...history].reverse().find((m) => m.role === 'user');
+    const docs = lastUser ? retrieveDocs(lastUser.content) : '';
+    const sys = systemPrompt(hist, docs);
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
     const maxTok = Math.max(1024, context - reserve);
