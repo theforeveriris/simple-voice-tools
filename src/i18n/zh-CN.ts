@@ -1237,6 +1237,28 @@ export const zhCN = {
   'analysis.envNoise': '底噪',
   'analysis.envMic': '麦克风',
   'analysis.envHour': '时段',
+
+  /* ---------- 局域网点对点同步 ---------- */
+  'lanSync.title': '局域网同步',
+  'lanSync.desc': '两台设备在同一个 Wi-Fi 下直连互传记录与音频，全程不经任何服务器：A 机创建邀请，B 机加入，按提示互相粘贴两段连接文本即可。数据只在你的设备之间流动。',
+  'lanSync.host': '创建邀请',
+  'lanSync.guest': '加入',
+  'lanSync.hostStep1': '① 把下面的邀请文本发给对方（微信 / 邮件均可）',
+  'lanSync.hostStep2': '③ 对方回给你一段「应答文本」，粘贴到这里完成连接',
+  'lanSync.guestStep1': '① 把对方发来的「邀请文本」粘贴到这里',
+  'lanSync.guestStep2': '② 连接建立中，等双方记录同步完成后即可关闭',
+  'lanSync.generateAnswer': '生成应答文本',
+  'lanSync.copyOffer': '② 复制这段邀请文本发给对方',
+  'lanSync.copyAnswer': '② 复制这段应答文本发回给对方',
+  'lanSync.copy': '复制',
+  'lanSync.pasteHere': '粘贴连接文本…',
+  'lanSync.connect': '完成连接',
+  'lanSync.copied': '已复制',
+  'lanSync.badSdp': '连接文本无效或不完整，请重新复制',
+  'lanSync.syncing': '同步中…',
+  'lanSync.done': '同步完成',
+  'lanSync.error': '连接中断',
+  'lanSync.reset': '关闭并重置',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

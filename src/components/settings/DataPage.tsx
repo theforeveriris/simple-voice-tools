@@ -53,6 +53,7 @@ import { StorageUsage } from './StorageUsage';
 import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 import { PrivacyPanel } from './PrivacyPanel';
+import { LanSyncSection } from './LanSyncSection';
 import { BackupEncryptionSection } from './BackupEncryptionSection';
 import { BackupPassphraseDialog } from './BackupPassphraseDialog';
 
@@ -323,6 +324,9 @@ export function DataPage({
         <SettingsSection icon={HardDrive} title={t('settings.storageUsage')}>
           <StorageUsage />
         </SettingsSection>
+
+        {/* 局域网点对点同步 */}
+        <LanSyncSection />
 
         {/* 备份与恢复 */}
         <SettingsSection icon={Archive} title={t('settings.backupRestore')}>
