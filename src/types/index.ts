@@ -190,6 +190,20 @@ export interface RecordSpec {
 }
 
 /**
+ * 录音环境元数据（自动标注，无需用户输入）
+ * 录音开始阶段自动采集：用于日后按环境切片对比（安静 vs 吵闹、晨间 vs 晚间、
+ * 换麦克风后的数据漂移）。全部可选——旧记录无此字段。
+ */
+export interface RecordEnv {
+  /** 开场环境底噪估计（dBFS，录音最初静音帧的近似最小电平） */
+  noiseFloorDb?: number;
+  /** 麦克风标签（getUserMedia track label；设备指纹随浏览器/系统而异，仅作参考） */
+  micLabel?: string;
+  /** 录音本地小时（0-23，昼夜节律切片用；createdAt 已有绝对时间，此字段只是免换算） */
+  hourOfDay?: number;
+}
+
+/**
  * 一条完整的测试/分析记录
  */
 export interface AnalysisRecord {
@@ -208,6 +222,8 @@ export interface AnalysisRecord {
   note?: string;
   /** 语谱图量化数据（可选，旧记录/无音频记录可能缺失） */
   spec?: RecordSpec;
+  /** 录音环境元数据（自动采集，旧记录无此字段） */
+  env?: RecordEnv;
   /** 用当前算法参数重算的时间（epoch 毫秒）；从未重算的记录无此字段 */
   reanalyzedAt?: number;
   /** 重算时的算法参数指纹（algoParamsFingerprint）；与当前指纹不一致 = 参数已变、可重算 */

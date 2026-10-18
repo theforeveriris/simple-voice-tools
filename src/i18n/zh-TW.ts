@@ -1220,4 +1220,14 @@ export const zhTW = {
   'sibilance.khz': '{n} kHz',
   'sibilance.hz': '{n} Hz',
   'sibilance.frames': '{n} 帧',
+
+  'envInsight.title': '環境洞察',
+  'envInsight.quieterBetter': '安靜環境的記錄平均 F0 高出約 {delta} Hz——底噪可能影響了吵鬧場景的檢測',
+  'envInsight.noisierBetter': '吵鬧環境的記錄平均 F0 反而高出約 {delta} Hz，可留意響度代償',
+  'envInsight.morningHigher': '你的晨間 F0 平均比晚間高約 {delta} Hz（晝夜節律正常現象）',
+  'envInsight.eveningHigher': '你的晚間 F0 平均比晨間高約 {delta} Hz',
+  'envInsight.micChanged': '最近用過 {n} 個不同的麥克風——換設備後的資料可能不可直接對比',
+  'analysis.envNoise': '底噪',
+  'analysis.envMic': '麥克風',
+  'analysis.envHour': '時段',
 } as const;

@@ -1221,4 +1221,14 @@ export const ja = {
   'sibilance.khz': '{n} kHz',
   'sibilance.hz': '{n} Hz',
   'sibilance.frames': '{n} フレーム',
+
+  'envInsight.title': '環境インサイト',
+  'envInsight.quieterBetter': '静かな環境の記録は平均 F0 が約 {delta} Hz 高いです——雑音が検出に影響している可能性',
+  'envInsight.noisierBetter': '騒がしい環境の記録はむしろ平均 F0 が約 {delta} Hz 高いです——音量代償に注意',
+  'envInsight.morningHigher': '朝の F0 は夜より平均約 {delta} Hz 高いです（正常な概日リズム）',
+  'envInsight.eveningHigher': '夜の F0 は朝より平均約 {delta} Hz 高いです',
+  'envInsight.micChanged': '最近 {n} 種類のマイクを使用——デバイス間でデータを直接比較できない可能性',
+  'analysis.envNoise': 'ノイズフロア',
+  'analysis.envMic': 'マイク',
+  'analysis.envHour': '時間帯',
 } as const;

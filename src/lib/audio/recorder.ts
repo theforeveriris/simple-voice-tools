@@ -14,7 +14,7 @@ import { getAlgoParams } from './algoParams';
 import { spectrumRowToBands, base64FromBytes } from './spectrogram';
 import { f2f1Gaps, aggregateResonance } from './resonance';
 import { SPEC_BANDS, SPEC_MAX_ROWS, getBandRanges, getPitchAlgorithm } from '@/constants';
-import type { AnalysisRecord, RecordSeries, TestMode, VoiceStats } from '@/types';
+import type { AnalysisRecord, RecordEnv, RecordSeries, TestMode, VoiceStats } from '@/types';
 
 /** 序列降采样倍率：60fps 采集 → 约 30Hz 存储 */
 const STORAGE_DECIMATE = 2;
@@ -258,6 +258,9 @@ class VoiceRecorder {
   private onAutoStop: (() => void) | null = null;
   private autoStopFired = false;
   private pendingMode: TestMode | undefined;
+  /** 环境元数据采集：开场底噪候选帧的电平 + 麦克风标签（stop 时组装进 record.env） */
+  private pendingEnv: RecordEnv = {};
+  private envNoiseSamples: number[] = [];
   /** 监听模式：只跑分析循环供练习视图读取，不抓音频不落记录 */
   private monitoring = false;
   /** 静音自动停止（长音模式）：发声开始后持续静音阈值（秒，0 = 不启用） */
@@ -445,6 +448,13 @@ class VoiceRecorder {
       this.lastVoicedAt = 0;
       this.voicedSeen = false;
       this.targetRange = opts.targetRange ?? null;
+      // 环境元数据：麦克风标签 + 本地小时（底噪在 loop 开场帧采样）
+      const envTrack = this.stream?.getAudioTracks()[0];
+      this.pendingEnv = {
+        ...(envTrack?.label ? { micLabel: envTrack.label.slice(0, 80) } : {}),
+        hourOfDay: new Date().getHours(),
+      };
+      this.envNoiseSamples = [];
 
       this.loop();
     } catch (err) {
@@ -561,9 +571,14 @@ class VoiceRecorder {
       stats,
       ...(this.pendingMode ? { mode: this.pendingMode } : {}),
       ...(specData ? { spec: { bands: SPEC_BANDS, data: specData } } : {}),
+      ...(this.envNoiseSamples.length >= 3
+        ? { env: { ...this.pendingEnv, noiseFloorDb: Math.round(Math.min(...this.envNoiseSamples) * 10) / 10 } }
+        : (Object.keys(this.pendingEnv).length > 0 ? { env: { ...this.pendingEnv } } : {})),
     };
     this.pendingMode = undefined;
     this.targetRange = null;
+    this.pendingEnv = {};
+    this.envNoiseSamples = [];
     return record;
   }
 
@@ -647,6 +662,11 @@ class VoiceRecorder {
     this.analyser.getFloatTimeDomainData(this.timeBuf);
     const db = rmsDb(this.timeBuf);
     const now = (performance.now() - this.startTime) / 1000;
+
+    // 环境底噪采样：开场 0.6s 内（通常尚未开口）收集帧电平，取最小值近似底噪
+    if (now < 0.6 && this.envNoiseSamples.length < 64) {
+      this.envNoiseSamples.push(db);
+    }
 
     // 静音自动停止（长音模式）：首次发声后，持续静音达到阈值即结束，
     // 不再硬性截断，保证 MPT（最长声时）测量完整

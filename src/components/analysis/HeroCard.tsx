@@ -148,6 +148,18 @@ export function HeroSummary({
         <StatChip label={t('analysis.statF2')} value={record.stats.avgF2 != null ? `${record.stats.avgF2.toFixed(0)} Hz` : '—'} />
         <StatChip label={t('analysis.statDb')} value={`${record.stats.avgDb.toFixed(1)} dB`} />
       </div>
+      {/* 环境元数据（自动标注，有才显示）：底噪 / 麦克风 / 时段 */}
+      {record.env && (record.env.noiseFloorDb != null || record.env.micLabel || record.env.hourOfDay != null) && (
+        <p className="mt-2.5 flex flex-wrap gap-x-3 gap-y-0.5 px-0.5 text-[10px] tabular-nums text-ink-2">
+          {record.env.noiseFloorDb != null && (
+            <span>{t('analysis.envNoise')} {record.env.noiseFloorDb.toFixed(1)} dB</span>
+          )}
+          {record.env.micLabel && <span className="truncate">{t('analysis.envMic')} {record.env.micLabel}</span>}
+          {record.env.hourOfDay != null && (
+            <span>{t('analysis.envHour')} {String(record.env.hourOfDay).padStart(2, '0')}:00</span>
+          )}
+        </p>
+      )}
     </motion.div>
   );
 }

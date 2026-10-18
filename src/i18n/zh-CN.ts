@@ -1226,6 +1226,17 @@ export const zhCN = {
   'sibilance.khz': '{n} kHz',
   'sibilance.hz': '{n} Hz',
   'sibilance.frames': '{n} 帧',
+
+  /* ---------- 环境元数据自动标注 ---------- */
+  'envInsight.title': '环境洞察',
+  'envInsight.quieterBetter': '安静环境的记录平均 F0 高出约 {delta} Hz——底噪可能影响了吵闹场景的检测',
+  'envInsight.noisierBetter': '吵闹环境的记录平均 F0 反而高出约 {delta} Hz，可留意响度代偿',
+  'envInsight.morningHigher': '你的晨间 F0 平均比晚间高约 {delta} Hz（昼夜节律正常现象）',
+  'envInsight.eveningHigher': '你的晚间 F0 平均比晨间高约 {delta} Hz',
+  'envInsight.micChanged': '最近用过 {n} 个不同的麦克风——换设备后的数据可能不可直接对比',
+  'analysis.envNoise': '底噪',
+  'analysis.envMic': '麦克风',
+  'analysis.envHour': '时段',
 } as const;
 
 export type DictKey = keyof typeof zhCN;

@@ -1221,4 +1221,14 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'sibilance.khz': '{n} kHz',
   'sibilance.hz': '{n} Hz',
   'sibilance.frames': '{n} 帧',
+
+  'envInsight.title': '境域之察',
+  'envInsight.quieterBetter': '靜境之錄均 F0 約高 {delta} Hz——囂處底噪或擾其檢',
+  'envInsight.noisierBetter': '囂境之錄反高約 {delta} Hz，可察響度之代償',
+  'envInsight.morningHigher': '晨之 F0 平均較暮高約 {delta} Hz（晝夜之節，常也）',
+  'envInsight.eveningHigher': '暮之 F0 平均較晨高約 {delta} Hz',
+  'envInsight.micChanged': '近用 {n} 器拾音——易器之後，其據未可徑比',
+  'analysis.envNoise': '底噪',
+  'analysis.envMic': '拾音器',
+  'analysis.envHour': '時段',
 };

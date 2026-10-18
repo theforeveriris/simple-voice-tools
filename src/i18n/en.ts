@@ -1220,4 +1220,14 @@ export const en = {
   'sibilance.khz': '{n} kHz',
   'sibilance.hz': '{n} Hz',
   'sibilance.frames': '{n} frames',
+
+  'envInsight.title': 'Environment insights',
+  'envInsight.quieterBetter': 'Records in quieter environments average ~{delta} Hz higher F0 — background noise may be skewing noisy sessions',
+  'envInsight.noisierBetter': 'Noisy records average ~{delta} Hz higher F0 — watch for loudness compensation',
+  'envInsight.morningHigher': 'Your morning F0 averages ~{delta} Hz higher than evening (a normal circadian pattern)',
+  'envInsight.eveningHigher': 'Your evening F0 averages ~{delta} Hz higher than morning',
+  'envInsight.micChanged': 'You used {n} different microphones recently — data across devices may not be directly comparable',
+  'analysis.envNoise': 'Noise floor',
+  'analysis.envMic': 'Microphone',
+  'analysis.envHour': 'Time of day',
 } as const;

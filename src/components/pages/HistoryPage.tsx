@@ -17,6 +17,7 @@ import {
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useStore } from '@/store/useStore';
 import { createDemoRecord } from '@/lib/audio/demo';
+import { envInsights } from '@/lib/envInsights';
 import { WeeklyReportCard } from '@/components/history/WeeklyReportCard';
 import { GardenView } from '@/components/flowers/GardenView';
 import { CompareSheet } from './CompareSheet';
@@ -48,6 +49,24 @@ function useLuaFilter(expr: string, records: AnalysisRecord[]): [Set<string> | n
   if (!expr) return [null, null];
   // 结果尚未到达（或属于旧表达式）：视为零命中，UI 显示空列表而非闪烁旧结果
   return state && state.expr === expr ? [state.hits, state.error] : [new Set(), null];
+}
+
+/** 环境洞察横幅：扫描记录的 env 元数据，有显著差异才出现（最多 2 条） */
+function EnvInsightsBanner({ records }: { records: AnalysisRecord[] }) {
+  const insights = useMemo(() => envInsights(records), [records]);
+  if (insights.length === 0) return null;
+  return (
+    <div className="card-surface p-4">
+      <p className="mb-1.5 px-0.5 text-xs font-semibold text-ink">{t('envInsight.title')}</p>
+      <ul className="flex flex-col gap-1">
+        {insights.map((x) => (
+          <li key={x.key} className="px-0.5 text-xs leading-relaxed text-ink-2">
+            {t(x.key, x.params)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function EmptyHistory() {
@@ -255,6 +274,7 @@ export function HistoryPage() {
           <EmptyHistory />
         ) : (
           <>
+            <EnvInsightsBanner records={records} />
             <HistoryTrendView records={records} onOpen={open} />
             {/* AI 周报（实验性 · 大模型）：聚合近 7 天出总结 */}
             <WeeklyReportCard records={records} />
