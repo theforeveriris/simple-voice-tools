@@ -1,8 +1,16 @@
-refactor(history): split HistoryPage into list-item and trend-view modules
+refactor(llm): split the 911-line llm.ts into client/advice/cache modules
 
-- HistoryListItem.tsx: RecordCard, useLongPress gesture hook, formatDate,
-  removeWithUndo (list-row concerns)
-- HistoryTrendView.tsx: trend filters, diary heatmap, trend chart with
-  data-table toggle; filter/metric state moves inside (resetting on
-  view switch is acceptable - it did not persist before either)
-- HistoryPage.tsx 690 -> 313 lines, now page-level orchestration only
+- llmClient.ts (355): dual-protocol request assembly (OpenAI-compatible +
+  Anthropic), SSE stream parsing, usage extraction, connection test,
+  resolveLlmConfig
+- llmAdvice.ts (456): analysis-standard system prompt, record/baseline/
+  weekly payload assembly, buildSystemPrompt, structured result parsing,
+  fetchLlmAdvice / fetchWeeklyReport
+- llmCache.ts (107): in-memory + kv two-level cache instances, cache keys
+  (API key hashed), cachedWithStore / hasCached
+- llm.ts (36): pure re-export facade - all existing import sites
+  (AdviceCard / WeeklyReportCard / AssistantPage / aiLocale /
+  llmProfiles / useLlmStream / LlmPage / LlmProfilesSection /
+  LlmResultView / aiTranslateTask) unchanged
+- motivation: the last llm bug fix (47179d7) had to touch three concerns
+  in one file; future fixes land in exactly one layer
