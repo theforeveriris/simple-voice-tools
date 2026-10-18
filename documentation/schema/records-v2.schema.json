@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://theforeveriris.github.io/simple-voice-tools/schema/records-v2.schema.json",
+  "title": "Simple Voice Tool records export (v2)",
+  "description": "Simple Voice Tool 的记录导出/备份 JSON 开放格式。app 内「导出 JSON」「完整备份 ZIP 内的 records.json」「GitHub 云备份」共用此格式。外部工具（Praat 脚本、语音学工具链、数据管道）可按此 Schema 读取或生成。",
+  "type": "object",
+  "required": ["records"],
+  "properties": {
+    "app": { "const": "simple-voice-tools", "description": "格式标识（读方可据此路由）" },
+    "version": { "const": 2, "description": "格式版本；缺失视为历史版本 1（字段同 v2 但无 env/f2f1GapHz 等新增可选字段）" },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "records": { "type": "array", "items": { "$ref": "#/$defs/record" } }
+  },
+  "$defs": {
+    "record": {
+      "type": "object",
+      "required": ["id", "createdAt", "durationSec", "sampleHz", "series", "stats"],
+      "properties": {
+        "id": { "type": "string", "description": "记录唯一 id（uuid 或 时间戳-随机后缀）；合并去重以此为准" },
+        "createdAt": { "type": "integer", "description": "录音创建时间，epoch 毫秒" },
+        "durationSec": { "type": "number", "exclusiveMinimum": 0, "description": "录音时长（秒）" },
+        "sampleHz": { "type": "number", "exclusiveMinimum": 0, "description": "序列采样率（每秒帧数，通常 ≈30）" },
+        "mode": { "enum": ["reading", "sustained", "glide"], "description": "测试模式；旧记录缺失 = 早期版本" },
+        "note": { "type": "string", "description": "用户备注" },
+        "series": { "$ref": "#/$defs/series" },
+        "stats": { "$ref": "#/$defs/stats" },
+        "spec": { "$ref": "#/$defs/spec" },
+        "env": { "$ref": "#/$defs/env" },
+        "reanalyzedAt": { "type": "integer", "description": "用当前算法参数重算的时间（epoch ms）" },
+        "paramsFp": { "type": "string", "description": "重算时的算法参数指纹" }
+      },
+      "additionalProperties": true
+    },
+    "series": {
+      "type": "object",
+      "required": ["t", "f0", "rmsDb"],
+      "description": "帧级序列；等长数组，缺失检测用 null（JSON）/ NaN（JS 内存）",
+      "properties": {
+        "t": { "type": "array", "items": { "type": "number" }, "description": "帧时间（秒，升序）" },
+        "f0": { "type": "array", "items": { "type": ["number", "null"] }, "description": "基频 Hz（无声帧 null）" },
+        "rmsDb": { "type": "array", "items": { "type": ["number", "null"] }, "description": "帧电平 dBFS" },
+        "f1": { "type": "array", "items": { "type": ["number", "null"] }, "description": "第一共振峰 Hz" },
+        "f2": { "type": "array", "items": { "type": ["number", "null"] }, "description": "第二共振峰 Hz" }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["durationSec", "sampleHz", "totalSamples", "voicedSamples", "avgF0", "medianF0", "minF0", "maxF0", "p10F0", "p90F0", "stdF0", "malePct", "femalePct", "transitionPct", "avgDb", "peakDb"],
+      "properties": {
+        "durationSec": { "type": "number" },
+        "sampleHz": { "type": "number" },
+        "totalSamples": { "type": "integer", "minimum": 0, "description": "总帧数" },
+        "voicedSamples": { "type": "integer", "minimum": 0, "description": "有声帧数" },
+        "avgF0": { "type": "number", "minimum": 0 },
+        "medianF0": { "type": "number", "minimum": 0 },
+        "minF0": { "type": "number", "minimum": 0 },
+        "maxF0": { "type": "number", "minimum": 0 },
+        "p10F0": { "type": "number", "minimum": 0, "description": "10% 分位（音域下沿）" },
+        "p90F0": { "type": "number", "minimum": 0, "description": "90% 分位（音域上沿）" },
+        "stdF0": { "type": "number", "minimum": 0 },
+        "malePct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "femalePct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "transitionPct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "avgF1": { "type": ["number", "null"] },
+        "avgF2": { "type": ["number", "null"] },
+        "f2f1GapHz": { "type": ["number", "null"], "description": "F2−F1 同帧间距均值；v2 新增，旧记录可能缺失" },
+        "f2f1GapMedianHz": { "type": ["number", "null"] },
+        "spectralTiltDbOct": { "type": ["number", "null"], "description": "谱倾斜 dB/octave（需录音音频）" },
+        "f1Range": { "type": ["array", "null"], "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "f2Range": { "type": ["array", "null"], "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "avgDb": { "type": "number" },
+        "peakDb": { "type": "number" },
+        "jitterPct": { "type": ["number", "null"], "description": "基频微扰 %（需录音音频）" },
+        "shimmerPct": { "type": ["number", "null"], "description": "振幅微扰 %（需录音音频）" },
+        "hnrDb": { "type": ["number", "null"], "description": "谐噪比 dB（需录音音频）" },
+        "cppsDb": { "type": ["number", "null"], "description": "平滑倒谱峰突出度 dB（需录音音频）" },
+        "inTargetPct": { "type": ["number", "null"], "description": "训练靶标达成率 %" }
+      },
+      "additionalProperties": true
+    },
+    "spec": {
+      "type": "object",
+      "description": "语谱图量化数据（可选）：64 频带 × 行的 Uint8 振幅 base64",
+      "required": ["bands", "data"],
+      "properties": {
+        "bands": { "const": 64 },
+        "data": { "type": "string", "contentEncoding": "base64" }
+      }
+    },
+    "env": {
+      "type": "object",
+      "description": "录音环境元数据（自动采集，v2 新增，全部可选）",
+      "properties": {
+        "noiseFloorDb": { "type": "number", "description": "开场环境底噪 dBFS" },
+        "micLabel": { "type": "string", "description": "麦克风标签" },
+        "hourOfDay": { "type": "integer", "minimum": 0, "maximum": 23 }
+      }
+    }
+  }
+}
