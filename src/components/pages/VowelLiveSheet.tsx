@@ -6,73 +6,51 @@
  * 生命周期（监听模式 / 录音中复用数据流）由 LiveSheetFrame 统一处理。
  */
 
-import { useEffect, useState } from 'react';
 import { recorder } from '@/lib/audio/recorder';
 import { paintVowelSpaceLive } from '@/components/charts/chartPainters';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { LiveSheetFrame } from './LiveSheetFrame';
-import { useLiveCanvas } from '@/hooks/useLiveCanvas';
+import { useLiveSheetLoop } from '@/hooks/useLiveSheetLoop';
 
 /** 落点轨迹窗口（秒）：保留最近的移动残影 */
 const TRAIL_SEC = 10;
-/** 读数刷新间隔（ms）：约 8Hz，避免 setState 过频 */
-const READOUT_INTERVAL_MS = 120;
 
 export function VowelLiveSheet({ onClose }: { onClose: () => void }) {
   useI18n();
-  const [readout, setReadout] = useState<{ f0: number; f1: number; f2: number } | null>(null);
-  const { canvasRef, attachCanvas, sizeRef, dprRef } = useLiveCanvas();
-
-  // 绘制 + 读数循环
-  useEffect(() => {
-    let raf = 0;
-    let lastReadout = 0;
-    const loop = (now: number) => {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (canvas && ctx) {
-        const { w, h } = sizeRef.current;
-        if (w >= 8 && h >= 8) {
-          const dpr = dprRef.current;
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          ctx.clearRect(0, 0, w, h);
-          const snap = recorder.getLive();
-          const t1 = snap.elapsedSec;
-          const t0 = Math.max(0, t1 - TRAIL_SEC);
-          paintVowelSpaceLive(
-            ctx, w, h,
-            {
-              t: snap.t,
-              f0: snap.f0.map((v) => (isFinite(v) ? v : null)),
-              rmsDb: snap.rmsDb,
-              f1: snap.f1.map((v) => (isFinite(v) ? v : null)),
-              f2: snap.f2.map((v) => (isFinite(v) ? v : null)),
-            },
-            t0, t1, true,
-          );
-          if (now - lastReadout > READOUT_INTERVAL_MS) {
-            lastReadout = now;
-            let f0: number | null = null;
-            let f1: number | null = null;
-            let f2: number | null = null;
-            for (let i = snap.t.length - 1; i >= 0; i--) {
-              if (f1 == null && isFinite(snap.f1[i])) f1 = snap.f1[i];
-              if (f2 == null && isFinite(snap.f2[i])) f2 = snap.f2[i];
-              if (isFinite(snap.f0[i]) && snap.f0[i] > 0) {
-                f0 = snap.f0[i];
-                break;
-              }
-            }
-            setReadout(f0 != null || f1 != null ? { f0: f0 ?? 0, f1: f1 ?? 0, f2: f2 ?? 0 } : null);
-          }
+  const { attachCanvas, readout } = useLiveSheetLoop<{ f0: number; f1: number; f2: number }>({
+    paint: (ctx, w, h) => {
+      const snap = recorder.getLive();
+      const t1 = snap.elapsedSec;
+      const t0 = Math.max(0, t1 - TRAIL_SEC);
+      paintVowelSpaceLive(
+        ctx, w, h,
+        {
+          t: snap.t,
+          f0: snap.f0.map((v) => (isFinite(v) ? v : null)),
+          rmsDb: snap.rmsDb,
+          f1: snap.f1.map((v) => (isFinite(v) ? v : null)),
+          f2: snap.f2.map((v) => (isFinite(v) ? v : null)),
+        },
+        t0, t1, true,
+      );
+    },
+    sampleReadout: () => {
+      const snap = recorder.getLive();
+      let f0: number | null = null;
+      let f1: number | null = null;
+      let f2: number | null = null;
+      for (let i = snap.t.length - 1; i >= 0; i--) {
+        if (f1 == null && isFinite(snap.f1[i])) f1 = snap.f1[i];
+        if (f2 == null && isFinite(snap.f2[i])) f2 = snap.f2[i];
+        if (isFinite(snap.f0[i]) && snap.f0[i] > 0) {
+          f0 = snap.f0[i];
+          break;
         }
       }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [canvasRef, sizeRef, dprRef]);
+      return f0 != null || f1 != null ? { f0: f0 ?? 0, f1: f1 ?? 0, f2: f2 ?? 0 } : (null as unknown as { f0: number; f1: number; f2: number });
+    },
+  });
 
   return (
     <LiveSheetFrame

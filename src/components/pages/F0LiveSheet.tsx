@@ -5,7 +5,7 @@
  * 音高检测算法跟随 实验性功能 → 实时音高算法 设置。
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { recorder } from '@/lib/audio/recorder';
 import { paintChart } from '@/components/charts/chartPainters';
 import { freqToNote, getLiveWindowSec } from '@/constants';
@@ -13,10 +13,7 @@ import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { LiveSheetFrame } from './LiveSheetFrame';
-import { useLiveCanvas } from '@/hooks/useLiveCanvas';
-
-/** 读数刷新间隔（ms）：约 8Hz，避免 setState 过频 */
-const READOUT_INTERVAL_MS = 120;
+import { useLiveSheetLoop } from '@/hooks/useLiveSheetLoop';
 
 interface Readout {
   hz: number;
@@ -30,56 +27,34 @@ export function F0LiveSheet({ onClose }: { onClose: () => void }) {
   const targetEnabled = useStore((s) => s.settings.targetEnabled);
   const targetF0Min = useStore((s) => s.settings.targetF0Min);
   const targetF0Max = useStore((s) => s.settings.targetF0Max);
-  // 稳定引用：避免每次渲染新数组导致绘制 effect 反复重建
+  // 稳定引用：避免每次渲染新数组导致绘制回调读到过期值
   const target = useMemo<[number, number] | null>(
     () => (targetEnabled ? [targetF0Min, targetF0Max] : null),
     [targetEnabled, targetF0Min, targetF0Max],
   );
 
-  const [readout, setReadout] = useState<Readout | null>(null);
-  const { canvasRef, attachCanvas, sizeRef, dprRef } = useLiveCanvas();
-
-  // 绘制 + 读数循环
-  useEffect(() => {
-    let raf = 0;
-    let lastReadout = 0;
-    const win = getLiveWindowSec();
-    const loop = (now: number) => {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (canvas && ctx) {
-        const { w, h } = sizeRef.current;
-        if (w >= 8 && h >= 8) {
-          const dpr = dprRef.current;
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          ctx.clearRect(0, 0, w, h);
-          const snap = recorder.getLive();
-          // 起始阶段序列不足一个窗口，也按整窗绘制（t0 为负，曲线从左侧渐入）
-          const t1 = Math.max(snap.elapsedSec, win);
-          paintChart('pitch', ctx, w, h, snap, t1 - win, t1, showGrid, true, true, null, target);
-          if (now - lastReadout > READOUT_INTERVAL_MS) {
-            lastReadout = now;
-            let hz: number | null = null;
-            for (let i = snap.f0.length - 1; i >= 0; i--) {
-              if (isFinite(snap.f0[i]) && snap.f0[i] > 0) {
-                hz = snap.f0[i];
-                break;
-              }
-            }
-            if (hz != null) {
-              const note = freqToNote(hz);
-              setReadout({ hz, note: note.name, cents: note.cents });
-            } else {
-              setReadout(null);
-            }
-          }
+  const { attachCanvas, readout } = useLiveSheetLoop<Readout>({
+    paint: (ctx, w, h) => {
+      const snap = recorder.getLive();
+      const win = getLiveWindowSec();
+      // 起始阶段序列不足一个窗口，也按整窗绘制（t0 为负，曲线从左侧渐入）
+      const t1 = Math.max(snap.elapsedSec, win);
+      paintChart('pitch', ctx, w, h, snap, t1 - win, t1, showGrid, true, true, null, target);
+    },
+    sampleReadout: () => {
+      const snap = recorder.getLive();
+      let hz: number | null = null;
+      for (let i = snap.f0.length - 1; i >= 0; i--) {
+        if (isFinite(snap.f0[i]) && snap.f0[i] > 0) {
+          hz = snap.f0[i];
+          break;
         }
       }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [canvasRef, sizeRef, dprRef, showGrid, target]);
+      if (hz == null) return null as unknown as Readout;
+      const note = freqToNote(hz);
+      return { hz, note: note.name, cents: note.cents };
+    },
+  });
 
   return (
     <LiveSheetFrame

@@ -5,7 +5,6 @@
  * 缓冲保留最近约 2 分钟（与录音引擎监听上限一致）。
  */
 
-import { useEffect, useState } from 'react';
 import { recorder } from '@/lib/audio/recorder';
 import { paintChart } from '@/components/charts/chartPainters';
 import { freqToNote } from '@/constants';
@@ -13,10 +12,7 @@ import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { LiveSheetFrame } from './LiveSheetFrame';
-import { useLiveCanvas } from '@/hooks/useLiveCanvas';
-
-/** 读数刷新间隔（ms） */
-const READOUT_INTERVAL_MS = 120;
+import { useLiveSheetLoop } from '@/hooks/useLiveSheetLoop';
 
 interface Readout {
   hz: number;
@@ -27,45 +23,28 @@ interface Readout {
 export function VrpLiveSheet({ onClose }: { onClose: () => void }) {
   useI18n();
   const showGrid = useStore((s) => s.settings.showGrid);
-  const [readout, setReadout] = useState<Readout | null>(null);
-  const { canvasRef, attachCanvas, sizeRef, dprRef } = useLiveCanvas();
 
   // 绘制 + 读数循环：整个监听期累积（0 → 当前）
-  useEffect(() => {
-    let raf = 0;
-    let lastReadout = 0;
-    const loop = (now: number) => {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (canvas && ctx) {
-        const { w, h } = sizeRef.current;
-        if (w >= 8 && h >= 8) {
-          const dpr = dprRef.current;
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          ctx.clearRect(0, 0, w, h);
-          const snap = recorder.getLive();
-          const t1 = Math.max(snap.elapsedSec, 1);
-          paintChart('vrp', ctx, w, h, snap, 0, t1, showGrid, true, true);
-          if (now - lastReadout > READOUT_INTERVAL_MS) {
-            lastReadout = now;
-            let hz: number | null = null;
-            let db = -90;
-            for (let i = snap.f0.length - 1; i >= 0; i--) {
-              if (isFinite(snap.f0[i]) && snap.f0[i] > 0) {
-                hz = snap.f0[i];
-                db = snap.rmsDb[i];
-                break;
-              }
-            }
-            setReadout(hz != null ? { hz, note: freqToNote(hz).name, db } : null);
-          }
+  const { attachCanvas, readout } = useLiveSheetLoop<Readout>({
+    paint: (ctx, w, h) => {
+      const snap = recorder.getLive();
+      const t1 = Math.max(snap.elapsedSec, 1);
+      paintChart('vrp', ctx, w, h, snap, 0, t1, showGrid, true, true);
+    },
+    sampleReadout: () => {
+      const snap = recorder.getLive();
+      let hz: number | null = null;
+      let db = -90;
+      for (let i = snap.f0.length - 1; i >= 0; i--) {
+        if (isFinite(snap.f0[i]) && snap.f0[i] > 0) {
+          hz = snap.f0[i];
+          db = snap.rmsDb[i];
+          break;
         }
       }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [canvasRef, sizeRef, dprRef, showGrid]);
+      return hz != null ? { hz, note: freqToNote(hz).name, db } : (null as unknown as Readout);
+    },
+  });
 
   return (
     <LiveSheetFrame
