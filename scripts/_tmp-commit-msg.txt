@@ -1,11 +1,13 @@
-feat(export): clinical report (print-to-PDF HTML) in the HTML export dialog
+test(audio): pitch algorithm benchmark on source-filter synthetic corpus
 
-- lib/export/clinicalReport.ts: static, zero-JS single-file report -
-  header with record metadata, full measurement table (incl. the new
-  F2-F1 gap / spectral tilt rows when present), pitch / formant / energy
-  curves as embedded SVG (print-faithful), disclaimer footer
-- entry: AnalysisPage HTML export dialog gains a third option; opens in
-  the browser, Ctrl/Cmd+P yields a clean A4 sheet (@page rule +
-  break-inside avoid) for doctors / speech-language pathologists
-- complements the interactive HTML report (that one is for exploring,
-  this one is for filing); i18n x5 locales
+- pitchBenchmark.test.ts: 9-case grid (C3-C5 x clean/10dB-noise x vibrato),
+  reuses the golden-fixture corpus quality (harmonic glottal source + Klatt
+  formant cascades); reports RPA (<=50 cents frame share) and median abs
+  error per algorithm; clean-corpus RPA >= 95% as a regression floor
+- first-run findings documented in ALGORITHM-YIN.md "基准" section:
+  clean corpus is a three-way tie (~4.5 cents); under 10 dB noise MPM is
+  the most robust (RPA 100%), YIN suffers octave halving at G3/A4, and
+  this pYIN's threshold distribution conservatively exits to null on all
+  noisy frames - more gaps, zero octave errors, by design
+- PTDB-TUG etc. intentionally not vendored (license/size); the CASES grid
+  is the extension point for local deeper benchmarking
