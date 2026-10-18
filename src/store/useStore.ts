@@ -7,23 +7,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
 import type { AnalysisRecord, AppSettings, ViewType } from '@/types';
-import {
-  AGE_BAND_PRESETS, DEFAULT_SETTINGS, MODE_META, setBandBounds,
-  setPitchAxis, setLiveWindowSec, setSpecColormap, setPitchAlgorithm,
-  setFormantTarget,
-} from '@/constants';
-import { applyPrideParams } from '@/lib/theme/monet';
-import { applyBgImage } from '@/lib/theme/bgImage';
-import { setAlgoParams } from '@/lib/audio/algoParams';
+import { DEFAULT_SETTINGS, MODE_META } from '@/constants';
 import { recorder } from '@/lib/audio/recorder';
 import { maybeAutoBackup } from '@/lib/backup/local';
-import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
-import { addProfile, profilesReady } from '@/lib/llmProfiles';
 import { t } from '@/i18n';
 import { useHistoryStore } from './useHistoryStore';
-
-/** 大模型 API Key 在 IDB kv 仓库中的键名（敏感态不进 localStorage） */
-const KV_LLM_API_KEY = 'llm-api-key';
+import { persistLlmApiKey } from './startup';
 
 interface AppState {
   /** 当前页面 */
@@ -73,11 +62,7 @@ export const useStore = create<AppState>()(
       settings: DEFAULT_SETTINGS,
       updateSettings: (settings) => {
         // API Key 变更同步写入 IDB kv（内存态仅为解析配置用，不持久化到 localStorage）
-        if (settings.llmApiKey !== undefined) {
-          void idbPutKV(KV_LLM_API_KEY, settings.llmApiKey).catch((err) => {
-            console.warn('大模型 API Key 写入 IndexedDB 失败:', err);
-          });
-        }
+        if (settings.llmApiKey !== undefined) persistLlmApiKey(settings.llmApiKey);
         set((state) => ({ settings: { ...state.settings, ...settings } }));
       },
 
@@ -169,77 +154,10 @@ export const useStore = create<AppState>()(
         // 旧版把 API Key 存在 localStorage：一次性迁入 IDB kv，内存态保留可用
         const legacyKey = (p as { llmApiKey?: unknown }).llmApiKey;
         if (typeof legacyKey === 'string' && legacyKey) {
-          void idbPutKV(KV_LLM_API_KEY, legacyKey).catch(() => undefined);
+          persistLlmApiKey(legacyKey);
         }
         return { ...current, settings };
       },
     },
   ),
 );
-
-// 音区边界 / 音高轴 / 实时窗口 / 语谱图配色：设置 → 模块级单例同步（bandOf / 画笔共用）。
-// 初始化一次（persist 从 localStorage 同步恢复后 merge 会触发订阅），
-// 之后仅在实际变化时刷新
-function syncModuleSettings(s: AppSettings): void {
-  // 用户自定义 bandBounds 优先；未自定义时按年龄段派生默认音区边界
-  setBandBounds(s.bandBounds ?? AGE_BAND_PRESETS[s.ageGroup]);
-  setPitchAxis(s.pitchAxisMin, s.pitchAxisMax);
-  setLiveWindowSec(s.liveWindowSec);
-  setSpecColormap(s.specColormap);
-  setPitchAlgorithm(s.pitchAlgorithm);
-  setFormantTarget(s.formantTargetEnabled
-    ? { f1: s.formantTargetF1, f2: s.formantTargetF2, radius: s.formantTargetRadius }
-    : null);
-  // 骄傲旗主题可调参数（CSS 变量；非骄傲旗预设下写入无副作用）
-  applyPrideParams(s.prideGlow, s.prideSaturation, s.prideGlassBlur, s.prideDrift);
-  // 自定义背景图参数（CSS 变量与 bg-image 类；毛玻璃强度共用 prideGlassBlur）
-  applyBgImage(s);
-  // 算法参数（实验性）：实时循环与主线程离线回退读模块单例；Worker 随请求携带快照
-  setAlgoParams({
-    yinThreshold: s.algoYinThreshold,
-    pitchMinHz: s.algoPitchMinHz,
-    pitchMaxHz: s.algoPitchMaxHz,
-    preEmphasis: s.algoPreEmphasis,
-    lpcOrder: s.algoLpcOrder,
-    f1MinHz: s.algoF1MinHz,
-    f2MaxHz: s.algoF2MaxHz,
-    voicedGateDb: s.algoVoicedGateDb,
-    activeGateDb: s.algoActiveGateDb,
-    vqMinProb: s.algoVqMinProb,
-    vqMinPeriods: s.algoVqMinPeriods,
-    cppsF0Max: s.algoCppsF0Max,
-    cppsSmoothFrames: s.algoCppsSmoothFrames,
-  });
-}
-syncModuleSettings(useStore.getState().settings);
-useStore.subscribe((state, prev) => {
-  if (state.settings !== prev.settings) syncModuleSettings(state.settings);
-});
-
-// 大模型 API Key 启动时从 IDB kv 恢复到内存态（v0.9.0 起仅供下方迁移读取）；
-// 内存已有值（如迁移刚写入）时不覆盖
-void (async () => {
-  try {
-    const key = await idbGetKV<string>(KV_LLM_API_KEY);
-    if (key && !useStore.getState().settings.llmApiKey) {
-      useStore.getState().updateSettings({ llmApiKey: key });
-    }
-  } catch {
-    /* IndexedDB 不可用时保持为空，由设置页提示补全 */
-  }
-  // v0.9.0 迁移：旧「三字段活动配置」→ 档案（方案 A：档案即数据源）。
-  // 仅在还没有任何档案时执行一次；迁移后旧字段保留但不再消费。
-  try {
-    const list = await profilesReady();
-    if (list.length > 0) return;
-    const s = useStore.getState().settings;
-    const baseUrl = s.llmBaseUrl?.trim() ?? '';
-    const apiKey = s.llmApiKey?.trim() ?? '';
-    const modelId = s.llmModelId?.trim() ?? '';
-    if (!baseUrl && !apiKey && !modelId) return;
-    const id = addProfile(t('settings.llmProfileMigrated'), { baseUrl, apiKey, modelId });
-    useStore.getState().updateSettings({ llmActiveProfileId: id });
-  } catch {
-    /* 迁移失败不阻塞启动：档案页会提示补全 */
-  }
-})();

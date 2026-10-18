@@ -9,6 +9,7 @@ import { initPwaInstall } from '@/lib/pwa'
 import { AppShortcuts, isNative, isTauri, syncNativeSystemBars } from '@/lib/platform'
 import { useHistoryStore } from '@/store/useHistoryStore'
 import { useStore } from '@/store/useStore'
+import { runStartupSideEffects } from '@/store/startup'
 import { setLocale, DEFAULT_LOCALE } from '@/i18n'
 import { hydrateAiLocale } from '@/i18n/aiLocale'
 import { getWallpaperHues } from '@/lib/theme/dynamic'
@@ -116,6 +117,11 @@ void loadBgImage()
 
 // 加载 IndexedDB 中的历史记录（含旧版 localStorage 迁移），完成后自动刷新界面
 void useHistoryStore.getState().hydrate();
+
+// 启动副作用：设置 → 模块单例同步（persist 恢复后）、API Key 的 IDB 恢复、
+// v0.9.0 LLM 档案迁移。原在 useStore 模块顶层随 import 执行，现集中此处，
+// 早于首帧渲染（保证画笔 / DSP 单例与设置一致），store 模块得以保持纯定义
+runStartupSideEffects()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
