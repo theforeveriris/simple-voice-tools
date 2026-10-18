@@ -1,17 +1,16 @@
-feat(garden): voice flowers - stats bloom into generative art
+feat(timemachine): animated A-to-B time-lapse in the compare sheet
 
-- lib/flower.ts: pure mapping record -> Flower params (unit-tested, 12 cases):
-  petals = harmonic entropy from the spectrogram bands (fallback: band-mix
-  diversity), shape = F1/F2 (low F1 = narrow petals, high F2 = long + tilted),
-  hue = male/female band mix (cold blue -> warm pink), stem = MPT for
-  sustained records, core glow = CPPS; graceful degradation everywhere -
-  no audio / no formants never fails to produce a flower
-- FlowerSvg: organic bezier petals (quadratic curves), translucent layering,
-  hue jitter derived from record id so same-band flowers differ; pure-param
-  SVG assembly
-- GardenView: history page gains a third view "Garden" - all records bloom
-  in a date-ordered bed (2/4-col grid), mode filter, tap a flower for a
-  detail sheet (big flower + "which petal is what" facts + jump to analysis)
-- shareCard: 5th style "flower" - large canvas-painted flower + key stats
-  line + legend + QR; ShareCardSheet option added
-- i18n x5 locales; 192 tests green
+- TimeMachine component (compare sheet section): canvas animation
+  cross-dissolving record A into record B at progress p -
+  * pitch mode: curves aligned by relative duration (same grammar as the
+    compare overlay), A fading out while B fades in over band background
+  * vowel mode: scatter clouds cross-dissolving in the vowel plane with a
+    growing dashed centroid arrow showing the migration path
+- scrolling date badge (drawDateBadge): interpolated date + total delta
+  days drawn per frame
+- player UI: play/pause, scrubbable progress (0-1000), 0.5x/1x/2x speed
+  (1x = 6s per pair), record button exports the canvas via
+  MediaRecorder to a WebM file (vp9 fallback webm, auto-save on
+  playback end, graceful toast when unsupported)
+- pure frame math (drawTimeMachineFrame / drawDateBadge) separated for
+  potential unit tests; i18n x5 locales

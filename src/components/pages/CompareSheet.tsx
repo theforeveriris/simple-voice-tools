@@ -12,6 +12,7 @@ import { ShareCardSheet } from '@/components/share/ShareCardSheet';
 import { renderShareCompareCard, shareCompareFilename } from '@/lib/export/shareCard';
 import { chartPalette, collectVowelPoints, drawVowelSpaceFrame, drawVowelPoints, drawVowelCentroid, drawVowelRefs, vowelXY } from '@/components/charts/chartPainters';
 import { AdviceCard } from '@/components/analysis/AdviceCard';
+import { TimeMachine } from '@/components/flowers/TimeMachine';
 import { fmtShortDateTime } from '@/lib/utils';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -297,6 +298,11 @@ export function CompareSheet({
             </p>
           </div>
         )}
+
+        {/* 时间机器（渐变动画）：叠加曲线卡内切换 / 独立区块 */}
+        <div className="mt-3.5">
+          <TimeMachine a={a} b={b} />
+        </div>
 
         {/* 指标对比表 */}
         <div className="mt-3.5 card-surface p-4">
