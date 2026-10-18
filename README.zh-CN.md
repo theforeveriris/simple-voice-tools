@@ -25,6 +25,10 @@
 
 ## 获取应用
 
+> **先体验再安装——无需安装、无需麦克风**：打开
+> [网页演示](https://theforeveriris.github.io/simple-voice-tools/?demo=1)
+> （自动载入示例数据；喜欢再随时「安装到主屏幕」）。
+
 [<img src=".github/assets/obtainium-badge.png" alt="Get it on Obtainium" height="56">](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522github.com.theforeveriris.simple-voice-tools%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252Ftheforeveriris%252Fsimple-voice-tools%2522%252C%2522author%2522%253A%2522theforeveriris%2522%252C%2522name%2522%253A%2522simple-voice-tools%2522%257D)
 
 - **安卓 APK**：从 [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest)
@@ -214,7 +218,8 @@ npm run preview
 - 使用了 `getUserMedia`，需要在 HTTPS 或 localhost 环境下运行
 - 麦克风权限需要用户手动授权
 - 所有数据（分析记录 + 录音音频）默认仅保存在本机浏览器的 IndexedDB 中；
-  只有你主动「完整备份」或连接 GitHub 云备份时数据才会导出/上传到你自己选择的目标
+  只有你主动「完整备份」或连接云备份时数据才会导出/上传到你自己选择的目标
+  ——详见[隐私政策](https://theforeveriris.github.io/simple-voice-tools/privacy-policy.md)
 - 嗓音质量指标（Jitter/Shimmer/HNR/CPPS）需要开启「保存录音音频」，旧记录或关闭
   音频保存时显示为「—」
 - 检测准确性可能受环境噪音影响，建议在安静环境中测试

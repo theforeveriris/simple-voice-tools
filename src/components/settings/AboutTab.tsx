@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap } from 'lucide-react';
+import { BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap, ShieldCheck } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { GuideSheet } from './GuideSheet';
 import { t } from '@/i18n';
@@ -136,6 +136,16 @@ export function AboutTab() {
           <p className="text-sm font-semibold text-ink">Simple Voice Tool</p>
           <p className="mt-1">{t('settings.aboutVersion')}</p>
           <p className="mt-1">{t('settings.aboutPrivacy')}</p>
+          {/* 隐私政策全文：随站点发布（public/privacy-policy.md），亦为应用商店要求可公开访问的政策 URL */}
+          <a
+            href={`${import.meta.env.BASE_URL}privacy-policy.md`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1 font-medium text-accent transition-opacity hover:opacity-70"
+          >
+            <ShieldCheck size={13} />
+            {t('settings.privacyPolicy')}
+          </a>
         </div>
       </SettingsSection>
 

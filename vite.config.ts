@@ -58,7 +58,7 @@ export default defineConfig(({ command }) => ({
       registerType: 'autoUpdate',
       // 注册改为 main.tsx 手动执行（isNative 时跳过——原生壳内无 SW 支持）
       injectRegister: null,
-      includeAssets: ['favicon.svg', 'og-image.png'],
+      includeAssets: ['favicon.svg', 'og-image.png', 'privacy-policy.md'],
       manifest: {
         name: 'Simple Voice Tool',
         short_name: 'Simple Voice Tool',

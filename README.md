@@ -23,6 +23,10 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 
 ## Get the app
 
+> **Try it first — no install, no microphone needed**: open the
+> [web demo](https://theforeveriris.github.io/simple-voice-tools/?demo=1)
+> (loads sample data; "Add to home screen" any time you like it).
+
 [<img src=".github/assets/obtainium-badge.png" alt="Get it on Obtainium" height="56">](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522github.com.theforeveriris.simple-voice-tools%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252Ftheforeveriris%252Fsimple-voice-tools%2522%252C%2522author%2522%253A%2522theforeveriris%2522%252C%2522name%2522%253A%2522simple-voice-tools%2522%257D)
 
 - **Android APK**: grab the latest `SimpleVoiceTool-v*-release.apk` from [GitHub Releases](https://github.com/theforeveriris/simple-voice-tools/releases/latest) and install it directly (release-signed, with in-app update notices)
@@ -88,6 +92,8 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 | [documentation/GUIDE-CAPACITOR.md](documentation/GUIDE-CAPACITOR.md) | Guide: Capacitor Android shell (build / signing / native share / known limits) |
 | [documentation/GUIDE-DESKTOP.md](documentation/GUIDE-DESKTOP.md) | Guide: Tauri Windows desktop (build / CI / platform differences) |
 | [documentation/PARAMETERS-GUIDE.md](documentation/PARAMETERS-GUIDE.md) | Metrics & parameters guide: what every number means, defaults, and the experimental algorithm parameters |
+| [documentation/REFERENCES.md](documentation/REFERENCES.md) | References: the literature behind every reference range and algorithm choice |
+| [Privacy Policy](https://theforeveriris.github.io/simple-voice-tools/privacy-policy.md) | What data goes where (source: `public/privacy-policy.md`) |
 | [documentation/ALGORITHM-YIN.md](documentation/ALGORITHM-YIN.md) | Pitch detection: YIN difference function, CMND, parabolic interpolation |
 | [documentation/ALGORITHM-FORMANT-LPC.md](documentation/ALGORITHM-FORMANT-LPC.md) | Formant extraction: pre-emphasis, decimation, LPC, polynomial root finding |
 | [documentation/ALGORITHM-ENERGY.md](documentation/ALGORITHM-ENERGY.md) | Energy analysis: RMS, decibel conversion, VAD threshold system |
@@ -171,7 +177,7 @@ or use the "load demo data" buttons in the history / analysis / settings pages.
 - Microphone access requires explicit user permission
 - All data (analysis records + audio) is stored locally in the browser's IndexedDB by
   default; data only leaves the device when you run a full backup or connect cloud
-  backup to a destination you choose
+  backup to a destination you choose — see the [Privacy Policy](https://theforeveriris.github.io/simple-voice-tools/privacy-policy.md)
 - Voice-quality metrics (Jitter/Shimmer/HNR/CPPS) require "save recordings" to be on;
   older records or audio-free records show "—"
 - Detection accuracy depends on the environment — test in a quiet space

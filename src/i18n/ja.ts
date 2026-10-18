@@ -667,6 +667,7 @@ export const ja = {
   'settings.installManualHint': 'ブラウザのアドレスバーで「アプリをインストール」アイコンをクリックするか、ブラウザメニューから「ホーム画面に追加」（iOS Safari）を選択してください。HTTPS で配信されている本番ページでのみ利用でき、ローカル開発サーバーにはインストール入口がありません。',
   'settings.aboutVersion': 'v0.6.0 — Web Audio API ベースの音声テスト・分析ツール：YIN ピッチ検出、LPC フォルマント抽出、エネルギー分析、スペクトログラム、Jitter/Shimmer/HNR/CPPS 声質指標、母音空間散布図、声域図（VRP）、3 つのテストモードと録音再生、ZIP/GitHub クラウドバックアップ、トレーニングターゲット、外部音声ファイル取り込み分析、リアルタイム母音マッピング、声の日記ヒートマップ、比較シェアカード、カスタム音区境界、多言語対応とダークモード。',
   'settings.aboutPrivacy': 'データはデフォルトでこのブラウザ内にのみ保存されます。完全バックアップまたは GitHub クラウドバックアップを明示的に実行したときにのみ、エクスポート/アップロードされます。',
+  'settings.privacyPolicy': 'プライバシーポリシー',
   'settings.docI18nTitle': 'アーキテクチャ：i18n と AI 翻訳',
   'settings.docI18nDesc': '検索チェーン・カスタム訳・AI 辞書パイプラインと共有形式',
   'settings.docThemeTitle': 'アーキテクチャ：テーマ',

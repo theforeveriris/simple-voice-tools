@@ -666,6 +666,7 @@ export const en = {
   'settings.installManualHint': 'Click the "Install app" icon in the address bar, or choose "Add to Home Screen" in the browser menu (iOS Safari). Requires an HTTPS deployment (production page); the local dev server offers no install entry.',
   'settings.aboutVersion': 'v0.6.0 — A Web Audio API based voice test & analysis tool: YIN pitch detection, LPC formant extraction, energy analysis, spectrogram, Jitter/Shimmer/HNR/CPPS voice quality, vowel space scatter, phonetogram (VRP), three test modes with playback, ZIP/GitHub cloud backup, training target, external audio import, live vowel space, voice diary heatmap, comparison share card, custom pitch bands, multi-language and dark mode.',
   'settings.aboutPrivacy': 'Data is stored locally in your browser by default; it is only exported/uploaded when you explicitly run a full backup or GitHub cloud backup.',
+  'settings.privacyPolicy': 'Privacy Policy',
   'settings.docI18nTitle': 'Architecture: i18n & AI translation',
   'settings.docI18nDesc': 'Lookup chain, string overrides, AI dictionary pipeline and sharing',
   'settings.docThemeTitle': 'Architecture: theming',

@@ -667,6 +667,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.installManualHint': '請於瀏覽器址欄點「安裝應用」之符，或於瀏覽器選單擇「加至主屏」（iOS Safari）。須於 HTTPS 部署之境（正頁）行之，本機開發之伺服器弗設裝入之門。',
   'settings.aboutVersion': 'v0.6.0 — 本乎 Web Audio API 之聲試與析之器：YIN 測音高、LPC 取共振峰、析聲能、語譜圖、Jitter/Shimmer/HNR/CPPS 嗓音之質、元音之域散點、聲域圖（VRP）、三式之試與復奏所錄、ZIP/GitHub 雲備、練聲之鵠、納外聲而析、即時元音落點、用聲日記熱圖、相比分享之卡、自定音區之界、多言語與深色之制。',
   'settings.aboutPrivacy': '數惟存於本機之瀏覽器；惟爾自用全備或 GitHub 雲備，方錄出/上傳。',
+  'settings.privacyPolicy': '隱私之策',
   'settings.docI18nTitle': '架構：i18n 與 AI 譯',
   'settings.docI18nDesc': '查找之鏈、自定词条、AI 詞典之管與相授之式',
   'settings.docThemeTitle': '架構：主題之統',

@@ -666,6 +666,7 @@ export const zhTW = {
   'settings.installManualHint': '請在瀏覽器網址列點擊「安裝應用」圖示，或在瀏覽器選單選擇「加入主畫面」（iOS Safari）。需在 HTTPS 部署環境（正式頁面）下使用，本機開發伺服器不提供安裝入口。',
   'settings.aboutVersion': 'v0.6.0 — 基於 Web Audio API 的語音測試與分析工具：YIN 音高檢測、LPC 共振峰提取、能量分析、語譜圖、Jitter/Shimmer/HNR/CPPS 嗓音品質指標、母音空間散點、聲域圖（VRP）、三種測試模式與錄音播放、ZIP/GitHub 雲端備份、訓練靶標、外部音訊匯入分析、即時母音落點、用聲日記熱力圖、對比分享卡、自訂音區邊界、多語言與深色模式。',
   'settings.aboutPrivacy': '資料預設僅儲存在本機瀏覽器中；只有你主動使用完整備份或 GitHub 雲端備份時才會匯出/上傳。',
+  'settings.privacyPolicy': '隱私權政策',
   'settings.docI18nTitle': '架構：i18n 與 AI 翻譯',
   'settings.docI18nDesc': '查找鏈、自訂詞條、AI 詞典管線與分享格式',
   'settings.docThemeTitle': '架構：主題系統',

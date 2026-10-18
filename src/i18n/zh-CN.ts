@@ -668,6 +668,7 @@ export const zhCN = {
   'settings.installManualHint': '请在浏览器地址栏点击「安装应用」图标，或在浏览器菜单选择「添加到主屏幕」（iOS Safari）。需在 HTTPS 部署环境（生产页面）下使用，本地开发服务器不提供安装入口。',
   'settings.aboutVersion': 'v0.6.0 — 基于 Web Audio API 的语音测试与分析工具：YIN 音高检测、LPC 共振峰提取、能量分析、语谱图、Jitter/Shimmer/HNR/CPPS 嗓音质量指标、元音空间散点、声域图（VRP）、三种测试模式与录音回放、ZIP/GitHub 云备份、训练靶标、外部音频导入分析、实时元音落点、用声日记热力图、对比分享卡、自定义音区边界、多语言与深色模式。',
   'settings.aboutPrivacy': '数据默认仅保存在本机浏览器中；只有你主动使用完整备份或 GitHub 云备份时才会导出/上传。',
+  'settings.privacyPolicy': '隐私政策',
   'settings.docI18nTitle': '架构：i18n 与 AI 翻译',
   'settings.docI18nDesc': '查找链、自定义词条、AI 词典管线与分享格式',
   'settings.docThemeTitle': '架构：主题系统',

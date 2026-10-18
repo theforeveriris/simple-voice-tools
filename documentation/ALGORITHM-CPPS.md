@@ -32,7 +32,7 @@ quefrency = 1/F0 处形成一个峰**，而包络变化平缓、分布在低 que
    `CPP = 峰值 − 回归线在峰值 quefrency 处的取值`。
 
 回归线扣除的是「声道包络整体倾斜」的贡献，使数值主要反映谐波/噪声对比度，
-这是 Hillenbrand (1994) 的经典口径。
+这是 Hillenbrand (1994) 的经典口径（完整出处见 [REFERENCES.md](REFERENCES.md) · 嗓音质量）。
 
 ## 三、从帧级 CPP 到 CPPS
 

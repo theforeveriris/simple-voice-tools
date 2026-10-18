@@ -11,7 +11,7 @@
    （例如 196.00Hz 而不是真实的 193.8Hz），画出来的音高曲线是台阶状的；
 2. **基频缺失敏感**：电话语音、低音歌手的基频能量弱，谐波打分容易错到倍频上。
 
-YIN（Alain de Cheveigné & Hideki Kawahara, 2002）是时域算法，直接在波形上找重复周期，
+YIN（Alain de Cheveigné & Hideki Kawahara, 2002；完整出处见 [REFERENCES.md](REFERENCES.md)）是时域算法，直接在波形上找重复周期，
 输出**连续、亚赫兹级精度**的基频，并且自带周期性置信度——非常适合绘制平滑曲线。
 
 ## 算法原理

@@ -4,6 +4,52 @@ Simple Voice Tool 的开发指南：架构、数据流、主题系统、动效�
 专题详解见文末文档索引（i18n / 主题 / 状态与持久化 / 设置子页 / PWA / Capacitor 安卓壳 /
 Tauri 桌面版均有独立文档）。
 
+## 15 分钟上手（贡献者）
+
+目标：clone 后 15 分钟内跑起开发环境并跑通测试。
+
+```bash
+# 0. 环境：Node 20+（ LTS 即可）、npm 10+；Windows 构建桌面端另需 Rust toolchain
+node -v
+
+# 1. 安装依赖
+npm install
+
+# 2. 起开发服务器（Vite，默认 5173 端口；改 src 下文件热更新）
+npm run dev
+
+# 3. 跑测试（Vitest；无需浏览器环境）
+npm test
+
+# 只跑音频 DSP 相关测试（改动 src/lib/audio 时常用）
+npx vitest run src/lib/audio
+
+# 4. 类型检查（CI 同款，比 vite build 快，适合提交前自查）
+npx tsc -b --force
+```
+
+不用麦克风也能调试：任意 URL 加 `?demo=1` 载入示例数据；
+「设置 → 实验性功能 → 导入音频分析」可以拖入任意音频文件走完整分析管线。
+
+### 已知的环境坑
+
+- **Windows 杀软拦截 esbuild**：`vite build` 在"rendering chunks"阶段报
+  `remove ...\Temp\esbuild-*: Access is denied` —— 是火绒/360 等实时防护锁了
+  esbuild 的临时二进制，与代码无关。把项目目录与 `%TEMP%` 加入白名单，
+  或临时改用 `npx tsc -b && npx vitest run` 验证。
+- **`npx update-browserslist-db@latest` 提示**：警告而已，可忽略；想清掉就跑一次。
+- **长路径**：Windows 下若仓库放在超长路径里，Rust/Tauri 构建可能失败，
+  建议放在短路径（如 `C:\dev\`）。
+
+### 提交前自查
+
+1. `npx tsc -b --force` 无错误；
+2. `npm test` 全绿（25 个文件 162 例）；
+3. 改了设置项/存储结构？检查 `documentation/ARCHITECTURE-STATE.md` 的键清单与迁移说明是否需要同步；
+4. 改了算法参数默认值？`constants/index.ts` 与 `documentation/PARAMETERS-GUIDE.md` 必须同步（历史上出过错）。
+
+更多专题（数据流 / 主题 / 动效 / 性能）见下文与文末文档索引。
+
 ## 项目概览
 
 基于 Web Audio API 的语音测试与分析工具。对麦克风说话即可获得基频（音高）、
@@ -309,6 +355,7 @@ npm run tauri     # Tauri CLI（桌面壳，tauri dev / tauri build，见 GUIDE-
 | [GUIDE-CAPACITOR.md](./GUIDE-CAPACITOR.md) | Capacitor 安卓壳：构建、签名、原生分享/快捷方式、已知限制 |
 | [GUIDE-DESKTOP.md](./GUIDE-DESKTOP.md) | Tauri Windows 桌面版：构建、CI、平台差异 |
 | [PARAMETERS-GUIDE.md](./PARAMETERS-GUIDE.md) | 参数说明书（面向使用者） |
+| [REFERENCES.md](./REFERENCES.md) | 参考文献：参数区间与算法实现的文献出处（正文统一引用） |
 | [README.md](../README.md) | 项目介绍与使用说明 |
 
 应用内路径：**设置 → 关于**，其中「使用说明」可离线阅读（构建自 `public/guide.md`）；
