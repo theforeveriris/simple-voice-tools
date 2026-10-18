@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flower2, X, BarChart3 } from 'lucide-react';
+import { X, BarChart3 } from 'lucide-react';
 import { flowerOf, rotationJitter, flowerSideStats, type Flower } from '@/lib/flower';
 import { FlowerSvg } from '@/components/flowers/FlowerSvg';
 import { useStore } from '@/store/useStore';
@@ -151,7 +151,6 @@ export function GardenView({
   useI18n();
   const gardenColumns = useStore((s) => s.settings.gardenColumns);
   const monthSections = useStore((s) => s.settings.gardenMonthSections);
-  const update = useStore((s) => s.updateSettings);
   const [filter, setFilter] = useState<'all' | TestMode>('all');
   const [detail, setDetail] = useState<{ record: AnalysisRecord; flower: Flower } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -242,8 +241,8 @@ export function GardenView({
 
   return (
     <div>
-      {/* 模式过滤 + 布局设置（列数 / 月分节） */}
-      <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+      {/* 模式过滤（布局设置在 设置 → 外观 → 花园布局） */}
+      <div className="mb-3 flex items-center justify-center">
         <div className="flex items-center rounded-full bg-surface-hi p-0.5" role="group" aria-label={t('garden.filterLabel')}>
           {GARDEN_FILTERS.map((f) => (
             <button
@@ -259,34 +258,6 @@ export function GardenView({
             </button>
           ))}
         </div>
-        {/* 每行花数：2/3/4/5 */}
-        <div className="flex items-center gap-1" role="group" aria-label={t('garden.colsLabel')}>
-          {[2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              onClick={() => update({ gardenColumns: n })}
-              aria-pressed={gardenColumns === n}
-              aria-label={t('garden.colsAria', { n })}
-              className={cn(
-                'grid size-7 place-items-center rounded-full text-[11px] font-semibold tabular-nums transition-colors',
-                gardenColumns === n ? 'bg-accent text-on-accent' : 'bg-surface-hi text-ink-2 hover:text-ink',
-              )}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-        {/* 月分节开关 */}
-        <button
-          onClick={() => update({ gardenMonthSections: !monthSections })}
-          aria-pressed={monthSections}
-          className={cn(
-            'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
-            monthSections ? 'bg-card text-ink shadow-sm' : 'bg-surface-hi text-ink-2 hover:text-ink',
-          )}
-        >
-          {t('garden.monthSections')}
-        </button>
       </div>
 
       {filtered.length === 0 ? (
@@ -363,13 +334,9 @@ export function GardenView({
         )}
       </AnimatePresence>
 
-      {/* 底部说明：花与参数的映射（花园自身的小图例）+ 数据范围提示 */}
-      <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[10px] leading-relaxed text-ink-2">
-        <Flower2 size={10} className="shrink-0" />
-        {t('garden.legend')}
-      </p>
+      {/* 数据范围提示（内存窗口截断时） */}
       {totalCount > records.length && (
-        <p className="-mt-2 text-center text-[10px] text-ink-2/70">
+        <p className="mt-3 text-center text-[10px] text-ink-2/70">
           {t('garden.truncated', { shown: records.length, total: totalCount })}
         </p>
       )}

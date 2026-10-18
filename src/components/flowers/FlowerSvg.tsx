@@ -22,20 +22,23 @@ function useThemeHue(): number {
   }
 }
 
-/** 有机花瓣路径：从花心出发的两条二次贝塞尔围成一片瓣（俯视放射） */
-function petalPath(angleDeg: number, len: number): string {
+/** 有机花瓣路径：从花心出发的两条二次贝塞尔围成一片瓣（俯视放射）。
+ *  tipSharpness 0–1：1 = 尖锐（控制点收拢成尖角），0 = 圆钝（控制点前移绕出圆弧） */
+function petalPath(angleDeg: number, len: number, tipSharpness: number): string {
   const a = ((angleDeg - 90) * Math.PI) / 180; // 0° = 正上
   const dx = Math.cos(a);
   const dy = Math.sin(a);
   const tipX = C + dx * len * R_MAX;
   const tipY = C + dy * len * R_MAX;
-  // 控制点：中段外扩（瓣宽约为瓣长的 0.30），有机弧线
+  // 控制点：中段外扩（瓣宽约 0.30·瓣长）；尖锐度把两侧控制点沿瓣轴前推，
+  // 1.0 时几乎到达尖端（锐角），0.0 时停在中段（顶端呈圆弧）
   const midLen = len * R_MAX * 0.55;
   const ctrl = len * R_MAX * 0.30;
-  const c1x = C + dx * midLen + -dy * ctrl;
-  const c1y = C + dy * midLen + dx * ctrl;
-  const c2x = C + dx * midLen - (-dy * ctrl);
-  const c2y = C + dy * midLen - dx * ctrl;
+  const advance = midLen + (len * R_MAX - midLen) * tipSharpness * 0.85;
+  const c1x = C + dx * advance + -dy * ctrl;
+  const c1y = C + dy * advance + dx * ctrl;
+  const c2x = C + dx * advance - (-dy * ctrl);
+  const c2y = C + dy * advance - dx * ctrl;
   const sx = C + dx * R_MAX * 0.06;
   const sy = C + dy * R_MAX * 0.06;
   return `M ${sx.toFixed(2)} ${sy.toFixed(2)} Q ${c1x.toFixed(2)} ${c1y.toFixed(2)} ${tipX.toFixed(2)} ${tipY.toFixed(2)} Q ${c2x.toFixed(2)} ${c2y.toFixed(2)} ${sx.toFixed(2)} ${sy.toFixed(2)} Z`;
@@ -57,23 +60,15 @@ export function FlowerSvg({ flower: f, rotation = 0, className, style }: FlowerS
   const coreR = 12 * f.coreF1;
   // 瓣长基线（F2）：每瓣实际长度 = 基线 + 瓣自身能量伸长
   const baseline = f.baselineF2;
-  const F2_RING_R = baseline * R_MAX;
 
   const parts: string[] = [];
 
-  // F2 参考圈（虚线）：瓣长基线的可视读数
-  if (f.ringF2 > 0) {
-    parts.push(
-      `<circle cx="${C}" cy="${C}" r="${F2_RING_R.toFixed(1)}" fill="none" stroke="hsl(${hue} 30% 50%)" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="3 4"/>`,
-    );
-  }
-
-  // 花瓣（低频正上、顺时针；明度：低频亮 → 高频深）
+  // 花瓣（低频正上、顺时针；明度：低频亮 → 高频深；瓣尖尖锐度 = F2）
   for (const p of f.petals) {
     const len = (baseline * 0.55 + p.length * baseline * 0.45);
     const light = 82 - p.lightness * 34; // 82% → 48%
     parts.push(
-      `<path d="${petalPath(p.angleDeg, len)}" fill="hsl(${hue} ${Math.round(55 - p.lightness * 20)}% ${Math.round(light)}%)" fill-opacity="0.85" stroke="hsl(${hue} 45% ${Math.round(light - 18)}%)" stroke-opacity="0.6" stroke-width="0.7"/>`,
+      `<path d="${petalPath(p.angleDeg, len, f.tipSharpness)}" fill="hsl(${hue} ${Math.round(55 - p.lightness * 20)}% ${Math.round(light)}%)" fill-opacity="0.85" stroke="hsl(${hue} 45% ${Math.round(light - 18)}%)" stroke-opacity="0.6" stroke-width="0.7"/>`,
     );
   }
 

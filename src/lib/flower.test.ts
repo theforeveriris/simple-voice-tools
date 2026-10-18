@@ -83,19 +83,19 @@ describe('flowerOf v2 — 俯视频谱指纹', () => {
     expect(small.coreF1).toBeLessThan(large.coreF1);
   });
 
-  it('瓣长基线 = F2：F2 高 → 基线大，且 ringF2 == baselineF2', () => {
+  it('瓣长基线 = F2：F2 高 → 基线大，且瓣尖更尖锐', () => {
     const hi = flowerOf(makeRecord({ stats: { ...makeRecord().stats, avgF2: 2500 } }));
     const lo = flowerOf(makeRecord({ stats: { ...makeRecord().stats, avgF2: 1500 } }));
     expect(hi.baselineF2).toBeGreaterThan(lo.baselineF2);
-    expect(hi.ringF2).toBe(hi.baselineF2);
+    expect(hi.tipSharpness).toBeGreaterThan(lo.tipSharpness);
   });
 
-  it('无共振峰：花心/基线取中性（0.8），F2 参考圈不画（ringF2 = 0）', () => {
+  it('无共振峰：花心/基线取中性（0.8），瓣尖中性（0.5）', () => {
     const s = makeRecord().stats;
     const f = flowerOf(makeRecord({ stats: { ...s, avgF1: null, avgF2: null, f1Range: null, f2Range: null } }));
     expect(f.coreF1).toBeCloseTo(0.8);
     expect(f.baselineF2).toBeCloseTo(0.8);
-    expect(f.ringF2).toBe(0); // 无 F2 数据 → 无参考圈
+    expect(f.tipSharpness).toBeCloseTo(0.5);
     expect(f.basis.facts.join()).toContain('无共振峰');
   });
 

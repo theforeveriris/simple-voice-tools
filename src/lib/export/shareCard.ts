@@ -370,7 +370,7 @@ export function renderShareCard(record: AnalysisRecord, style: ShareCardStyle): 
 function canvasPetal(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number, R: number,
-  angleDeg: number, len: number,
+  angleDeg: number, len: number, tipSharpness: number,
   fill: string, stroke: string,
 ): void {
   const a = ((angleDeg - 90) * Math.PI) / 180; // 0° = 正上
@@ -380,10 +380,11 @@ function canvasPetal(
   const tipY = cy + dy * len * R;
   const midLen = len * R * 0.55;
   const ctrl = len * R * 0.30;
-  const c1x = cx + dx * midLen + -dy * ctrl;
-  const c1y = cy + dy * midLen + dx * ctrl;
-  const c2x = cx + dx * midLen - (-dy * ctrl);
-  const c2y = cy + dy * midLen - dx * ctrl;
+  const advance = midLen + (len * R - midLen) * tipSharpness * 0.85;
+  const c1x = cx + dx * advance + -dy * ctrl;
+  const c1y = cy + dy * advance + dx * ctrl;
+  const c2x = cx + dx * advance - (-dy * ctrl);
+  const c2y = cy + dy * advance - dx * ctrl;
   const sx = cx + dx * R * 0.06;
   const sy = cy + dy * R * 0.06;
   ctx.beginPath();
@@ -443,36 +444,30 @@ function drawFlowerCard(record: AnalysisRecord): HTMLCanvasElement {
   ctx.lineTo(W - PAD, PAD + 58);
   ctx.stroke();
 
-  // 大花：中心 (W/2, 600)，最大外径 250 —— 俯视频谱指纹（与 FlowerSvg 同几何）
+  // 大花：占卡片中心 65% 空间 —— 俯视频谱指纹（与 FlowerSvg 同几何）
+  // 可用高度 = 页眉线(58) 到数字行上方；花外接圆直径 = min(可用高, 可用宽) × 0.65
   const f = flowerOf(record);
+  const headerBottom = PAD + 58;
+  const factTop = 960;
+  const availH = factTop - headerBottom;
+  const availW = W - PAD * 2;
+  const flowerDiameter = Math.min(availH, availW) * 0.65;
+  const R = flowerDiameter / 2;
   const cx = W / 2;
-  const cy = 600;
-  const R = 250;
+  const cy = headerBottom + availH / 2;
   const hue = themeHue();
   const rot = rotationJitter(record.id);
-  const coreR = 60 * f.coreF1;
+  const coreR = flowerDiameter * 0.10 * f.coreF1;
   const baseline = f.baselineF2;
 
-  // F2 参考圈（虚线）
-  if (f.ringF2 > 0) {
-    ctx.save();
-    ctx.strokeStyle = `hsl(${hue} 30% 50% / 0.35)`;
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 8]);
-    ctx.beginPath();
-    ctx.arc(cx, cy, baseline * R, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // 花瓣（低频正上顺时针；明度低频亮 → 高频深；整体旋转 rot）
+  // 花瓣（低频正上顺时针；明度低频亮 → 高频深；瓣尖尖锐度 = F2；整体旋转 rot）
   // 注意：canvasPetal 内部会乘 R（与 FlowerSvg 的 viewBox 几何一致），此处传系数不传像素
   for (const pt of f.petals) {
     const len = baseline * 0.55 + pt.length * baseline * 0.45;
     const light = 82 - pt.lightness * 34;
     canvasPetal(
       ctx, cx, cy, R,
-      pt.angleDeg + rot, len,
+      pt.angleDeg + rot, len, f.tipSharpness,
       `hsl(${hue} ${Math.round(55 - pt.lightness * 20)}% ${Math.round(light)}% / 0.85)`,
       `hsl(${hue} 45% ${Math.round(light - 18)}% / 0.6)`,
     );
@@ -503,11 +498,6 @@ function drawFlowerCard(record: AnalysisRecord): HTMLCanvasElement {
     }),
     W / 2, factY + 62,
   );
-
-  // 花瓣图例（一行小字，呼应花园详情）
-  ctx.font = '400 26px "Inter Tight", system-ui, sans-serif';
-  ctx.fillStyle = p.ink2;
-  ctx.fillText(ti('share.flowerLegend'), W / 2, factY + 116);
 
   drawFooterQr(ctx, p);
   return canvas;

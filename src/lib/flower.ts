@@ -7,7 +7,7 @@
  *   瓣数 = 频带数（分辨率决定，不再用熵定瓣数）；
  *   谐波熵改由「瓣长差异」体现——频谱越平坦瓣越齐，越尖峰瓣越参差。
  *   花心半径 = F1（开口度）；瓣长基线随 F2 外推（共鸣前移 = 花整体更舒展）；
- *   两者以细虚线参考圈可视化（对比读数）。
+ *   瓣尖尖锐度 = F2（共鸣靠前 = 瓣尖锐利，靠后 = 圆钝）。
  *   色彩：莫奈主题色系（同花同色系，明度区分频带，瓣尖更深）。
  *   MPT 不入花（俯视无茎），在花园卡片小字与详情中展示。
  *
@@ -37,9 +37,8 @@ export interface Flower {
   coreF1: number;
   /** 瓣长基线系数 0.6–1（F2 外推：F2 越高基线越长 = 共鸣更靠前） */
   baselineF2: number;
-  /** 参考圈：F1 圆（半径 = 花心半径本身，不另画） */
-  /** F2 参考圈半径系数（相对最大外径；0 = 无 F2 数据不画圈） */
-  ringF2: number;
+  /** 瓣尖尖锐度 0–1（F2 映射：共鸣靠前 = 瓣尖锐利；靠后 = 圆钝） */
+  tipSharpness: number;
   /** 生成依据（详情页展示用，已格式化） */
   basis: {
     petalsFrom: 'spec' | 'template';
@@ -133,19 +132,19 @@ export function flowerOf(rec: AnalysisRecord): Flower {
     basis.facts.push('模版瓣（无语谱数据）');
   }
 
-  /* 花心 = F1（开口度）：F1 越小花心越小；瓣长基线 = F2 外推 */
+  /* 花心 = F1（开口度）：F1 越小花心越小；瓣长基线 = F2 外推；瓣尖尖锐度 = F2 */
   const f1 = s.avgF1;
   const f2 = s.avgF2;
   const coreF1 = f1 != null ? lerpClamp(f1, 500, 1000, 0.5, 1.2) : 0.8;
   const baselineF2 = f2 != null ? lerpClamp(f2, 1400, 2600, 0.6, 1) : 0.8;
-  const ringF2 = f2 != null ? baselineF2 : 0;
+  const tipSharpness = f2 != null ? lerpClamp(f2, 1400, 2600, 0, 1) : 0.5;
   if (f1 != null && f2 != null) {
-    basis.facts.push(`花心 = F1 ${Math.round(f1)} Hz · 瓣基线 = F2 ${Math.round(f2)} Hz`);
+    basis.facts.push(`花心 = F1 ${Math.round(f1)} Hz · 瓣尖 = F2 ${Math.round(f2)} Hz`);
   } else {
-    basis.facts.push('无共振峰（花心/基线取中性）');
+    basis.facts.push('无共振峰（花心/瓣尖取中性）');
   }
 
-  return { petals, coreF1, baselineF2, ringF2, basis };
+  return { petals, coreF1, baselineF2, tipSharpness, basis };
 }
 
 /** 花园内单花的稳定微调：记录 id 派生的整体旋转角（±10°），同音区花不完全同姿态 */

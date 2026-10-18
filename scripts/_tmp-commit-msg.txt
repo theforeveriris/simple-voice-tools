@@ -1,17 +1,20 @@
-fix(share): flower card double-scaled geometry; feat(garden): layout settings
+refactor(flower): drop legend + F2 ring; tip sharpness; garden settings moved
 
-Share card fix:
-- canvasPetal receives a length COEFFICIENT (0-1, like the SVG viewBox
-  geometry) and multiplies by R internally - drawFlowerCard was passing a
-  pre-multiplied pixel length, so the whole flower was painted at 250x
-  and flew off-canvas; now the share flower matches the garden SVG
-- themeHue() now reads the persisted settings hue (svt:settings:v1) so
-  the card follows the user's monet hue instead of a hardcoded 285
-
-Garden layout settings (view-level, persisted):
-- flowers-per-row 2/3/4/5 chip selector + month-sections toggle inline in
-  the garden header (gardenColumns / gardenMonthSections settings)
-- rows scale with column count (rowH = 132 * sqrt(4/cols)), flowers size
-  with rowH, narrow screens cap at 2 cols; virtualization math (offsets,
-  binary-search window) fully derives from these constants
-- FlowerSvg gains a style prop for row-height-driven sizing
+Review feedback:
+- garden bottom legend row removed (the flower's semantics live in the
+  detail sheet, not a permanent caption)
+- F2 dashed reference ring removed from FlowerSvg and the share flower
+  card; F2 now expresses itself through petal TIP SHARPNESS - high F2
+  (resonance forward) = pointed tips, low F2 = rounded tips. Geometry:
+  the two bezier control points advance toward the tip by tipSharpness
+  (new Flower field, 0-1 mapped from F2 1400-2600, neutral 0.5). The
+  petal-baseline-scales-with-F2 length semantics stay
+- share flower card: legend text row removed; the flower now occupies
+  65% of the card center (diameter = min(availH, availW) * 0.65,
+  centered between header rule and stats line; core scales with it)
+- garden layout controls (flowers-per-row chips, month-sections toggle)
+  moved out of the garden view header into Settings > Appearance >
+  "Garden layout" section; the garden only reads the settings now
+- i18n: garden.legend + share.flowerLegend removed (x5);
+  settings.gardenLayout / gardenColsDesc / gardenMonthDesc added (x5)
+- flower tests updated for tipSharpness semantics
