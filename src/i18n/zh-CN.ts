@@ -504,7 +504,7 @@ export const zhCN = {
   'garden.title': '花园',
   'garden.filterLabel': '按模式过滤',
   'garden.empty': '这里还没有花——去录一条，开出第一朵',
-  'garden.legend': '花瓣形状 = 共鸣（F1/F2）· 花色 = 音区分布 · 茎高 = 长音时长 · 花心光晕 = 稳定度',
+  'garden.legend': '俯视频谱指纹 · 每瓣 = 一个频带（瓣长 = 能量）· 花心 = F1 开口度 · 虚线圈 = F2 共鸣位',
   'garden.openAnalysis': '查看这条记录的分析',
   'garden.openDetail': '查看花朵详情',
   'timelapse.title': '时间机器',

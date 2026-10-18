@@ -1,16 +1,24 @@
-feat(timemachine): animated A-to-B time-lapse in the compare sheet
+refactor(flower): true top-down spectral fingerprint redesign
 
-- TimeMachine component (compare sheet section): canvas animation
-  cross-dissolving record A into record B at progress p -
-  * pitch mode: curves aligned by relative duration (same grammar as the
-    compare overlay), A fading out while B fades in over band background
-  * vowel mode: scatter clouds cross-dissolving in the vowel plane with a
-    growing dashed centroid arrow showing the migration path
-- scrolling date badge (drawDateBadge): interpolated date + total delta
-  days drawn per frame
-- player UI: play/pause, scrubbable progress (0-1000), 0.5x/1x/2x speed
-  (1x = 6s per pair), record button exports the canvas via
-  MediaRecorder to a WebM file (vp9 fallback webm, auto-save on
-  playback end, graceful toast when unsupported)
-- pure frame math (drawTimeMachineFrame / drawDateBadge) separated for
-  potential unit tests; i18n x5 locales
+Design reworked after review - the flower is now genuinely what its
+parameters claim to be:
+
+- composition: true top-down view, petals radiating from the center, no
+  stem (MPT moved to garden card sub-text and detail sheet side stats)
+- each petal = one spectrogram band: length = that band's energy
+  (normalized), angle = low freq at 12 o'clock clockwise (polar
+  spectrum), petal count = band count (not entropy); spectral flatness
+  shows as length variance instead - flat spectrum = even petals, peaky
+  = ragged
+- core radius = F1 (opening), petal baseline length scales with F2
+  (resonance forward = wider spread); F2 baseline drawn as a dashed
+  reference ring for readout
+- color: theme hue (monet) - same hue per flower, lightness distinguishes
+  bands (low bright -> high dark)
+- no-spectrogram records: template rhythm petals (8, sine-modulated),
+  F1/F2 core/ring still render - a flower always exists
+- FlowerSvg + canvas flower card re-derived from the same geometry;
+  hueJitter -> rotationJitter (whole-flower rotation +-10deg);
+  rotation applied via SVG transform group
+- 12 unit tests rewritten for the new semantics (angle order, energy
+  peak = longest petal, flatness variance bounds, log-frequency axis)

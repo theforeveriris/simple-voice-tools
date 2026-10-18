@@ -7,7 +7,7 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flower2, X, BarChart3 } from 'lucide-react';
-import { flowerOf, hueJitter, type Flower } from '@/lib/flower';
+import { flowerOf, rotationJitter, flowerSideStats, type Flower } from '@/lib/flower';
 import { FlowerSvg } from '@/components/flowers/FlowerSvg';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
@@ -59,10 +59,12 @@ function FlowerDetail({
         >
           <X size={15} />
         </button>
-        <FlowerSvg flower={flower} hueJitter={hueJitter(record.id)} className="h-44 w-36" />
+        <FlowerSvg flower={flower} rotation={rotationJitter(record.id)} className="h-44 w-44" />
         <p className="mt-1 text-sm font-semibold text-ink">
           {d.getFullYear()}/{d.getMonth() + 1}/{d.getDate()} {t(`mode.${record.mode ?? 'reading'}`)}
         </p>
+        {/* 侧数字：平均基频 / MPT / 响度（不进花的参数） */}
+        <p className="text-[10px] tabular-nums text-ink-2">{flowerSideStats(record).join(' · ')}</p>
         {/* 映射依据：哪瓣是什么 */}
         <ul className="mt-3 w-full space-y-1">
           {flower.basis.facts.map((fact) => (
@@ -141,7 +143,7 @@ export function GardenView({
                   className="group flex flex-col items-center rounded-2xl bg-card/60 px-2 pb-2 pt-1 transition-colors hover:bg-card"
                   aria-label={`${t('garden.openDetail')}: ${r.stats.avgF0.toFixed(1)} Hz`}
                 >
-                  <FlowerSvg flower={flower} hueJitter={hueJitter(r.id)} className="h-24 w-20 transition-transform group-active:scale-95" />
+                  <FlowerSvg flower={flower} rotation={rotationJitter(r.id)} className="h-24 w-24 transition-transform group-active:scale-95" />
                   <span className="text-[10px] tabular-nums text-ink-2">
                     {new Date(r.createdAt).getMonth() + 1}/{new Date(r.createdAt).getDate()}
                     {' · '}

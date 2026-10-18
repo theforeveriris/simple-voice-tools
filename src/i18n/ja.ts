@@ -504,7 +504,7 @@ export const ja = {
   'garden.title': '庭園',
   'garden.filterLabel': 'モードで絞り込み',
   'garden.empty': 'まだ花がありません - 1 回録音して最初の花を咲かせましょう',
-  'garden.legend': '花びらの形 = 共鳴（F1/F2）· 色 = 音区分布 · 茎の高さ = 持続時間 · 花心の輝き = 安定度',
+  'garden.legend': '真上からのスペクトル指紋 · 花びら = 周波数帯（長さ = エネルギー）· 花心 = F1 · 破線円 = F2',
   'garden.openAnalysis': 'この記録の分析を開く',
   'garden.openDetail': '花の詳細を見る',
   'timelapse.title': 'タイムマシン',

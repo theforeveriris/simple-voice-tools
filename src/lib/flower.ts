@@ -1,47 +1,48 @@
 /**
- * 声之花（Voice Flower）：把一条记录的统计映射为一朵花的绘制参数
+ * 声之花（Voice Flower）v2：俯视频谱指纹花
  *
- * 映射（设计定稿）：
- *   花瓣数   ← 谐波能量分布熵（语谱频带分布越丰富花瓣越多；无语谱时按音区多样性近似）
- *   花瓣形状 ← F1/F2（F1 低 & F2 高 = 瓣长而窄前倾；反之短圆）
- *   色相     ← 音区占比（男/女声区占比决定花色在冷暖间定位）
- *   茎高     ← MPT（长音记录；其他模式取固定高）
- *   花心光晕 ← CPPS 稳定度（越稳光晕越亮）
+ * 构图（设计定稿）：正上方俯视、花瓣从圆心放射、无茎。
+ *   每片花瓣 = 一个语谱频带：瓣长 = 该频带能量（归一化），
+ *   角度 = 低频在正上方、顺时针从低到高频排一圈（极坐标频谱）。
+ *   瓣数 = 频带数（分辨率决定，不再用熵定瓣数）；
+ *   谐波熵改由「瓣长差异」体现——频谱越平坦瓣越齐，越尖峰瓣越参差。
+ *   花心半径 = F1（开口度）；瓣长基线随 F2 外推（共鸣前移 = 花整体更舒展）；
+ *   两者以细虚线参考圈可视化（对比读数）。
+ *   色彩：莫奈主题色系（同花同色系，明度区分频带，瓣尖更深）。
+ *   MPT 不入花（俯视无茎），在花园卡片小字与详情中展示。
  *
- * 优雅退化：无音频（茎/花心）与无共振峰（花瓣圆形化）都有降级路径，
- * 花永不失败——任何一条记录都能开出一朵。
- * 本模块只产出纯参数对象（可单测）；绘制见 FlowerSvg 组件。
+ * 优雅退化：无语谱数据的记录用「模版韵律瓣」（固定圆花瓣），
+ * F1/F2 环照常——花永不失败。
+ * 本模块只产出纯参数对象（可单测）；绘制见 FlowerSvg。
  */
 
 import type { AnalysisRecord } from '@/types';
-import { computeSustainedMetrics } from '@/lib/audio/sustained';
 
-/** 一朵花的完整绘制参数（全部归一化或量纲明确，绘制端不再做业务计算） */
+/** 单片花瓣的绘制参数（角度制，0° = 正上方，顺时针） */
+export interface Petal {
+  /** 角度（0 = 正上，顺时针） */
+  angleDeg: number;
+  /** 瓣长系数 0.15–1（1 = 最大外径） */
+  length: number;
+  /** 明度位 0–1（低频亮 → 高频深，同色系区分） */
+  lightness: number;
+  /** 该瓣对应频带的中心频率（详情标注用，Hz；模版瓣为 null） */
+  bandHz: number | null;
+}
+
+/** 一朵花的完整绘制参数 */
 export interface Flower {
-  /** 花瓣数 5–13 */
-  petals: number;
-  /** 花瓣长度系数 0.55–1（1 = 最舒展） */
-  petalLength: number;
-  /** 花瓣宽度系数 0.5–1（1 = 最圆润） */
-  petalWidth: number;
-  /** 花瓣前倾角 -12°–12°（F2 高 = 前倾为负，视觉上更「挺拔」） */
-  petalTiltDeg: number;
-  /** 花色相 0–360（音区占比映射：女声区高 → 暖粉区，男声区高 → 冷蓝区） */
-  hue: number;
-  /** 花色饱和度 0.45–0.85（音区越「坚定」越饱和） */
-  saturation: number;
-  /** 茎高系数 0.3–1（MPT 15s+ = 1；无音频/非长音 = 0.55 固定） */
-  stem: number;
-  /** 花心光晕强度 0–1（CPPS 越高越亮；无音频 = 0.3） */
-  glow: number;
-  /** 花心半径系数 0.7–1.15（能量均值映射） */
-  core: number;
-  /** 生成依据（详情页展示「哪瓣是什么」用） */
+  petals: Petal[];
+  /** 花心半径系数 0.5–1.2（F1 开口度：F1 越小花心越小 = 更女性化的开口） */
+  coreF1: number;
+  /** 瓣长基线系数 0.6–1（F2 外推：F2 越高基线越长 = 共鸣更靠前） */
+  baselineF2: number;
+  /** 参考圈：F1 圆（半径 = 花心半径本身，不另画） */
+  /** F2 参考圈半径系数（相对最大外径；0 = 无 F2 数据不画圈） */
+  ringF2: number;
+  /** 生成依据（详情页展示用，已格式化） */
   basis: {
-    petalsFrom: 'spec' | 'bands';
-    stemFrom: 'mpt' | 'fixed';
-    glowFrom: 'cpps' | 'fixed';
-    /** 参与映射的关键数字（详情页标注用，已格式化） */
+    petalsFrom: 'spec' | 'template';
     facts: string[];
   };
 }
@@ -58,127 +59,100 @@ function lerpClamp(v: number, inLo: number, inHi: number, outLo: number, outHi: 
   return outLo + (outHi - outLo) * t;
 }
 
-/**
- * 谐波能量分布熵（0–1 归一化）：从记录的语谱频带取各频带能量占比，
- * Shannon 熵除以 log2(bands)。频带能量越「铺开」（谐波丰富）熵越高。
- * 无语谱数据返回 null。
- */
-function harmonicEntropy(rec: AnalysisRecord): number | null {
+/** 语谱频带解码 → 每频带能量数组（null = 无数据） */
+function bandEnergies(rec: AnalysisRecord): { hz: number[]; energy: number[] } | null {
   if (!rec.spec?.data) return null;
   try {
     const raw = atob(rec.spec.data);
     const bands = rec.spec.bands;
     const rows = Math.floor(raw.length / bands);
-    if (rows === 0) return null;
-    // 每频带总能量（量化值平方和），只统计前 60% 的行（掐掉尾部静音）
+    if (rows < 4) return null;
     const energy = new Float64Array(bands);
-    const useRows = Math.max(1, Math.floor(rows * 0.6));
+    const useRows = Math.max(1, Math.floor(rows * 0.6)); // 掐掉尾部静音
     for (let r = 0; r < useRows; r++) {
       for (let b = 0; b < bands; b++) {
         const v = raw.charCodeAt(r * bands + b);
         if (v > 0) energy[b] += v * v;
       }
     }
-    const total = energy.reduce((a, b) => a + b, 0);
-    if (total <= 0) return null;
-    let entropy = 0;
+    // 频带中心频率：语谱为对数频带，等分 80–8000 Hz（与分析管线语谱范围同数量级）
+    const F_LO = 80;
+    const F_HI = 8000;
+    const hz: number[] = [];
     for (let b = 0; b < bands; b++) {
-      if (energy[b] <= 0) continue;
-      const p = energy[b] / total;
-      entropy -= p * Math.log2(p);
+      const t = (b + 0.5) / bands;
+      hz[b] = F_LO * Math.pow(F_HI / F_LO, t);
     }
-    return entropy / Math.log2(bands);
+    const arr = Array.from(energy);
+    if (arr.every((v) => v === 0)) return null;
+    return { hz, energy: arr };
   } catch {
     return null;
   }
 }
 
-/** 主入口：记录 → 花 */
+/** 模版瓣（无语谱退化）：固定韵律（正弦调制瓣长），圆花感 */
+const TEMPLATE_PETALS = 8;
+
+/** 主入口：记录 → 俯视频谱指纹花 */
 export function flowerOf(rec: AnalysisRecord): Flower {
   const s = rec.stats;
-  const basis: Flower['basis'] = { petalsFrom: 'bands', stemFrom: 'fixed', glowFrom: 'fixed', facts: [] };
+  const basis: Flower['basis'] = { petalsFrom: 'template', facts: [] };
+  const petals: Petal[] = [];
 
-  /* 花瓣数：语谱熵（5–13 瓣）；无语谱退化为音区多样性（三区占比的熵） */
-  const entropy = harmonicEntropy(rec);
-  let petals: number;
-  if (entropy != null) {
-    petals = Math.round(lerpClamp(entropy, 0.55, 0.95, 5, 13));
+  /* 花瓣：语谱频带（真·频谱指纹）或模版韵律 */
+  const bands = bandEnergies(rec);
+  if (bands) {
+    const maxE = Math.max(...bands.energy, 1);
     basis.petalsFrom = 'spec';
-    basis.facts.push(`谐波熵 ${(entropy * 100).toFixed(0)}%`);
-  } else {
-    const shares = [s.malePct, s.transitionPct, s.femalePct].filter((v) => v > 0);
-    const total = shares.reduce((a, b) => a + b, 0);
-    let h = 0;
-    for (const v of shares) {
-      const p = v / (total || 1);
-      h -= p > 0 ? p * Math.log2(p) : 0;
+    for (let b = 0; b < bands.energy.length; b++) {
+      petals.push({
+        angleDeg: (360 / bands.energy.length) * b,
+        length: lerpClamp(bands.energy[b] / maxE, 0, 1, 0.18, 1),
+        lightness: b / Math.max(1, bands.energy.length - 1),
+        bandHz: Math.round(bands.hz[b]),
+      });
     }
-    petals = Math.round(lerpClamp(h / Math.log2(3), 0.3, 1, 5, 11));
-    basis.facts.push(`音区多样性 ${(s.malePct + s.transitionPct + s.femalePct) > 0 ? ((h / Math.log2(3)) * 100).toFixed(0) + '%' : '—'}`);
+    basis.facts.push(`频谱指纹 · ${bands.energy.length} 频带`);
+    // 熵改为瓣长差异的说明：瓣参差度（1 - 最短/最长）
+    const minE = Math.min(...bands.energy.filter((v) => v > 0));
+    const maxE2 = Math.max(...bands.energy);
+    if (maxE2 > 0 && minE > 0) {
+      basis.facts.push(`瓣参差 ${(100 * (1 - minE / maxE2)).toFixed(0)}%（越大谐波越集中）`);
+    }
+  } else {
+    for (let b = 0; b < TEMPLATE_PETALS; b++) {
+      // 模板韵律：正弦调制瓣长（0.55–0.8），圆花感
+      petals.push({
+        angleDeg: (360 / TEMPLATE_PETALS) * b,
+        length: 0.55 + 0.25 * (0.5 + 0.5 * Math.sin((b / TEMPLATE_PETALS) * Math.PI * 2)),
+        lightness: b / (TEMPLATE_PETALS - 1),
+        bandHz: null,
+      });
+    }
+    basis.facts.push('模版瓣（无语谱数据）');
   }
 
-  /* 花瓣形状：F1（开口）与 F2（舌位）→ 长度 / 宽度 / 前倾 */
+  /* 花心 = F1（开口度）：F1 越小花心越小；瓣长基线 = F2 外推 */
   const f1 = s.avgF1;
   const f2 = s.avgF2;
-  let petalLength = 0.78;
-  let petalWidth = 0.75;
-  let petalTiltDeg = 0;
+  const coreF1 = f1 != null ? lerpClamp(f1, 500, 1000, 0.5, 1.2) : 0.8;
+  const baselineF2 = f2 != null ? lerpClamp(f2, 1400, 2600, 0.6, 1) : 0.8;
+  const ringF2 = f2 != null ? baselineF2 : 0;
   if (f1 != null && f2 != null) {
-    // F1 低（开口收小）→ 瓣窄；F2 高（舌位靠前）→ 瓣长前倾。
-    // F1 750 / F2 2200 为「女性化参考位」附近 → 长而窄、前倾
-    petalLength = lerpClamp(f2, 1400, 2600, 0.6, 1);
-    petalWidth = lerpClamp(f1, 550, 1000, 0.5, 1);
-    petalTiltDeg = lerpClamp(f2 - f1, 600, 1800, 12, -12);
-    basis.facts.push(`F1 ${Math.round(f1)} · F2 ${Math.round(f2)} Hz`);
+    basis.facts.push(`花心 = F1 ${Math.round(f1)} Hz · 瓣基线 = F2 ${Math.round(f2)} Hz`);
   } else {
-    basis.facts.push('无共振峰（瓣形取中性）');
+    basis.facts.push('无共振峰（花心/基线取中性）');
   }
 
-  /* 色相：女声区占比 → 暖粉（hue 340），男声区占比 → 冷蓝（hue 215）；
-     过渡区越多元饱和度越低（混沌期用灰调表达） */
-  const voicedTotal = Math.max(1, s.malePct + s.femalePct + s.transitionPct);
-  const femaleW = s.femalePct / voicedTotal;
-  const maleW = s.malePct / voicedTotal;
-  const hue = lerpClamp(femaleW / Math.max(0.01, femaleW + maleW), 0, 1, 215, 340);
-  const saturation = lerpClamp(1 - s.transitionPct / voicedTotal, 0, 1, 0.45, 0.85);
-  basis.facts.push(`音区 ${s.malePct}/${s.transitionPct}/${s.femalePct}%`);
-
-  /* 茎：长音记录用 MPT（15s+ = 满高）；其他模式固定 0.55 */
-  let stem = 0.55;
-  if (rec.mode === 'sustained') {
-    const { mptSec } = computeSustainedMetrics(rec);
-    if (mptSec > 0) {
-      stem = lerpClamp(mptSec, 6, 18, 0.3, 1);
-      basis.stemFrom = 'mpt';
-      basis.facts.push(`MPT ${mptSec.toFixed(1)}s`);
-    }
-  }
-
-  /* 花心光晕：CPPS（10–20dB 常见区间映射） */
-  const glow = s.cppsDb != null
-    ? lerpClamp(s.cppsDb, 8, 20, 0.15, 1)
-    : 0.3;
-  if (s.cppsDb != null) {
-    basis.glowFrom = 'cpps';
-    basis.facts.push(`CPPS ${s.cppsDb.toFixed(1)}dB`);
-  }
-
-  /* 花心：响度均值（-35dB = 正常说话）→ 半径 */
-  const core = lerpClamp(s.avgDb, -45, -18, 0.7, 1.15);
-
-  return { petals, petalLength, petalWidth, petalTiltDeg, hue, saturation, stem, glow, core, basis };
+  return { petals, coreF1, baselineF2, ringF2, basis };
 }
 
-/** 批量：多条记录 → 花（保持输入顺序） */
-export function flowersOf(records: AnalysisRecord[]): { record: AnalysisRecord; flower: Flower }[] {
-  return records.map((record) => ({ record, flower: flowerOf(record) }));
-}
-
-/** 花园内单花的稳定色相微调：同音区的花不至于完全同色（记录 id 派生 ±8°） */
-export function hueJitter(id: string): number {
+/** 花园内单花的稳定微调：记录 id 派生的整体旋转角（±10°），同音区花不完全同姿态 */
+export function rotationJitter(id: string): number {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return ((h >>> 0) % 17) - 8;
+  return ((h >>> 0) % 21) - 10;
 }
 
 /** 供详情页显示的映射依据汇总（一行一条） */
@@ -186,5 +160,27 @@ export function flowerFacts(rec: AnalysisRecord): string[] {
   return flowerOf(rec).basis.facts;
 }
 
-// 供测试使用的导出（与 flowerOf 同口径的中间量）
-export const _internal = { harmonicEntropy, mean };
+/** MPT 等「不入花」的数字（花园卡片小字 / 详情展示用） */
+export function flowerSideStats(rec: AnalysisRecord): string[] {
+  const out: string[] = [`${rec.stats.avgF0.toFixed(0)} Hz`];
+  if (rec.mode === 'sustained') {
+    const { mptSec } = computeMpt(rec);
+    if (mptSec > 0) out.push(`MPT ${mptSec.toFixed(1)}s`);
+  }
+  const db = mean(rec.series.rmsDb);
+  if (db != null) out.push(`${db.toFixed(0)} dB`);
+  return out;
+}
+
+function computeMpt(rec: AnalysisRecord): { mptSec: number } {
+  // 轻量内联（与 sustained.ts 同口径的单段 MPT），避免引入依赖环
+  const s = rec.series;
+  let i0 = -1;
+  let i1 = -1;
+  for (let i = 0; i < s.t.length; i++) {
+    if (s.f0[i] != null) { if (i0 < 0) i0 = i; i1 = i; }
+  }
+  return { mptSec: i0 >= 0 ? Math.max(0, s.t[i1] - s.t[i0]) : 0 };
+}
+
+export const _internal = { bandEnergies, mean };

@@ -503,7 +503,7 @@ export const en = {
   'garden.title': 'Garden',
   'garden.filterLabel': 'Filter by mode',
   'garden.empty': 'No flowers yet - record once to bloom the first one',
-  'garden.legend': 'Petal shape = resonance (F1/F2) · color = band mix · stem = sustained length · glow = stability',
+  'garden.legend': 'Top-down spectral fingerprint · petal = band (length = energy) · core = F1 · dashed ring = F2',
   'garden.openAnalysis': 'Open this record in analysis',
   'garden.openDetail': 'View flower details',
   'timelapse.title': 'Time machine',

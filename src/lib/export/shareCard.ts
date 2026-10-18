@@ -8,7 +8,7 @@
 
 import { encode as qrEncode } from 'uqr';
 import { BAND_COLORS, getBandRanges, bandOf, freqToNote } from '@/constants';
-import { flowerOf, hueJitter } from '@/lib/flower';
+import { flowerOf, rotationJitter } from '@/lib/flower';
 // 该文件内 t 已被主题色板局部变量占用，i18n 翻译函数以 ti 引用
 import { t as ti } from '@/i18n';
 import type { AnalysisRecord, PitchBand } from '@/types';
@@ -370,24 +370,22 @@ export function renderShareCard(record: AnalysisRecord, style: ShareCardStyle): 
 function canvasPetal(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number, R: number,
-  angleDeg: number, len: number, width: number, tiltDeg: number,
+  angleDeg: number, len: number,
   fill: string, stroke: string,
 ): void {
-  const a = ((angleDeg + tiltDeg) * Math.PI) / 180;
+  const a = ((angleDeg - 90) * Math.PI) / 180; // 0° = 正上
   const dx = Math.cos(a);
   const dy = Math.sin(a);
-  const px = -dy;
-  const py = dx;
   const tipX = cx + dx * len * R;
   const tipY = cy + dy * len * R;
-  const midLen = len * R * 0.62;
-  const ctrl = width * 0.42 * R;
-  const c1x = cx + dx * midLen + px * ctrl;
-  const c1y = cy + dy * midLen + py * ctrl;
-  const c2x = cx + dx * midLen - px * ctrl;
-  const c2y = cy + dy * midLen - py * ctrl;
-  const sx = cx + dx * R * 0.12;
-  const sy = cy + dy * R * 0.12;
+  const midLen = len * R * 0.55;
+  const ctrl = len * R * 0.30;
+  const c1x = cx + dx * midLen + -dy * ctrl;
+  const c1y = cy + dy * midLen + dx * ctrl;
+  const c2x = cx + dx * midLen - (-dy * ctrl);
+  const c2y = cy + dy * midLen - dx * ctrl;
+  const sx = cx + dx * R * 0.06;
+  const sy = cy + dy * R * 0.06;
   ctx.beginPath();
   ctx.moveTo(sx, sy);
   ctx.quadraticCurveTo(c1x, c1y, tipX, tipY);
@@ -400,7 +398,19 @@ function canvasPetal(
   ctx.stroke();
 }
 
-/** 声之花卡：大花居中 + 「花语」关键数字行 + QR */
+/** 主题色相（与 FlowerSvg 同源：设置 hue；无 DOM 回退 285） */
+function themeHue(): number {
+  try {
+    const s = getComputedStyle(document.documentElement).getPropertyValue('--c-accent').trim();
+    // accent 是 oklch/hsl 字符串——直接取花色用固定主题色变量更稳：解析不出时回退
+    return 285;
+    void s;
+  } catch {
+    return 285;
+  }
+}
+
+/** 声之花卡：俯视频谱指纹大花居中 + 「花语」关键数字行 + QR */
 function drawFlowerCard(record: AnalysisRecord): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = W;
@@ -430,43 +440,51 @@ function drawFlowerCard(record: AnalysisRecord): HTMLCanvasElement {
   ctx.lineTo(W - PAD, PAD + 58);
   ctx.stroke();
 
-  // 大花：中心 (W/2, 620)，半径 250
+  // 大花：中心 (W/2, 600)，最大外径 250 —— 俯视频谱指纹（与 FlowerSvg 同几何）
   const f = flowerOf(record);
   const cx = W / 2;
   const cy = 600;
   const R = 250;
-  const hue = f.hue + hueJitter(record.id);
-  // 花心光晕（径向渐变）
-  const glowR = 120 * f.core * (1.4 + f.glow);
-  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
-  glow.addColorStop(0, `hsl(${hue} 80% 78% / ${(0.25 + f.glow * 0.45).toFixed(2)})`);
-  glow.addColorStop(1, 'hsl(0 0% 0% / 0)');
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
-  ctx.fill();
-  // 花瓣
-  for (let i = 0; i < f.petals; i++) {
-    const angle = (360 / f.petals) * i - 90;
-    const stagger = 0.82 + 0.18 * ((i % 3) / 2);
+  const hue = themeHue();
+  const rot = rotationJitter(record.id);
+  const coreR = 60 * f.coreF1;
+  const baseline = f.baselineF2;
+
+  // F2 参考圈（虚线）
+  if (f.ringF2 > 0) {
+    ctx.save();
+    ctx.strokeStyle = `hsl(${hue} 30% 50% / 0.35)`;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 8]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseline * R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 花瓣（低频正上顺时针；明度低频亮 → 高频深；整体旋转 rot）
+  for (const pt of f.petals) {
+    const len = (baseline * 0.55 + pt.length * baseline * 0.45) * R;
+    const light = 82 - pt.lightness * 34;
     canvasPetal(
       ctx, cx, cy, R,
-      angle, f.petalLength * stagger, f.petalWidth * stagger, f.petalTiltDeg,
-      `hsl(${hue} ${Math.round(f.saturation * 100)}% 72% / 0.55)`,
-      `hsl(${hue} ${Math.round(f.saturation * 100)}% 55% / 0.5)`,
+      pt.angleDeg + rot, len,
+      `hsl(${hue} ${Math.round(55 - pt.lightness * 20)}% ${Math.round(light)}% / 0.85)`,
+      `hsl(${hue} 45% ${Math.round(light - 18)}% / 0.6)`,
     );
   }
-  // 花心
-  ctx.fillStyle = `hsl(${hue} 70% 62%)`;
+
+  // 花心（F1）
+  ctx.fillStyle = `hsl(${hue} 60% 62%)`;
   ctx.beginPath();
-  ctx.arc(cx, cy, 56 * f.core, 0, Math.PI * 2);
+  ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = `hsl(${hue} 60% 82% / 0.8)`;
+  ctx.fillStyle = `hsl(${hue} 55% 80% / 0.85)`;
   ctx.beginPath();
-  ctx.arc(cx - 14, cy - 16, 20 * f.core, 0, Math.PI * 2);
+  ctx.arc(cx - coreR * 0.25, cy - coreR * 0.3, coreR * 0.35, 0, Math.PI * 2);
   ctx.fill();
 
-  // 花语（关键数字行）：日期 / 平均基频 / 音区 / 模式
+  // 花语（关键数字行）
   const factY = 1010;
   ctx.textAlign = 'center';
   ctx.fillStyle = p.ink;
