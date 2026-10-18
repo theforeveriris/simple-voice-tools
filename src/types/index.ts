@@ -400,6 +400,8 @@ export interface AppSettings {
   algoCppsSmoothFrames: number;
   /** 分析页是否显示语谱图卡片 */
   showSpectrogram: boolean;
+  /** 实验性：把界面里所有「AI」显示为「SI」（纯显示层替换，提示词与日志不变） */
+  siRenameEnabled: boolean;
   /** 测试页是否追加第四张实时频谱图（额外 Canvas，耗电/掉帧风险自负） */
   liveSpectrum: boolean;
   /** 训练建议生成方式：无 / 规则判断 / 基于大模型判断 */

@@ -126,6 +126,12 @@ export function LabsPage({
               onCheckedChange={(v) => update({ showSpectrogram: v })}
             />
           </SettingRow>
+          <SettingRow label={<InfoTip label={t('settings.siRename')} text={t('settings.siRenameDesc')} />}>
+            <Switch
+              checked={settings.siRenameEnabled}
+              onCheckedChange={(v) => update({ siRenameEnabled: v })}
+            />
+          </SettingRow>
           <SettingRow label={t('settings.liveSpectrum')}>
             <Switch
               checked={settings.liveSpectrum}

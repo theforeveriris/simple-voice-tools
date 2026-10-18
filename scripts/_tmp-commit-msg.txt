@@ -1,14 +1,26 @@
-test(e2e): Playwright smoke suite for the core user flow
+feat(assistant): markdown rendering, record chart embeds, AI->SI display toggle
 
-- playwright.config.mts: chromium + fake mic (--use-fake-device-for-media-
-  capture / fake-ui), webServer = vite dev (no build step needed; CI can
-  switch to vite preview)
-- e2e/smoke.spec.mts, 4 cases, user-visible assertions only:
-  1) demo mode: no mic needed, analysis + history render
-  2) record via orb (fake mic) -> auto-enter analysis page with stats
-  3) recorded record appears in history list
-  4) settings > data sub-page reachable
-- onboarding bypassed via localStorage init script (first-run gate)
-- npm run test:e2e; test-results/ + playwright-report/ gitignored
-- status: 4/4 passing locally (26s); the recording flow exercised the
-  real recorder/pipeline through the fake mic signal
+Experimental switches & assistant upgrades:
+
+1. AI -> SI rename (Labs toggle, siRenameEnabled): display-layer transform
+   installed at the t() exit in i18n/index.ts - every UI string swaps
+   "AI" for "SI" (word-boundary, lowercase too) while prompts, request
+   logs and exports are untouched; toggling bumps the i18n version so all
+   components re-render
+
+2. Markdown in assistant bubbles: new lib/markdown.tsx - safe parser to
+   React elements (no dangerouslySetInnerHTML for text): bold / italic /
+   inline code, ordered & unordered lists, tables, blockquotes, headings,
+   hr; assistant bubbles render it, user bubbles stay plain
+
+3. Record chart embeds: model may reference a chart via
+   ![alt](record://<recordId>/<kind>) where kind is pitch / formant /
+   energy / vowel; assistantCharts.tsx resolves the id from history store
+   and renders an inline SVG drawn from the record series (band-colored
+   pitch, dual formant lines, energy, vowel scatter); missing ids show a
+   placeholder; system prompt documents the syntax and includes record
+   ids in the history summary so the model can cite them; guarded against
+   fabricated ids
+
+10 new parser/routing unit tests (vitest include widened to *.test.tsx);
+180 total green

@@ -16,6 +16,7 @@ import {
 import { applyPrideParams } from '@/lib/theme/monet';
 import { applyBgImage } from '@/lib/theme/bgImage';
 import { setAlgoParams } from '@/lib/audio/algoParams';
+import { setSiRenameEnabled } from '@/i18n';
 import { idbGetKV, idbPutKV } from '@/lib/storage/idb';
 import { addProfile, profilesReady } from '@/lib/llmProfiles';
 import { t } from '@/i18n';
@@ -59,6 +60,8 @@ export function syncModuleSettings(s: AppSettings): void {
   applyPrideParams(s.prideGlow, s.prideSaturation, s.prideGlassBlur, s.prideDrift);
   // 自定义背景图参数（CSS 变量与 bg-image 类；毛玻璃强度共用 prideGlassBlur）
   applyBgImage(s);
+  // 实验性：AI → SI 显示改名（t() 出口的全局转换）
+  setSiRenameEnabled(s.siRenameEnabled);
   // 算法参数（实验性）：实时循环与主线程离线回退读模块单例；Worker 随请求携带快照。
   // settings 键 = 'algo' + 帕斯卡化的参数名（algoYinThreshold 等）；表驱动避免逐字段手工映射
   const algo = {} as Record<(typeof ALGO_PARAMS_KEYS)[number], number>;

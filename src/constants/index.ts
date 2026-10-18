@@ -226,6 +226,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   formantTargetRadius: 200,
   // 实验性功能
   showSpectrogram: true,
+  siRenameEnabled: false,
   liveSpectrum: false,
   pitchAlgorithm: 'yin',
   pitchCompareEnabled: true,

@@ -26,6 +26,8 @@ import { useActiveLlmConfig, DEFAULT_CONTEXT_TOKENS } from '@/lib/llmProfiles';
 import {
   addMessage, createChat, deleteChat, getChat, setMessages, useChats, type ChatMessage,
 } from '@/lib/llmChats';
+import { renderMarkdown } from '@/lib/markdown';
+import { RecordImage, renderAssistantContent } from '@/lib/assistantCharts';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { cn } from '@/lib/utils';
@@ -50,6 +52,7 @@ async function historySection(budgetTokens: number): Promise<string> {
       const d = new Date(r.createdAt);
       const pad = (n: number) => String(n).padStart(2, '0');
       const parts = [
+        `id ${r.id}`,
         `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
         r.mode ?? 'free',
         `${Math.round(r.durationSec)}s`,
@@ -83,6 +86,8 @@ function systemPrompt(history: string): string {
     '你是 Simple Voice Tool 内置的 AI 助手——一个严肃的嗓音测量、分析与训练追踪工具。',
     '回答简洁、务实、有依据；涉及嗓音训练时给出可操作的练习建议；',
     '不做医学诊断，遇到疑似嗓音疾病（持续嘶哑、疼痛等）时建议就医或咨询言语治疗师。',
+    '回复支持 Markdown：可用 **粗体**、*斜体*、`行内代码`、有序/无序列表、表格（| 列 | 列 |）、> 引用与 ## 小标题，让长回答结构清晰；但不要输出代码块。',
+    '你可以嵌入用户某次记录的图表，语法：![图表说明](record://<记录id>/<kind>)，kind 取 pitch（音高曲线）/ formant（F1/F2）/ energy（能量）/ vowel（元音散点）之一；记录 id 见下方历史清单的「id」字段。仅在有助于说明时插图（如同一条记录不超过 2 张、答趋势时对比不同记录），不要每句都配图；不存在的 id 不要编造。',
     history
       ? '下方附有用户的历史测试记录：回答趋势、进步与训练计划类问题时引用它们；记录里没有的指标如实说明，不要编造。'
       : '',
@@ -110,6 +115,24 @@ function ThinkBlock({ text, live }: { text: string; live?: boolean }) {
     <span className="mb-2 block max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-black/[0.04] px-2.5 py-2 text-left text-[11px] leading-relaxed text-ink-2">
       {live && !text ? <span className="italic">{t('assistant.thinking')}</span> : text}
     </span>
+  );
+}
+
+/** 消息正文：record:// 图片引用独立渲染，其余 Markdown */
+function MessageBody({ text }: { text: string }) {
+  const parts = renderAssistantContent(text);
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.type === 'img' && p.kind && p.recordId ? (
+          <RecordImage key={i} recordId={p.recordId} kind={p.kind} alt={p.alt ?? ''} />
+        ) : (
+          <span key={i} className="block [&>p]:my-0.5 [&_blockquote]:my-1 [&_table]:my-1">
+            {renderMarkdown(p.content)}
+          </span>
+        ),
+      )}
+    </>
   );
 }
 
@@ -157,13 +180,18 @@ function Bubble({
       <button
         onClick={() => onAction(streaming ? null : active ? null : idx)}
         className={cn(
-          'max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-left text-[13px] leading-relaxed text-ink',
+          'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-left text-[13px] leading-relaxed text-ink',
           'shadow-[0_2px_10px_rgba(28,25,45,0.05)]',
           mine ? 'bg-accent/15' : 'bg-card',
+          mine && 'whitespace-pre-wrap',
         )}
       >
         {!mine && thinkVisible && think && <ThinkBlock text={think} live={streaming} />}
-        {m.content || (streaming ? (liveThink ? '' : '…') : '')}
+        {mine
+          ? (m.content || (streaming ? (liveThink ? '' : '…') : ''))
+          : (m.content
+            ? <MessageBody text={m.content} />
+            : (streaming ? (liveThink ? '' : '…') : ''))}
         {!mine && !!m.think && !streaming && (
           <span
             onClick={(e) => {
