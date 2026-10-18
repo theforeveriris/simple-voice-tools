@@ -17,9 +17,10 @@ import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { createDemoRecord } from '@/lib/audio/demo';
 import { downloadText, recordsToSummaryCsv } from '@/lib/export/csv';
-import { exportFullBackup, importFullBackup, buildRecordsPayload, parseRecordsPayload } from '@/lib/export/backup';
+import { exportFullBackup, importFullBackup, buildRecordsPayload, parseRecordsPayload, parseFullBackupZip } from '@/lib/export/backup';
 import { buildSettingsPayload, parseSettingsPayload } from '@/lib/export/settings';
 import { downloadBlob } from '@/lib/file';
+import { RestorePreviewDialog, buildRestorePreview, type RestorePreview } from './RestorePreviewDialog';
 import {
   pickAutoBackupFolder, getAutoBackupState,
   requestAutoBackupPermission, runAutoBackupNow,
@@ -81,6 +82,10 @@ export function DataPage({
   const [webdavLoaded, setWebdavLoaded] = useState(false);
   const [webdavBusy, setWebdavBusy] = useState<'test' | 'push' | 'pull' | null>(null);
   const [webdavLast, setWebdavLast] = useState<number | null>(null);
+  // 恢复预览：导入（JSON / ZIP）先解析展示，确认后才真正合并落库
+  const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
+  // 确认后要执行的导入动作（JSON 直接合并 / ZIP 走 importFullBackup 挂音频）
+  const pendingImportRef = useRef<(() => void) | null>(null);
   // 云备份加密：会话未解锁时先弹口令框，成功后继续被挂起的推/拉动作
   const [passOpen, setPassOpen] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
@@ -202,20 +207,50 @@ export function DataPage({
     toast.success(t('toast.jsonExported', { n: all.length }));
   };
 
-  /** 从 JSON 文件导入记录（v1/v2 与裸数组均接受，格式错误带具体原因） */
+  /** 从 JSON 文件导入记录（v1/v2 与裸数组均接受，格式错误带具体原因）——先解析预览，确认后落库 */
   const importData = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const { records: incoming } = parseRecordsPayload(String(reader.result));
-        const added = importRecords(incoming);
-        if (added > 0) toast.success(t('toast.imported', { n: added }));
-        else toast.info(t('toast.importedNone'));
+        const existingIds = new Set(records.map((r) => r.id));
+        pendingImportRef.current = () => {
+          const added = importRecords(incoming);
+          if (added > 0) toast.success(t('toast.imported', { n: added }));
+          else toast.info(t('toast.importedNone'));
+        };
+        setRestorePreview(buildRestorePreview(incoming, existingIds));
       } catch (err) {
         toast.error(err instanceof Error && err.message ? err.message : t('toast.importFail'));
       }
     };
     reader.readAsText(file);
+  };
+
+  /** 从 ZIP 备份恢复——先解析预览，确认后走 importFullBackup（挂载音频 + 背景图） */
+  const importZip = (file: File) => {
+    void (async () => {
+      try {
+        const { records: incoming } = await parseFullBackupZip(file);
+        const existingIds = new Set(records.map((r) => r.id));
+        pendingImportRef.current = () => {
+          void (async () => {
+            try {
+              const res = await importFullBackup(file);
+              if (res.records > 0) toast.success(t('toast.zipRestored', { records: res.records, audio: res.audio }));
+              else if (res.audio > 0) toast.info(t('toast.zipRestoredAudioOnly', { audio: res.audio }));
+              else toast.info(t('toast.zipSame'));
+            } catch (err) {
+              console.error(err);
+              toast.error(t('toast.zipFail'));
+            }
+          })();
+        };
+        setRestorePreview(buildRestorePreview(incoming, existingIds));
+      } catch (err) {
+        toast.error(err instanceof Error && err.message ? err.message : t('toast.zipFail'));
+      }
+    })();
   };
 
   /** 导出当前设置（配置）为 JSON */
@@ -259,22 +294,6 @@ export function DataPage({
     } finally {
       setZipBusy(false);
     }
-  };
-
-  /** 从 ZIP 备份恢复 */
-  const importZip = (file: File) => {
-    void (async () => {
-      try {
-        const res = await importFullBackup(file);
-        if (res.records > 0) toast.success(t('toast.zipRestored', { records: res.records, audio: res.audio }));
-        else if (res.audio > 0) toast.info(t('toast.zipRestoredAudioOnly', { audio: res.audio }));
-        else toast.info(t('toast.zipSame'));
-      } catch (err) {
-        console.error(err);
-        // 版本过新 / 格式错误等已有本地化文案的具体错误直接展示
-        toast.error(err instanceof Error && err.message ? err.message : t('toast.zipFailParse'));
-      }
-    })();
   };
 
   return (
@@ -604,6 +623,21 @@ export function DataPage({
             if (!v) pendingActionRef.current = null;
           }}
           onDone={onPassUnlocked}
+        />
+
+        {/* 恢复预览（JSON / ZIP 导入合并前）：确认后执行挂起的导入动作 */}
+        <RestorePreviewDialog
+          open={restorePreview != null}
+          preview={restorePreview ?? { incoming: [], duplicates: 0, added: 0, range: null }}
+          onConfirm={() => {
+            setRestorePreview(null);
+            pendingImportRef.current?.();
+            pendingImportRef.current = null;
+          }}
+          onCancel={() => {
+            setRestorePreview(null);
+            pendingImportRef.current = null;
+          }}
         />
       </motion.div>
     </div>

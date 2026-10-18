@@ -166,6 +166,21 @@ export interface BackupImportResult {
 }
 
 /**
+ * 解析 ZIP 备份的结构（不落库）：恢复预览用。
+ * @throws 与 importFullBackup 同口径（非 zip / 无 records.json / 版本过新）
+ */
+export async function parseFullBackupZip(file: File): Promise<{ records: AnalysisRecord[]; hasBgImage: boolean }> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (isEncryptedBackup(bytes)) throw new Error(t('backup.errEncryptedZip'));
+  const files = unzipSync(bytes);
+  const jsonEntry = files[JSON_NAME] ?? files[`data/${JSON_NAME}`];
+  if (!jsonEntry) throw new Error(t('backup.errNoJson'));
+  const { records } = parseRecordsPayload(strFromU8(jsonEntry));
+  const hasBgImage = Object.entries(files).some(([name]) => name.startsWith(BG_IMAGE_DIR) && !name.endsWith('/'));
+  return { records, hasBgImage };
+}
+
+/**
  * 从 ZIP 备份恢复（记录按 id 去重合并，音频挂载到已存在的记录上）
  * @throws ZIP 损坏或缺少 records.json 时抛错；加密的云端备份包给出「走云恢复」指引
  */
