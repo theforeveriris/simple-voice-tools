@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Music2, Sparkles } from 'lucide-react';
 import { freqToNote, bandOf, BAND_COLORS, getBandRanges } from '@/constants';
-import { formatClock } from '@/components/charts/chartPainters';
+import { formatClock } from '@/lib/utils';
 import { localeTag, t } from '@/i18n';
 import type { AnalysisRecord } from '@/types';
 

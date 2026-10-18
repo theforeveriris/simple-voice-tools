@@ -6,7 +6,7 @@
 
 import { SPEC_FMIN, SPEC_FMAX } from '@/constants';
 import { specColormapRgb } from '@/lib/audio/spectrogram';
-import { formatClock } from './chartPainters';
+import { formatClock } from '@/lib/utils';
 
 const DASH: [number, number] = [4, 5];
 

@@ -5,7 +5,7 @@
 
 import { motion } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
-import { formatClock } from '@/components/charts/chartPainters';
+import { formatClock } from '@/lib/utils';
 import { t } from '@/i18n';
 
 /** 录音回放条（纯展示）：音频元素由页面层持有，播放头位置驱动全部图表 */

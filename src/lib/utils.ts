@@ -22,3 +22,11 @@ export function fmtShortDateTime(ts: number): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/** 秒 → m:ss（先对总秒数取整：59.7s 这类端点按位舍入会进位成 "0:60"） */
+export function formatClock(sec: number): string {
+  const total = Math.round(sec);
+  const m = Math.floor(total / 60);
+  const s = total - m * 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}

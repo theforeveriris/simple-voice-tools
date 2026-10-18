@@ -10,7 +10,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { RecordSeries } from '@/types';
 import { t } from '@/i18n';
-import { formatClock } from './chartPainters';
+import { formatClock } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface TimeRangeSelectorProps {
