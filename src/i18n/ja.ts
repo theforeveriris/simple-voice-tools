@@ -496,6 +496,7 @@ export const ja = {
   'assistant.needConfig': '利用可能な接続がありません。「プロファイル」で新規作成または有効化してください（3 項目すべて入力）',
   'assistant.greeting': 'こんにちは！内蔵の AI アシスタントです。発声練習、テスト指標の解読、練習計画について話しましょう。',
   'assistant.chartMissing': '参照された記録が見つかりません',
+  'assistant.chartZoomed': 'ズーム中 — ダブルクリックで解除',
   'assistant.chart.pitch': 'ピッチ曲線',
   'assistant.chart.formant': 'F1/F2 フォルマント',
   'assistant.chart.energy': 'エネルギー',

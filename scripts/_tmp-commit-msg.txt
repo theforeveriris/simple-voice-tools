@@ -1,26 +1,16 @@
-feat(assistant): markdown rendering, record chart embeds, AI->SI display toggle
+refactor(assistant): record charts now reuse SeriesChart (pixel parity + interaction)
 
-Experimental switches & assistant upgrades:
-
-1. AI -> SI rename (Labs toggle, siRenameEnabled): display-layer transform
-   installed at the t() exit in i18n/index.ts - every UI string swaps
-   "AI" for "SI" (word-boundary, lowercase too) while prompts, request
-   logs and exports are untouched; toggling bumps the i18n version so all
-   components re-render
-
-2. Markdown in assistant bubbles: new lib/markdown.tsx - safe parser to
-   React elements (no dangerouslySetInnerHTML for text): bold / italic /
-   inline code, ordered & unordered lists, tables, blockquotes, headings,
-   hr; assistant bubbles render it, user bubbles stay plain
-
-3. Record chart embeds: model may reference a chart via
-   ![alt](record://<recordId>/<kind>) where kind is pitch / formant /
-   energy / vowel; assistantCharts.tsx resolves the id from history store
-   and renders an inline SVG drawn from the record series (band-colored
-   pitch, dual formant lines, energy, vowel scatter); missing ids show a
-   placeholder; system prompt documents the syntax and includes record
-   ids in the history summary so the model can cite them; guarded against
-   fabricated ids
-
-10 new parser/routing unit tests (vitest include widened to *.test.tsx);
-180 total green
+Address two review points on the previous SVG approach:
+- Parity: the inline chart now renders through the exact analysis-page
+  component (SeriesChart -> paintChart), so band backgrounds, grid,
+  ticks, target band and segment coloring are identical to the analysis
+  tab - one painter, zero drift
+- Interaction: each embedded chart owns its time range state with wheel
+  zoom (anchored at cursor), drag pan, and double-click reset - the same
+  interaction grammar as the interactive HTML report; a caption notes
+  the zoomed state (assistant.chartZoomed, i18n x5)
+- vowel maps to SeriesChart's vowelSpace kind (scatter); zoom/pan only
+  apply to the time-series kinds (pitch/energy/formant), matching where
+  a time axis exists
+- chart routing (record:// string parsing) split into
+  assistantChartRoute.ts so the unit tests stay window-free

@@ -27,7 +27,8 @@ import {
   addMessage, createChat, deleteChat, getChat, setMessages, useChats, type ChatMessage,
 } from '@/lib/llmChats';
 import { renderMarkdown } from '@/lib/markdown';
-import { RecordImage, renderAssistantContent } from '@/lib/assistantCharts';
+import { RecordImage } from '@/lib/assistantCharts';
+import { renderAssistantContent } from '@/lib/assistantChartRoute';
 import { useStore } from '@/store/useStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { cn } from '@/lib/utils';

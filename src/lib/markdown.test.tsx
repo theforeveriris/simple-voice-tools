@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderMarkdown, parseInline } from './markdown';
-import { renderAssistantContent } from './assistantCharts';
+import { renderAssistantContent } from './assistantChartRoute';
 // renderMarkdown 返回 React 元素——这里验证结构，用 react-dom/server 的 renderToStaticMarkup
 // 做文本级断言（vitest 环境无 DOM，用静态渲染）
 import { renderToStaticMarkup } from 'react-dom/server';

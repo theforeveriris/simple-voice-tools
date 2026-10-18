@@ -496,6 +496,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'assistant.needConfig': '尚無可用之介面——請於「配置檔案」增新或擇一檔案（三項皆備）',
   'assistant.greeting': '君好，吾乃內建之 AI 佐。可論嗓音之訓、解測試之標，或謀練習之計。',
   'assistant.chartMissing': '所指之錄未得',
+  'assistant.chartZoomed': '已近觀，再擊復原',
   'assistant.chart.pitch': '聲調之線',
   'assistant.chart.formant': 'F1/F2 之峰',
   'assistant.chart.energy': '聲之強弱',

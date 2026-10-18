@@ -496,6 +496,7 @@ export const zhCN = {
   'assistant.needConfig': '还没有可用的接口——先在「配置档案」里新建或启用一个档案（三项填写完整）',
   'assistant.greeting': '你好，我是内置的 AI 助手。可以聊聊嗓音训练、解读测试指标，或帮你规划练习。',
   'assistant.chartMissing': '未找到引用的记录',
+  'assistant.chartZoomed': '已缩放，双击复位',
   'assistant.chart.pitch': '音高曲线',
   'assistant.chart.formant': 'F1/F2 共振峰',
   'assistant.chart.energy': '能量',

@@ -495,6 +495,7 @@ export const zhTW = {
   'assistant.needConfig': '還沒有可用的介面——先在「配置檔案」裡新建或啟用一個檔案（三項填寫完整）',
   'assistant.greeting': '你好，我是內建的 AI 助手。可以聊聊嗓音訓練、解讀測試指標，或幫你規劃練習。',
   'assistant.chartMissing': '找不到引用的記錄',
+  'assistant.chartZoomed': '已縮放，雙擊復原',
   'assistant.chart.pitch': '音高曲線',
   'assistant.chart.formant': 'F1/F2 共振峰',
   'assistant.chart.energy': '能量',

@@ -495,6 +495,7 @@ export const en = {
   'assistant.needConfig': 'No usable endpoint yet — create or activate a profile under "Profiles" (all three fields filled)',
   'assistant.greeting': 'Hi! I\'m the built-in AI assistant. Ask about voice training, your metrics, or planning your practice.',
   'assistant.chartMissing': 'Referenced record not found',
+  'assistant.chartZoomed': 'zoomed - double-click to reset',
   'assistant.chart.pitch': 'Pitch curve',
   'assistant.chart.formant': 'F1/F2 formants',
   'assistant.chart.energy': 'Energy',
