@@ -192,6 +192,21 @@ export async function readLlmUsage(): Promise<LlmUsageSnapshot> {
   return { totals: totalsCache!, log: logCache! };
 }
 
+/**
+ * 统计最近 sinceMs 毫秒内的用量（明细日志按时间过滤，上限 LOG_CAP 条之外的不参与；
+ * 聚合计数器无时间戳，故近期用量以明细日志为准）。纯函数，可单测。
+ */
+export function usageSince(snap: LlmUsageSnapshot, sinceMs: number): LlmUsageCount {
+  const cutoff = Date.now() - sinceMs;
+  const out = emptyCount();
+  for (const e of snap.log) {
+    if (e.at < cutoff) continue;
+    // 只累进 all 桶（byFeature 传空对象占位；近期用量不需要按功能细分）
+    applyEntry({ byFeature: {} as Record<LlmFeature, LlmUsageCount>, all: out }, e);
+  }
+  return out;
+}
+
 /** 清空统计（面板的清空按钮；连日志一起删） */
 export async function clearLlmUsage(): Promise<void> {
   await enqueue(async () => {

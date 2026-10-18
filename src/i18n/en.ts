@@ -216,6 +216,7 @@ export const en = {
   'history.reportTitle': 'AI weekly review',
   'history.reportGenerate': 'Generate this week\'s review',
   'history.reportRegenerate': 'Regenerate',
+  'history.reportUsage': 'Last 7 days AI usage: {calls} calls · {tokens} tokens',
   'history.reportEmpty': 'No recordings in the last 7 days — log one first',
   'history.reportNeedLlm': 'The weekly review needs an LLM: fill in the endpoint under Experimental → LLM configuration',
   'history.reportLoading': 'Writing this week\'s review…',

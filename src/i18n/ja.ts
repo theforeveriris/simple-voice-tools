@@ -217,6 +217,7 @@ export const ja = {
   'history.reportTitle': 'AI 週次レビュー',
   'history.reportGenerate': '今週のレビューを生成',
   'history.reportRegenerate': '再生成',
+  'history.reportUsage': '直近 7 日のAI使用量：{calls} 回 · {tokens} tokens',
   'history.reportEmpty': '直近 7 日間の記録がありません。まず 1 件録音しましょう',
   'history.reportNeedLlm': '週次レビューには LLM が必要です：実験的機能 → LLM 設定 でエンドポイントを入力してください',
   'history.reportLoading': '今週のレビューを生成中…',

@@ -216,6 +216,7 @@ export const zhTW = {
   'history.reportTitle': 'AI 週報',
   'history.reportGenerate': '產生本週報告',
   'history.reportRegenerate': '重新產生',
+  'history.reportUsage': '近 7 天 AI 用量：{calls} 次呼叫 · {tokens} tokens',
   'history.reportEmpty': '最近 7 天還沒有記錄，先錄一條吧',
   'history.reportNeedLlm': '週報需要大模型支援：請在 實驗性功能 → 大模型配置 中填寫介面',
   'history.reportLoading': '正在產生本週報告…',

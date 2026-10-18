@@ -1,8 +1,8 @@
-feat(input): S = record from any tab, R = replay on analysis page
+feat(history): weekly AI usage summary on the weekly report card
 
-- S (global, App.tsx): start/stop recording from any tab; same input-focus
-  exemption as tab switching; complements the test-page Space binding
-- R (AnalysisPage): toggle playback of the current record; standard
-  page-level exemptions (input focus, open dialogs)
-- ShortcutsHelpSheet: new S row in Global group, new Analysis group with R
-- i18n keys for 5 locales; README feature lines updated
+- usageSince(snap, ms): pure helper filtering the usage log by time window
+  (unit-tested; only totals into the all-bucket)
+- WeeklyReportCard shows a footer line after a successful report: calls +
+  tokens over the last 7 days, same compact token formatting as
+  LlmUsageSection, so "what did AI cost me lately" is visible where it is
+  spent instead of only in settings

@@ -217,6 +217,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'history.reportTitle': 'AI 週報',
   'history.reportGenerate': '成今週之報',
   'history.reportRegenerate': '復成之',
+  'history.reportUsage': '七日以來AI之費：{calls} 用 · {tokens} 籤',
   'history.reportEmpty': '七日之内未有錄，宜先錄一條',
   'history.reportNeedLlm': '週報賴大模型：請於實驗之能 → 大模型之設，具其介面之參',
   'history.reportLoading': '方成今週之報…',

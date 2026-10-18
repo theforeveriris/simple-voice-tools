@@ -215,6 +215,7 @@ export const zhCN = {
   'history.reportTitle': 'AI 周报',
   'history.reportGenerate': '生成本周报告',
   'history.reportRegenerate': '重新生成',
+  'history.reportUsage': '近 7 天 AI 用量：{calls} 次调用 · {tokens} tokens',
   'history.reportEmpty': '最近 7 天还没有记录，先录一条吧',
   'history.reportNeedLlm': '周报需要大模型支持：请在 实验性功能 → 大模型配置 中填写接口',
   'history.reportLoading': '正在生成本周报告…',

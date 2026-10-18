@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
-  applyEntry, emptyTotals, estimateTokens, normalizeTotals,
+  applyEntry, emptyTotals, estimateTokens, normalizeTotals, usageSince,
   type LlmUsageEntry,
 } from './llmUsage';
 
@@ -73,5 +73,34 @@ describe('normalizeTotals', () => {
     expect(t.byFeature.advice.promptTokens).toBe(0);
     expect(t.byFeature.advice.completionTokens).toBe(5);
     expect(t.all.calls).toBe(7);
+  });
+});
+
+describe('usageSince', () => {
+  it('只统计时间窗内的明细，跨功能累加', () => {
+    const now = 1_700_000_000_000;
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const snap = {
+        totals: emptyTotals(),
+        log: [
+          entry({ at: now - 1000, feature: 'advice' }), // 窗口内
+          entry({ at: now - 3 * 24 * 3600 * 1000, feature: 'weekly', promptTokens: 10, completionTokens: 20 }), // 窗口内
+          entry({ at: now - 10 * 24 * 3600 * 1000, feature: 'assistant', promptTokens: 999, completionTokens: 999 }), // 窗口外
+        ],
+      };
+      const usage = usageSince(snap, 7 * 24 * 3600 * 1000);
+      expect(usage.calls).toBe(2);
+      expect(usage.promptTokens).toBe(110);
+      expect(usage.completionTokens).toBe(220);
+    } finally {
+      dateNow.mockRestore();
+    }
+  });
+
+  it('空日志返回全零', () => {
+    const usage = usageSince({ totals: emptyTotals(), log: [] }, 1000);
+    expect(usage.calls).toBe(0);
+    expect(usage.promptTokens).toBe(0);
   });
 });

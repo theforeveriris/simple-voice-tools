@@ -5,19 +5,59 @@
  * 依赖 设置 → 大模型 中使用中档案的接口；同一周内会话级缓存。
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CalendarRange, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import {
   cachedWeeklyReport, fetchWeeklyReport, hasCachedWeeklyReport, weekRecords, weeklyReportKey,
   type LlmPromptOptions,
 } from '@/lib/llm';
+import { readLlmUsage, usageSince, type LlmUsageCount } from '@/lib/llmUsage';
 import { useActiveLlmConfig } from '@/lib/llmProfiles';
 import { useLlmStream } from '@/hooks/useLlmStream';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import type { AnalysisRecord } from '@/types';
 import { LlmResultView, StreamPreview } from '@/components/analysis/LlmResultView';
+
+/** 近 7 天窗口（与周报聚合窗口一致） */
+const WEEK_MS = 7 * 24 * 3600 * 1000;
+
+/** token 数紧凑格式：<1000 原样，否则 K（一位小数）；与 LlmUsageSection 同规则 */
+function fmtTokens(n: number): string {
+  return n < 1000 ? String(n) : `${(n / 1000).toFixed(1)}K`;
+}
+
+/**
+ * 近 7 天 AI 用量摘要行（周报生成成功后显示在卡底部）：
+ * 明细日志按时间过滤（上限 200 条内），给出本周期调用次数与 token 消耗，
+ * 让「本月花了多少」在消费场景（周报）里直接可见，不必去设置页翻。
+ */
+function WeeklyUsageLine() {
+  useI18n();
+  const [usage, setUsage] = useState<LlmUsageCount | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void readLlmUsage()
+      .then((snap) => {
+        if (alive) setUsage(usageSince(snap, WEEK_MS));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!usage || usage.calls === 0) return null;
+  const tokens = usage.promptTokens + usage.completionTokens;
+  return (
+    <p className="mt-2 border-t border-black/[0.04] px-0.5 pt-2 text-[10px] tabular-nums text-ink-2">
+      {t('history.reportUsage', {
+        calls: usage.calls,
+        tokens: fmtTokens(tokens),
+      })}
+    </p>
+  );
+}
 
 export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
   useI18n();
@@ -116,6 +156,7 @@ export function WeeklyReportCard({ records }: { records: AnalysisRecord[] }) {
             <RefreshCw size={11} />
             {t('history.reportRegenerate')}
           </button>
+          <WeeklyUsageLine />
         </>
       ) : (
         <button
