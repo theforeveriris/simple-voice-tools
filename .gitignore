@@ -36,3 +36,8 @@ Thumbs.db
 
 # OpenChamber 工作产物（截图等）
 .openchamber/
+
+# Playwright E2E
+test-results/
+playwright-report/
+

@@ -1,13 +1,14 @@
-test(audio): pitch algorithm benchmark on source-filter synthetic corpus
+test(e2e): Playwright smoke suite for the core user flow
 
-- pitchBenchmark.test.ts: 9-case grid (C3-C5 x clean/10dB-noise x vibrato),
-  reuses the golden-fixture corpus quality (harmonic glottal source + Klatt
-  formant cascades); reports RPA (<=50 cents frame share) and median abs
-  error per algorithm; clean-corpus RPA >= 95% as a regression floor
-- first-run findings documented in ALGORITHM-YIN.md "基准" section:
-  clean corpus is a three-way tie (~4.5 cents); under 10 dB noise MPM is
-  the most robust (RPA 100%), YIN suffers octave halving at G3/A4, and
-  this pYIN's threshold distribution conservatively exits to null on all
-  noisy frames - more gaps, zero octave errors, by design
-- PTDB-TUG etc. intentionally not vendored (license/size); the CASES grid
-  is the extension point for local deeper benchmarking
+- playwright.config.mts: chromium + fake mic (--use-fake-device-for-media-
+  capture / fake-ui), webServer = vite dev (no build step needed; CI can
+  switch to vite preview)
+- e2e/smoke.spec.mts, 4 cases, user-visible assertions only:
+  1) demo mode: no mic needed, analysis + history render
+  2) record via orb (fake mic) -> auto-enter analysis page with stats
+  3) recorded record appears in history list
+  4) settings > data sub-page reachable
+- onboarding bypassed via localStorage init script (first-run gate)
+- npm run test:e2e; test-results/ + playwright-report/ gitignored
+- status: 4/4 passing locally (26s); the recording flow exercised the
+  real recorder/pipeline through the fake mic signal
