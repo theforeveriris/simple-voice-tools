@@ -2,8 +2,9 @@
  * 离线分析管线（纯函数，无 DOM 依赖）
  * 主线程回退与 Worker（analysisWorker.ts）共用同一实现。
  *
- * 逐帧（30fps、64ms 窗）：rmsDb / YIN 音高 / 隔帧 LPC 共振峰（同款 EMA 平滑）
- * → 逐帧 Blackman 加窗 FFT → 语谱频带量化；随后计算嗓音质量四项。
+ * 逐帧（30fps、64ms 窗）：rmsDb / 音高（检测器跟随设置：yin / pyin / mpm）/
+ * 隔帧 LPC 共振峰（同款 EMA 平滑）→ 逐帧 Blackman 加窗 FFT → 语谱频带量化；
+ * 随后计算嗓音质量四项。
  */
 
 import { rmsDb } from './pitch';
