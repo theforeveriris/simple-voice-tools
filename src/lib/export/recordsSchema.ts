@@ -75,7 +75,7 @@ export function validateRecord(rec: unknown, prefix: string, issues: ValidationI
         issues.push({ path: `${prefix}.stats.${key}`, message: 'must be a number in [0, 100]' });
       }
     }
-    for (const key of ['avgF1', 'avgF2', 'jitterPct', 'shimmerPct', 'hnrDb', 'cppsDb', 'inTargetPct']) {
+    for (const key of ['avgF1', 'avgF2', 'jitterPct', 'shimmerPct', 'hnrDb', 'cppsDb', 'inTargetPct', 'h1h2Db', 'h2h4Db', 'h1a3Db', 'breathiness']) {
       if (stats[key] !== undefined && !isNumOrNull(stats[key])) {
         issues.push({ path: `${prefix}.stats.${key}`, message: 'must be a number or null' });
       }

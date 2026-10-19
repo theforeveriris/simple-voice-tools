@@ -173,6 +173,14 @@ export interface VoiceStats {
   hnrDb?: number | null;
   /** 平滑倒谱峰突出度 CPPS（dB），对连续语音稳健的嗓音质量指标，需录音音频，旧记录为 undefined */
   cppsDb?: number | null;
+  /** H1−H2（dB）：第一/第二谐波幅度差，气声与声门开商口径，需录音音频，旧记录为 undefined */
+  h1h2Db?: number | null;
+  /** H2−H4（dB）：第二/第四谐波幅度差，频谱倾斜口径 */
+  h2h4Db?: number | null;
+  /** H1−A3（dB）：第一谐波与 F3 区最强谐波之差，气声经典指标 */
+  h1a3Db?: number | null;
+  /** 气声综合指数（0–1，越大越气声） */
+  breathiness?: number | null;
   /** 训练靶标达成率：落在目标音高区间内的有声帧占比（%），未启用靶标时为 undefined */
   inTargetPct?: number | null;
 }

@@ -10,6 +10,7 @@ import { detectPitchYin, rmsDb } from './pitch';
 import { detectPitch } from './pitchAlt';
 import { extractFormants } from './formants';
 import { computeVoiceQuality } from './voiceQuality';
+import { computeSpectralVoice } from './spectralVoice';
 import { computeCpps, fft } from './cpp';
 import { getAlgoParams } from './algoParams';
 import { spectrumRowToBands } from './spectrogram';
@@ -50,6 +51,14 @@ export interface VqMetrics {
   f2f1GapMedianHz?: number | null;
   /** 谱倾斜均值（dB/octave；越负越暗），有声帧统计 */
   spectralTiltDbOct?: number | null;
+  /** H1−H2（dB）：气声/开商口径 */
+  h1h2Db?: number | null;
+  /** H2−H4（dB）：频谱倾斜口径 */
+  h2h4Db?: number | null;
+  /** H1−A3（dB）：A3 = F3 区最强谐波 */
+  h1a3Db?: number | null;
+  /** 气声综合指数（0–1） */
+  breathiness?: number | null;
 }
 
 export interface FrameAnalysisResult extends FrameAnalysisBuffers {
@@ -161,11 +170,12 @@ export function analyzePcmFrames(
   };
 }
 
-/** 嗓音质量四项（Jitter/Shimmer/HNR + CPPS），任意采样率的单声道 PCM */
+/** 嗓音质量四项（Jitter/Shimmer/HNR + CPPS）+ 谐波谱指标，任意采样率的单声道 PCM */
 export function computeVqMetrics(pcm: Float32Array, sampleRate: number): VqMetrics {
   const vq = computeVoiceQuality(pcm, sampleRate);
   const cppsDb = computeCpps(pcm, sampleRate);
-  return { ...vq, cppsDb };
+  const spectral = computeSpectralVoice(pcm, sampleRate);
+  return { ...vq, cppsDb, ...spectral };
 }
 
 /* --------------------------- 音高算法对比（实验性） --------------------------- */
