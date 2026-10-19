@@ -1123,6 +1123,8 @@ export const zhCN = {
   /* ---------- 配置子页面扩展 ---------- */
   'settings.micEnhance': '麦克风增益与降噪',
   'settings.micEnhanceDesc': '关闭时采集原始音质（默认，适合分析）；开启后由系统自动增益并降噪，适合灵敏度低的麦克风',
+  'settings.splOffset': 'SPL 校准偏移',
+  'settings.splOffsetDesc': '用外部声级计校准，输出真实声压级：对着麦克风持续发一个稳定的音，记下声级计读数（A），分析页显示的录音电平为（B），偏移 = A − B（dB）。留空 = 不校准，只显示 dBFS',
   'settings.audioBitrate': '录音音质',
   'settings.audioBitrateDesc': '录音码率越高音质越好，占用存储也越大',
   'settings.bitrateKbps': '{n} kbps',

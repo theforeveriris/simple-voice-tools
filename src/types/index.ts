@@ -335,6 +335,8 @@ export interface AppSettings {
   autoEnterAnalysis: boolean;
   /** 麦克风设备 ID，空串 = 系统默认 */
   micDeviceId: string;
+  /** SPL 校准偏移（dB）：真实声压级 = 录音电平(dBFS) + 该偏移；undefined = 未校准（只显示 dBFS） */
+  splOffsetDb?: number;
   /** 是否保存录音音频（用于回放与嗓音质量分析），存于 IndexedDB */
   audioSave: boolean;
   /** 当前测试模式（短按圆球所用，长按可切换） */

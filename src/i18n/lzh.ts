@@ -1121,6 +1121,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   /* ---------- 配置子頁之擴 ---------- */
   'settings.micEnhance': '麥之增益與靜噪',
   'settings.micEnhanceDesc': '闕則錄原聲（常，宜析）；啟則系統自益其音而靜其噪，麥之鈍者宜之',
+  'settings.splOffset': 'SPL 校準之偏',
+  'settings.splOffsetDesc': '以外器校之，得其實聲壓：對麥持音不變，記器之數（甲），析頁所示錄音電平為（乙），偏 = 甲 − 乙（dB）。空則弗校，唯示 dBFS',
   'settings.audioBitrate': '錄音之質',
   'settings.audioBitrateDesc': '率高則音清，而所佔亦廣',
   'settings.bitrateKbps': '{n} kbps',

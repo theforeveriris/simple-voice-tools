@@ -1120,6 +1120,8 @@ export const zhTW = {
   /* ---------- 配置子頁面擴充 ---------- */
   'settings.micEnhance': '麥克風增益與降噪',
   'settings.micEnhanceDesc': '關閉時採集原始音質（預設，適合分析）；開啟後由系統自動增益並降噪，適合靈敏度低的麥克風',
+  'settings.splOffset': 'SPL 校準偏移',
+  'settings.splOffsetDesc': '用外部聲級計校準，輸出真實聲壓級：對著麥克風持續發一個穩定的音，記下聲級計讀數（A），分析頁顯示的錄音電平為（B），偏移 = A − B（dB）。留空 = 不校準，只顯示 dBFS',
   'settings.audioBitrate': '錄音音質',
   'settings.audioBitrateDesc': '錄音位元率越高音質越好，佔用儲存也越大',
   'settings.bitrateKbps': '{n} kbps',

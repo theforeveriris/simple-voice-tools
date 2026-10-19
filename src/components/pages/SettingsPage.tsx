@@ -61,6 +61,7 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.maxDuration' },
   { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.audioBitrate' },
   { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.micEnhance' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.splOffset' },
   { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.haptics' },
   { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.autoReplay' },
   { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.mic' },

@@ -6,6 +6,7 @@
 import type { ReactNode } from 'react';
 import { freqToNote } from '@/constants';
 import { t } from '@/i18n';
+import { useStore } from '@/store/useStore';
 import type { AnalysisRecord } from '@/types';
 
 /* -------------------------------- 统计表格 -------------------------------- */
@@ -34,6 +35,9 @@ function fmtHz(v: number | null | undefined, digits = 1): string {
 
 export function StatsTable({ record }: { record: AnalysisRecord }) {
   const s = record.stats;
+  const splOffset = useStore((st) => st.settings.splOffsetDb);
+  // SPL 校准后：录音电平(dBFS) + 偏移 → 真实声压级；未校准只显示 dBFS
+  const dbLabel = (db: number) => (splOffset != null ? `${db.toFixed(1)} dB（≈ ${(db + splOffset).toFixed(0)} dB SPL）` : `${db.toFixed(1)} dB`);
   const voicedPct = s.totalSamples ? Math.round((s.voicedSamples / s.totalSamples) * 100) : 0;
   return (
     <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -75,8 +79,8 @@ export function StatsTable({ record }: { record: AnalysisRecord }) {
         rows={[
           [t('analysis.rowDuration'), `${s.durationSec.toFixed(1)} ${t('analysis.unitSec')}`],
           [t('analysis.rowVoicedPct'), `${voicedPct}%`],
-          [t('analysis.rowAvgDb'), `${s.avgDb.toFixed(1)} dB`],
-          [t('analysis.rowPeakDb'), `${s.peakDb.toFixed(1)} dB`],
+          [t('analysis.rowAvgDb'), dbLabel(s.avgDb)],
+          [t('analysis.rowPeakDb'), dbLabel(s.peakDb)],
           [t('analysis.rowFrames'), `${s.totalSamples}（${s.sampleHz.toFixed(0)} Hz）`],
         ]}
       />

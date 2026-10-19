@@ -1120,6 +1120,8 @@ export const en = {
   /* ---------- Config page extensions ---------- */
   'settings.micEnhance': 'Mic gain & noise reduction',
   'settings.micEnhanceDesc': 'Off records the raw signal (default, best for analysis); on lets the system apply auto gain and noise suppression — helpful for quiet microphones',
+  'settings.splOffset': 'SPL calibration offset',
+  'settings.splOffsetDesc': 'Calibrate with an external SPL meter to report real sound pressure level: hold a steady tone, note the meter reading (A) and the recording level shown on the analysis page (B); offset = A − B (dB). Leave empty to show dBFS only',
   'settings.audioBitrate': 'Recording quality',
   'settings.audioBitrateDesc': 'Higher bitrate sounds better and takes more storage',
   'settings.bitrateKbps': '{n} kbps',

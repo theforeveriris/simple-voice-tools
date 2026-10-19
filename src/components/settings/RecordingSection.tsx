@@ -14,7 +14,7 @@ import {
   Switch,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS, SELECT_TRIGGER_TRUNCATE } from './rows';
+import { SettingsSection, SettingRow, NUMBER_INPUT_CLASS, SELECT_TRIGGER_CLASS, SELECT_TRIGGER_TRUNCATE } from './rows';
 import { InfoTip } from './InfoTip';
 
 export function RecordingSection({
@@ -97,6 +97,24 @@ export function RecordingSection({
             <SelectItem value="256">{t('settings.bitrateKbps', { n: 256 })}</SelectItem>
           </SelectContent>
         </Select>
+      </SettingRow>
+      <SettingRow label={<InfoTip label={t('settings.splOffset')} text={t('settings.splOffsetDesc')} />}>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={160}
+          value={settings.splOffsetDb ?? ''}
+          placeholder="—"
+          onChange={(e) => {
+            const raw = e.target.value.trim();
+            if (raw === '') { update({ splOffsetDb: undefined }); return; }
+            update({ splOffsetDb: Math.max(0, Math.min(160, Number(raw) || 0)) });
+          }}
+          className={NUMBER_INPUT_CLASS}
+          aria-label={t('settings.splOffset')}
+        />
+        <span className="text-xs text-ink-2">dB SPL</span>
       </SettingRow>
       <SettingRow label={<InfoTip label={t('settings.micEnhance')} text={t('settings.micEnhanceDesc')} />}>
         <Switch

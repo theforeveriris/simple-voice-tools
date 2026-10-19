@@ -1121,6 +1121,8 @@ export const ja = {
   /* ---------- 環境設定ページ拡張 ---------- */
   'settings.micEnhance': 'マイクのゲインとノイズ除去',
   'settings.micEnhanceDesc': 'オフでは生の音質を記録します（既定、分析向け）。オンにするとシステムが自動ゲインとノイズ除去を適用し、感度の低いマイクに便利です',
+  'settings.splOffset': 'SPL 校正オフセット',
+  'settings.splOffsetDesc': '外部の騒音計で校正し、実際の音圧レベルを表示します：安定した音を出し、騒音計の値（A）と分析ページに表示される録音レベル（B）を記録し、オフセット = A − B（dB）。空欄なら dBFS のみ表示',
   'settings.audioBitrate': '録音音質',
   'settings.audioBitrateDesc': 'ビットレートが高いほど音質は良くなり、保存容量も大きくなります',
   'settings.bitrateKbps': '{n} kbps',
