@@ -13,7 +13,7 @@
 
 /** 生成一个 oklch 颜色字符串 */
 const ok = (l: number, c: number, h: number) =>
-  `oklch(${l} ${c} ${((h % 360) + 360) % 360}`;
+  `oklch(${l} ${c} ${((h % 360) + 360) % 360})`;
 
 /**
  * OKLCH → sRGB（0-255 三元组字符串）
