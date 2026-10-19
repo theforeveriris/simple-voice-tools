@@ -34,6 +34,8 @@ const SALT_LEN = 16;
 const IV_LEN = 12;
 /** PBKDF2-HMAC-SHA256 迭代次数（OWASP 2023 建议 310k 量级；写入文件头便于日后上调） */
 export const BACKUP_ENCRYPTION_ITERATIONS = 310_000;
+/** 文件头里可接受的迭代次数上限（防伪造文件头逼迫 PBKDF2 长时间空转） */
+const MAX_ITERATIONS = 5_000_000;
 /** 会话解锁用的校验明文（加密后存 kv，解密成功即口令正确） */
 const CHECK_PLAINTEXT = 'svt-crypto-check-v1';
 /** 口令最短长度 */
@@ -252,7 +254,8 @@ export function isEncryptedBackup(data: Uint8Array): boolean {
 
 /**
  * 解密加密信封。
- * - 会话已解锁：优先用会话口令派生文件头中的 salt（口令更换后的旧文件也能解）；
+ * - 会话已解锁：用**会话口令** + 文件头中的 salt 派生密钥（因此换口令后，
+ *   用旧口令加密的云端文件在重启后无法解密——需在换口令后重新推送一次）；
  * - 未解锁：抛 BackupLockedError（UI 弹口令框后重试）；
  * - 密文被篡改 / 口令错误：抛本地化的解密失败错误。
  */
@@ -260,6 +263,10 @@ export async function decryptBackupEnvelope(data: Uint8Array): Promise<Uint8Arra
   if (!isEncryptedBackup(data)) throw new Error(t('crypto.errNotEncrypted'));
   const salt = data.slice(MAGIC.length, MAGIC.length + SALT_LEN);
   const iterations = new DataView(data.buffer, data.byteOffset).getUint32(MAGIC.length + SALT_LEN, false);
+  // 迭代次数来自文件头（可被伪造）：上限兜底，避免恶意文件让 PBKDF2 跑到天荒地老
+  if (!Number.isFinite(iterations) || iterations < 1000 || iterations > MAX_ITERATIONS) {
+    throw new Error(t('crypto.errPassphrase'));
+  }
   const iv = data.slice(MAGIC.length + SALT_LEN + 4, MAGIC.length + SALT_LEN + 4 + IV_LEN);
   const ct = data.slice(MAGIC.length + SALT_LEN + 4 + IV_LEN);
   if (!session) throw new BackupLockedError();
