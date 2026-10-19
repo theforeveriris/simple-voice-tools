@@ -1254,6 +1254,7 @@ export const ja = {
   'analysis.envNoise': 'ノイズフロア',
   'analysis.envMic': 'マイク',
   'analysis.envHour': '時間帯',
+  'analysis.envGain': 'ゲイン',
 
   'lanSync.title': 'LAN 同期',
   'lanSync.desc': '同じ Wi-Fi 上の 2 台のデバイスが直接記録と音声をやり取りし、サーバーを一切経由しません：A が招待を作成、B が参加、案内に従って 2 つの接続テキストを貼り合うだけ。データはあなたのデバイス間だけを流れます。',

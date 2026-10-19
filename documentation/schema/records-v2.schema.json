@@ -93,7 +93,8 @@
       "properties": {
         "noiseFloorDb": { "type": "number", "description": "开场环境底噪 dBFS" },
         "micLabel": { "type": "string", "description": "麦克风标签" },
-        "hourOfDay": { "type": "integer", "minimum": 0, "maximum": 23 }
+        "hourOfDay": { "type": "integer", "minimum": 0, "maximum": 23 },
+        "inputGainDb": { "type": "number", "description": "导入音频的自动增益归一量 dB（仅导入路径；>0 表示分析前已整体提升电平）" }
       }
     }
   }

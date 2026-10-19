@@ -1253,6 +1253,7 @@ export const zhTW = {
   'analysis.envNoise': '底噪',
   'analysis.envMic': '麥克風',
   'analysis.envHour': '時段',
+  'analysis.envGain': '增益',
 
   'lanSync.title': '區域網路同步',
   'lanSync.desc': '兩台裝置在同一 Wi-Fi 下直連互傳記錄與音訊，全程不經任何伺服器：A 機建立邀請，B 機加入，依提示互相貼上兩段連線文字即可。資料只在你的裝置之間流動。',

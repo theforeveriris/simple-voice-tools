@@ -15,6 +15,7 @@
 
 import { computeStats, computeInTargetPct, toRecordSeries, toRecordSpec } from './recorder';
 import { runFrameAnalysis } from './analysisClient';
+import { estimateImportGainDb, applyGainDb } from './normalize';
 import { PIPELINE_HZ, FRAME_HZ, FRAME_SAMPLES } from './analysisPipeline';
 import { SPEC_BANDS } from '@/constants';
 import type { AnalysisRecord } from '@/types';
@@ -148,6 +149,11 @@ export async function analyzeAudioFile(
     pcm = await resample(pcm, decoded.sampleRate);
   }
 
+  // 3.5 自动增益归一：电平过低的外部文件抬到可分析范围
+  // （只提升、以峰值留白封顶不削波、不改原文件；增益记入 env 便于溯源）
+  const inputGainDb = estimateImportGainDb(pcm, PIPELINE_HZ);
+  applyGainDb(pcm, inputGainDb);
+
   // 4. 逐帧分析：派发到 Worker（或主线程回退），进度经回调上抛
   const hop = Math.round(PIPELINE_HZ / FRAME_HZ);
   const frames = Math.max(0, Math.floor((pcm.length - FRAME_SAMPLES) / hop) + 1);
@@ -179,6 +185,7 @@ export async function analyzeAudioFile(
     series,
     stats: { ...stats, ...metrics },
     ...(note ? { note } : {}),
+    ...(inputGainDb > 0 ? { env: { inputGainDb } } : {}),
     ...(spec ? { spec } : {}),
   };
 

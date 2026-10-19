@@ -201,6 +201,8 @@ export interface RecordEnv {
   micLabel?: string;
   /** 录音本地小时（0-23，昼夜节律切片用；createdAt 已有绝对时间，此字段只是免换算） */
   hourOfDay?: number;
+  /** 导入音频的自动增益归一量（dB，仅导入路径写入；>0 = 分析前已整体提升电平，不改原文件） */
+  inputGainDb?: number;
 }
 
 /**

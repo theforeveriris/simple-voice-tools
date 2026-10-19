@@ -1253,6 +1253,7 @@ export const en = {
   'analysis.envNoise': 'Noise floor',
   'analysis.envMic': 'Microphone',
   'analysis.envHour': 'Time of day',
+  'analysis.envGain': 'Gain',
 
   'lanSync.title': 'LAN sync',
   'lanSync.desc': 'Two devices on the same Wi-Fi transfer records and audio directly — never touching a server. Device A creates an invite, device B joins, and you paste two short connection texts as prompted. Data only flows between your devices.',

@@ -158,6 +158,9 @@ export function HeroSummary({
           {record.env.hourOfDay != null && (
             <span>{t('analysis.envHour')} {String(record.env.hourOfDay).padStart(2, '0')}:00</span>
           )}
+          {record.env.inputGainDb != null && (
+            <span>{t('analysis.envGain')} +{record.env.inputGainDb} dB</span>
+          )}
         </p>
       )}
     </motion.div>

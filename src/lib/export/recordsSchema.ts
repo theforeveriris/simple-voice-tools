@@ -91,6 +91,9 @@ export function validateRecord(rec: unknown, prefix: string, issues: ValidationI
     if (env.hourOfDay !== undefined && !(isNum(env.hourOfDay) && Number.isInteger(env.hourOfDay) && (env.hourOfDay as number) >= 0 && (env.hourOfDay as number) <= 23)) {
       issues.push({ path: `${prefix}.env.hourOfDay`, message: 'must be an integer in [0, 23]' });
     }
+    if (env.inputGainDb !== undefined && !isNum(env.inputGainDb)) {
+      issues.push({ path: `${prefix}.env.inputGainDb`, message: 'must be a number' });
+    }
   }
 }
 

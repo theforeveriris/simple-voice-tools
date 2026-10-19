@@ -1261,6 +1261,7 @@ export const zhCN = {
   'analysis.envNoise': '底噪',
   'analysis.envMic': '麦克风',
   'analysis.envHour': '时段',
+  'analysis.envGain': '增益',
 
   /* ---------- 局域网点对点同步 ---------- */
   'lanSync.title': '局域网同步',
