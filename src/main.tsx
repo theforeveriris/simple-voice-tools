@@ -84,7 +84,12 @@ if (!localStorage.getItem('svt:settings:v1')) {
 } else if (saved.language === 'ai' && saved.aiLanguage && hydrateAiLocale(saved.aiLanguage)) {
   setLocale('ai')
 } else {
-  setLocale(saved.language ?? DEFAULT_LOCALE)
+  // 语言为 ai 但词典缺失 / 损坏（清空存储、配额回收、从别的设备导入设置）：
+  // 直接 setLocale('ai') 会让界面整体回退简体中文，而语言选择器里又没有对应的
+  // ai 项，用户看起来就是「语言设置失效」。回退默认语言并写回设置保持一致。
+  const fallback = saved.language === 'ai' ? DEFAULT_LOCALE : saved.language ?? DEFAULT_LOCALE;
+  if (saved.language === 'ai') useStore.getState().updateSettings({ language: DEFAULT_LOCALE });
+  setLocale(fallback);
 }
 
 // PWA：捕获安装事件（原生/Tauri 壳内无 Web 安装流程，跳过）
