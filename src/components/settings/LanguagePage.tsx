@@ -75,10 +75,13 @@ export function LanguagePage({
     if (busy) return;
     const label = draft.trim();
     if (!label) return;
-    if (!(await startAITask(label, missingOnly))) {
+    const result = await startAITask(label, missingOnly);
+    // no-config 已由任务自身提示（缺大模型配置），此处只在「真的有任务在跑」时提示
+    if (result === 'busy') {
       toast.info(t('toast.aiTaskBusy'));
       return;
     }
+    if (result !== 'started') return;
     setDraft(label);
   };
 

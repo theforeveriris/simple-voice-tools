@@ -86,21 +86,27 @@ export function cancelAITask(): void {
 }
 
 /**
- * 启动翻译任务（全量或增量补全）。
- * @returns false = 已有任务在进行（本次未启动）
+ * 启动结果：'started' 已启动；'busy' 已有任务在进行；
+ * 'no-config' 未配置大模型档案（已自行提示，调用方不要再说「任务进行中」）
  */
-export async function startAITask(label: string, missingOnly: boolean): Promise<boolean> {
-  if (state.status === 'running') return false;
+export type AITaskStartResult = 'started' | 'busy' | 'no-config';
+
+/**
+ * 启动翻译任务（全量或增量补全）。
+ */
+export async function startAITask(label: string, missingOnly: boolean): Promise<AITaskStartResult> {
+  if (state.status === 'running') return 'busy';
   const settings = useStore.getState().settings;
   // v0.9.0：配置从活动档案解析（IDB 异步加载）
   const cfg: LlmConfig | null = activeLlmConfigFrom(await profilesReady(), settings.llmActiveProfileId);
   if (!cfg) {
     toast.error(t('toast.aiNeedLlm'));
-    return false;
+    return 'no-config';
   }
 
   const id = ++seq;
-  abort = new AbortController();
+  const myAbort = new AbortController();
+  abort = myAbort;
   const total = missingOnly ? missingKeys(label).length : 0;
   state = {
     status: 'running',
@@ -115,10 +121,10 @@ export async function startAITask(label: string, missingOnly: boolean): Promise<
   notify();
 
   void (async () => {
-    const opts = { glossary: settings.aiGlossary, signal: abort?.signal };
+    const opts = { glossary: settings.aiGlossary, signal: myAbort.signal };
     const onProgress = (p: TranslateProgress): void => {
-      // 任务可被新任务替换（status 换主）：旧回调不再写状态
-      if (state.status !== 'running' || state.startedAt === 0) return;
+      // 任务被更新的任务取代（seq 递增）后，旧回调不得再写状态
+      if (id !== seq || state.status !== 'running') return;
       patch({ progress: p });
       if (p.batch > 0) {
         log(t('aiLog.batch', { batch: p.batch, total: p.totalBatches, done: p.entriesDone, all: p.entriesTotal }));
@@ -153,9 +159,10 @@ export async function startAITask(label: string, missingOnly: boolean): Promise<
       if (aborted) toast.info(t('toast.aiCancelled'));
       else toast.error(t('toast.aiFail', { msg }));
     } finally {
-      abort = null;
+      // 只清理自己的控制器：旧任务的 finally 不能把新任务的 abort 清掉
+      if (abort === myAbort) abort = null;
     }
   })();
 
-  return true;
+  return 'started';
 }
