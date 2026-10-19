@@ -114,14 +114,34 @@ export function showPracticeReminder(): void {
     })).catch(() => {});
     return;
   }
-  const n = new Notification('Simple Voice Tool', {
-    body: t('reminder.body'),
-    tag: 'svt-practice-reminder',
-  });
-  n.onclick = () => {
-    window.focus();
-    n.close();
-  };
+  void webNotify(t('reminder.body'));
+}
+
+/**
+ * Web 端发通知：优先经 ServiceWorkerRegistration.showNotification——
+ * Android Chrome（PWA 的主要形态）不允许直接 `new Notification()`（抛 Illegal constructor），
+ * 只有在拿不到 Service Worker 注册时才回退到构造函数。
+ */
+async function webNotify(body: string): Promise<void> {
+  const title = 'Simple Voice Tool';
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) {
+      await reg.showNotification(title, { body, tag: 'svt-practice-reminder' });
+      return;
+    }
+  } catch {
+    /* 落到构造函数兜底 */
+  }
+  try {
+    const n = new Notification(title, { body, tag: 'svt-practice-reminder' });
+    n.onclick = () => {
+      window.focus();
+      n.close();
+    };
+  } catch {
+    /* 环境既不支持 SW 又不支持构造函数：静默失败（设置页已说明平台限制） */
+  }
 }
 
 /**
@@ -132,11 +152,22 @@ export function showPracticeReminder(): void {
 export function checkPracticeReminder(enabled: boolean, time: string): void {
   if (!enabled || reminderPermission() !== 'granted') return;
   const key = firedKey();
-  if (localStorage.getItem(key)) return;
+  // localStorage 在隐私模式 / 禁用 Cookie 时会抛异常，不能让轮询因此中断
+  let fired = false;
+  try {
+    fired = !!localStorage.getItem(key);
+  } catch {
+    /* 读不到就不当成已提醒 */
+  }
+  if (fired) return;
   const now = new Date();
   const { h, m } = parseReminderTime(time);
   if (now.getHours() * 60 + now.getMinutes() < h * 60 + m) return;
-  localStorage.setItem(key, '1');
+  try {
+    localStorage.setItem(key, '1');
+  } catch {
+    /* 写不进去会重复提醒，但不影响本次发送 */
+  }
   if (hasRecordToday()) return;
   showPracticeReminder();
 }
