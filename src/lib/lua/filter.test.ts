@@ -52,6 +52,16 @@ describe('lua filter', () => {
     expect([...r2.hits]).toEqual(['b']);
   });
 
+  it('非布尔真值也算命中（Lua 语义：只有 false/nil 为假）', async () => {
+    const recs = [fake('a', { avgF0: 120, jitterPct: 1.2 }), fake('b', { avgF0: 200 })];
+    const numeric = await luaFilterRecords(recs, 'stats.jitterPct');
+    expect([...numeric.hits]).toEqual(['a']);
+    const stringy = await luaFilterRecords(recs, "stats.avgF0 < 160 and 'hit'");
+    expect([...stringy.hits]).toEqual(['a']);
+    const falsy = await luaFilterRecords(recs, 'stats.jitterPct and false');
+    expect(falsy.hits.size).toBe(0);
+  });
+
   it('null stats fields compare as nil without crashing', async () => {
     const recs = [fake('a', { jitterPct: null })];
     const { hits, error } = await luaFilterRecords(recs, 'stats.jitterPct == nil');

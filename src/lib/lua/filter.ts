@@ -74,11 +74,12 @@ export async function luaFilterRecords(
   // 编译期校验一次（用第一条记录），失败直接整体报错
   for (const rec of records) {
     const v = recordView(rec);
-    const res = await runLuaFn<boolean>(code, '__filter', [v.stats, v, rec.note ?? '']);
+    const res = await runLuaFn<unknown>(code, '__filter', [v.stats, v, rec.note ?? '']);
     if (!res.ok) {
       return { hits, error: res.error };
     }
-    if (res.value === true) hits.add(rec.id);
+    // Lua 真值语义：仅 false / nil 为假，数字、字符串、表等一律为真
+    if (res.value !== false && res.value != null) hits.add(rec.id);
   }
   return { hits, error: null };
 }
