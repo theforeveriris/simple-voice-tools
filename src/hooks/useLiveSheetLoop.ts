@@ -35,9 +35,12 @@ export function useLiveSheetLoop<R>({ paint, sampleReadout, isEqual }: LiveSheet
   const { canvasRef, attachCanvas, sizeRef, dprRef } = useLiveCanvas();
   const [readout, setReadout] = useState<R | null>(null);
   // paint / sampleReadout / isEqual 经 ref 透传：调用方无需 useCallback，
-  // 重建循环的依赖只由 deps 参数控制
+  // 重建循环的依赖只由 deps 参数控制。
+  // 用 effect 同步最新回调（不在渲染期写 ref），下一帧 rAF 读到的即本次渲染的值
   const cbRef = useRef({ paint, sampleReadout, isEqual });
-  cbRef.current = { paint, sampleReadout, isEqual };
+  useEffect(() => {
+    cbRef.current = { paint, sampleReadout, isEqual };
+  });
 
   useEffect(() => {
     let raf = 0;

@@ -26,14 +26,15 @@ function toChartKind(k: ImgKind): ChartKind {
 /** 记录图表：SeriesChart + 滚轮/拖动交互（区间状态自持，双击复位） */
 function InteractiveRecordChart({ rec, kind }: { rec: AnalysisRecord; kind: ImgKind }) {
   const dur = Math.max(0.001, rec.durationSec);
-  const full = useRef<[number, number]>([0, dur]);
   const [range, setRange] = useState<[number, number]>([0, dur]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; range: [number, number] } | null>(null);
 
-  // 记录切换（同组件实例被复用）时重置区间
-  if (full.current[1] !== dur) {
-    full.current = [0, dur];
+  // 记录切换（同组件实例被复用）时重置区间：渲染期派生重置，避免 effect 级联渲染。
+  // 用记录 id 判断（只比 durationSec 时，等长的不同记录不会重置）
+  const [loadedId, setLoadedId] = useState(rec.id);
+  if (rec.id !== loadedId) {
+    setLoadedId(rec.id);
     setRange([0, dur]);
   }
 

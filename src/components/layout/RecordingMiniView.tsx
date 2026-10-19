@@ -63,10 +63,12 @@ export function RecordingMiniView() {
   const stopRecording = useStore((s) => s.stopRecording);
   const [dismissed, setDismissed] = useState(false);
 
-  // 新的一次录音重置关闭态
-  useEffect(() => {
+  // 新的一次录音重置关闭态：渲染期派生（effect 里 setState 会多一轮级联渲染）
+  const [wasRecording, setWasRecording] = useState(isRecording);
+  if (isRecording !== wasRecording) {
+    setWasRecording(isRecording);
     if (isRecording) setDismissed(false);
-  }, [isRecording]);
+  }
 
   const visible = isRecording && currentTab !== 'test' && !dismissed;
   return (
