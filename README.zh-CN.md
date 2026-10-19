@@ -192,7 +192,7 @@ npm run build
 ### 测试
 
 ```bash
-npm test        # vitest 单测（DSP 黄金样本 / 导出 / 备份 / LLM / i18n 完整性，CI 同步执行）
+npm test        # vitest 单测（DSP 黄金样本 / 导出 / 备份 / LLM / i18n 完整性 / 源码编码守卫，CI 同步执行）
 ```
 
 > 构建产物输出到 `docs/` 目录（已 gitignore，不入库）：push 到 main 后由

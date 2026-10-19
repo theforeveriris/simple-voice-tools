@@ -141,7 +141,7 @@ npm run build
 ### Test
 
 ```bash
-npm test        # vitest suite (DSP golden fixtures / export / backup / LLM / i18n integrity; also runs in CI)
+npm test        # vitest suite (DSP golden fixtures / export / backup / LLM / i18n integrity / source encoding guard; also runs in CI)
 ```
 
 > The build output goes to `docs/` (gitignored, not committed): pushes to `main` are
