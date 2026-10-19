@@ -36,25 +36,30 @@ const KV_KEY = 'luaScripts';
 
 /** node/vitest 环境的内存兜底（IndexedDB 不可用时脚本列表 = 仅内置） */
 const memoryStore = new Map<string, unknown>();
-let idbBroken = false;
 
+/**
+ * kv 读取：本会话已读/已写的键以内存副本为准（写入失败时脚本不会凭空消失），
+ * 否则读 IndexedDB 并缓存。**读取失败不永久锁死**——瞬态失败（打开阻塞 / 隐私模式）
+ * 下次调用会重试，不能因为一次失败就再也看不到此前保存的脚本。
+ */
 async function kvGet<T>(key: string): Promise<T | undefined> {
-  if (idbBroken) return memoryStore.get(key) as T | undefined;
+  const cached = memoryStore.get(key) as T | undefined;
+  if (cached !== undefined) return cached;
   try {
-    return await idbGetKV<T>(key);
+    const value = await idbGetKV<T>(key);
+    if (value !== undefined) memoryStore.set(key, value);
+    return value;
   } catch {
-    idbBroken = true;
-    return memoryStore.get(key) as T | undefined;
+    return undefined;
   }
 }
 
 async function kvPut(key: string, value: unknown): Promise<void> {
   memoryStore.set(key, value);
-  if (idbBroken) return;
   try {
     await idbPutKV(key, value);
   } catch {
-    idbBroken = true;
+    /* 落盘失败保持内存态，下次写操作重试 */
   }
 }
 
