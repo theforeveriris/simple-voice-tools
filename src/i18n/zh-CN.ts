@@ -1272,6 +1272,9 @@ export const zhCN = {
 
   /* ---------- 局域网点对点同步 ---------- */
   'lanSync.title': '局域网同步',
+  'lanSync.recent': '最近设备',
+  'lanSync.recentHost': '向 {name} 发起邀请',
+  'lanSync.recentHint': '点设备名快速发起邀请（仍需与对方交换一次信令文本）',
   'lanSync.desc': '两台设备在同一个 Wi-Fi 下直连互传记录与音频，全程不经任何服务器：A 机创建邀请，B 机加入，按提示互相粘贴两段连接文本即可。数据只在你的设备之间流动。',
   'lanSync.host': '创建邀请',
   'lanSync.guest': '加入',

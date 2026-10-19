@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { LanSyncSession, type SyncProgress } from '@/lib/sync/lanSync';
+import { getRecentPeers, rememberPeer, type LanPeer } from '@/lib/sync/lanPeers';
 import { idbPutAudio } from '@/lib/storage/idb';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { SettingsSection } from './rows';
@@ -25,13 +26,23 @@ export function LanSyncSection() {
   const [sdpOut, setSdpOut] = useState('');
   const [sdpIn, setSdpIn] = useState('');
   const [progress, setProgress] = useState<SyncProgress>({ phase: 'idle', transferred: 0, total: 0 });
+  const [peers, setPeers] = useState<LanPeer[]>(() => getRecentPeers());
   const sessionRef = useRef<LanSyncSession | null>(null);
+  /** 本次握手识别到的对端设备名（done 时记入最近设备） */
+  const peerNameRef = useRef('');
 
   useEffect(() => () => sessionRef.current?.close(), []);
 
   const makeSession = () => new LanSyncSession({
     deviceName: navigator.userAgent.includes('Android') ? 'Android' : navigator.platform || 'device',
-    onProgress: setProgress,
+    onProgress: (p) => {
+      if (p.phase === 'handshake' && p.detail) peerNameRef.current = p.detail;
+      if (p.phase === 'done') {
+        rememberPeer(peerNameRef.current);
+        setPeers(getRecentPeers());
+      }
+      setProgress(p);
+    },
     getRecords: () => useHistoryStore.getState().getAllRecords(),
     getAudio: (id) => useHistoryStore.getState().getAudio(id),
     putRecord: (r) => Promise.resolve(useHistoryStore.getState().addRecord(r)),
@@ -111,6 +122,25 @@ export function LanSyncSection() {
             <Link2 size={13} />
             {t('lanSync.guest')}
           </button>
+        </div>
+      )}
+
+      {step === 'idle' && peers.length > 0 && (
+        <div className="mt-2.5 px-0.5">
+          <p className="text-[11px] font-medium text-ink-2">{t('lanSync.recent')}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {peers.map((p) => (
+              <button
+                key={p.name}
+                onClick={() => void startHost()}
+                title={t('lanSync.recentHost', { name: p.name })}
+                className="rounded-full border border-black/10 bg-surface-hi px-2.5 py-1 text-[11px] text-ink transition-colors hover:border-accent"
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[10px] leading-relaxed text-ink-2">{t('lanSync.recentHint')}</p>
         </div>
       )}
 

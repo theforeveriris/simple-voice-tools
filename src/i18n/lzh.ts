@@ -1264,6 +1264,9 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'analysis.envGain': '增',
 
   'lanSync.title': '局域之同步',
+  'lanSync.recent': '近用之器',
+  'lanSync.recentHost': '邀 {name}',
+  'lanSync.recentHint': '點器名以速邀（仍須與彼易信一次）',
   'lanSync.desc': '兩器同網直連，互傳其錄與音，不經任何伺服：甲立邀，乙入之，互貼兩段連文即成。其據唯行於爾器之間。',
   'lanSync.host': '立邀請',
   'lanSync.guest': '入之',

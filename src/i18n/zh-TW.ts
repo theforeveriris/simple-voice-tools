@@ -1263,6 +1263,9 @@ export const zhTW = {
   'analysis.envGain': '增益',
 
   'lanSync.title': '區域網路同步',
+  'lanSync.recent': '最近裝置',
+  'lanSync.recentHost': '向 {name} 發起邀請',
+  'lanSync.recentHint': '點裝置名快速發起邀請（仍需與對方交換一次信令文字）',
   'lanSync.desc': '兩台裝置在同一 Wi-Fi 下直連互傳記錄與音訊，全程不經任何伺服器：A 機建立邀請，B 機加入，依提示互相貼上兩段連線文字即可。資料只在你的裝置之間流動。',
   'lanSync.host': '建立邀請',
   'lanSync.guest': '加入',

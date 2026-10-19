@@ -1263,6 +1263,9 @@ export const en = {
   'analysis.envGain': 'Gain',
 
   'lanSync.title': 'LAN sync',
+  'lanSync.recent': 'Recent devices',
+  'lanSync.recentHost': 'Invite {name}',
+  'lanSync.recentHint': 'Tap a device name for a quick invite (one signalling exchange is still required)',
   'lanSync.desc': 'Two devices on the same Wi-Fi transfer records and audio directly — never touching a server. Device A creates an invite, device B joins, and you paste two short connection texts as prompted. Data only flows between your devices.',
   'lanSync.host': 'Create invite',
   'lanSync.guest': 'Join',
