@@ -13,7 +13,8 @@ import {
   SelectValue,
   Switch,
 } from '@/components/ui';
-import { SettingsSection, SettingRow } from './rows';
+import { cn } from '@/lib/utils';
+import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS, SELECT_TRIGGER_TRUNCATE } from './rows';
 import { InfoTip } from './InfoTip';
 
 export function RecordingSection({
@@ -55,7 +56,7 @@ export function RecordingSection({
           value={String(settings.silenceStopSec)}
           onValueChange={(v) => update({ silenceStopSec: Number(v) })}
         >
-          <SelectTrigger className="w-24 border-0 bg-transparent px-0 text-sm shadow-none">
+          <SelectTrigger className={SELECT_TRIGGER_CLASS}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -70,7 +71,7 @@ export function RecordingSection({
           value={String(settings.maxDurationSec)}
           onValueChange={(v) => update({ maxDurationSec: Number(v) })}
         >
-          <SelectTrigger className="w-28 border-0 bg-transparent px-0 text-sm shadow-none">
+          <SelectTrigger className={SELECT_TRIGGER_CLASS}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -87,7 +88,7 @@ export function RecordingSection({
           value={String(settings.audioBitrateKbps)}
           onValueChange={(v) => update({ audioBitrateKbps: Number(v) })}
         >
-          <SelectTrigger className="w-24 border-0 bg-transparent px-0 text-sm shadow-none">
+          <SelectTrigger className={SELECT_TRIGGER_CLASS}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -120,7 +121,7 @@ export function RecordingSection({
           value={settings.micDeviceId || 'default'}
           onValueChange={(v) => update({ micDeviceId: v === 'default' ? '' : v })}
         >
-          <SelectTrigger className="w-52 max-w-full overflow-hidden border-0 bg-transparent px-0 text-sm shadow-none [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:flex-1 [&_[data-slot=select-value]]:truncate">
+          <SelectTrigger className={cn(SELECT_TRIGGER_CLASS, SELECT_TRIGGER_TRUNCATE)}>
             <SelectValue placeholder={t('settings.micDefault')} />
           </SelectTrigger>
           <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">

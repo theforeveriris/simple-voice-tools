@@ -22,7 +22,7 @@ import { subscribeAITask, getAITaskState, startAITask, cancelAITask } from '@/i1
 import { downloadBlob } from '@/lib/file';
 import type { AppSettings, Locale } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
-import { SettingsSection, SettingRow } from './rows';
+import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS } from './rows';
 import { InfoTip } from './InfoTip';
 import { EditStringsSheet } from './EditStringsSheet';
 import { cn } from '@/lib/utils';
@@ -147,7 +147,7 @@ export function LanguagePage({
               value={settings.language}
               onValueChange={(v) => setLanguage(v as Locale)}
             >
-              <SelectTrigger className="w-52 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">

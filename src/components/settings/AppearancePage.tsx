@@ -36,7 +36,7 @@ import {
   Switch,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { SettingsSection, SettingRow } from './rows';
+import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS } from './rows';
 import { InfoTip } from './InfoTip';
 import { FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
 
@@ -144,7 +144,7 @@ export function AppearancePage({
               value={settings.theme}
               onValueChange={(v) => update({ theme: v as ThemeMode })}
             >
-              <SelectTrigger className="w-32 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">

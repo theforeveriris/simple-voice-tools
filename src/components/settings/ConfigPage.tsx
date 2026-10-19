@@ -17,7 +17,7 @@ import { RecordingSection } from './RecordingSection';
 import { TrainingSection } from './TrainingSection';
 import { ReminderSection } from './ReminderSection';
 import { ProfileSection } from './ProfileSection';
-import { SettingsSection, SettingRow } from './rows';
+import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS, NUMBER_INPUT_CLASS } from './rows';
 import { InfoTip } from './InfoTip';
 import {
   Select,
@@ -76,7 +76,7 @@ export function ConfigPage({
               value={String(settings.liveWindowSec)}
               onValueChange={(v) => update({ liveWindowSec: Number(v) })}
             >
-              <SelectTrigger className="w-24 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -98,7 +98,7 @@ export function ConfigPage({
                   const min = Math.max(30, Math.min(200, Number(e.target.value) || 50));
                   update({ pitchAxisMin: Math.min(min, settings.pitchAxisMax - 50) });
                 }}
-                className="w-14 rounded-xl border border-black/10 bg-surface-hi px-2 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+                className={NUMBER_INPUT_CLASS}
                 aria-label={t('settings.pitchAxis')}
               />
               <span className="text-ink-2">–</span>
@@ -112,7 +112,7 @@ export function ConfigPage({
                   const max = Math.max(300, Math.min(2000, Number(e.target.value) || 520));
                   update({ pitchAxisMax: Math.max(max, settings.pitchAxisMin + 50) });
                 }}
-                className="w-14 rounded-xl border border-black/10 bg-surface-hi px-2 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+                className={NUMBER_INPUT_CLASS}
                 aria-label={t('settings.pitchAxis')}
               />
               <span className="text-xs text-ink-2">Hz</span>
@@ -123,7 +123,7 @@ export function ConfigPage({
               value={settings.specColormap}
               onValueChange={(v) => update({ specColormap: v as SpecColormap })}
             >
-              <SelectTrigger className="w-36 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -138,7 +138,7 @@ export function ConfigPage({
               value={String(settings.playbackRate)}
               onValueChange={(v) => update({ playbackRate: Number(v) })}
             >
-              <SelectTrigger className="w-24 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -158,7 +158,7 @@ export function ConfigPage({
               value={settings.startTab}
               onValueChange={(v) => update({ startTab: v as ViewType })}
             >
-              <SelectTrigger className="w-24 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -173,7 +173,7 @@ export function ConfigPage({
               value={String(settings.diaryWeekStart)}
               onValueChange={(v) => update({ diaryWeekStart: Number(v) as 0 | 1 })}
             >
-              <SelectTrigger className="w-24 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">

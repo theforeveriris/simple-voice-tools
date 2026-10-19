@@ -30,7 +30,7 @@ import { SpecLiveSheet } from '@/components/pages/SpecLiveSheet';
 import { VrpLiveSheet } from '@/components/pages/VrpLiveSheet';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
-import { SettingsSection, SettingRow } from './rows';
+import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS } from './rows';
 import { GithubBackupSection } from './GithubBackupSection';
 import { ImportAudioSection } from './ImportAudioSection';
 import { ScriptHubSection } from './ScriptHubSection';
@@ -47,7 +47,7 @@ function AlgoSelect({ value, options, onChange, format, className = 'w-40' }: {
   const opts = options.includes(value) ? options : [...options, value].sort((a, b) => a - b);
   return (
     <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
-      <SelectTrigger className={cn(className, 'border-0 bg-transparent px-0 text-sm shadow-none')}>
+      <SelectTrigger className={cn(SELECT_TRIGGER_CLASS, className)}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -144,7 +144,7 @@ export function LabsPage({
               value={settings.adviceMode}
               onValueChange={(v) => update({ adviceMode: v as AdviceMode })}
             >
-              <SelectTrigger className="w-40 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -184,7 +184,7 @@ export function LabsPage({
                       max={500}
                       value={bandBounds[idx]}
                       onChange={(e) => setBandBound(idx, e.target.value)}
-                      className="w-20 rounded-xl border border-black/10 bg-surface-hi px-2.5 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+                      className="w-14 rounded-xl border border-black/10 bg-surface-hi px-2 py-1.5 text-right text-sm tabular-nums text-ink outline-none focus:border-accent"
                       aria-label={t(`settings.bandBound${idx}`)}
                     />
                     <span className="text-[10px] text-ink-2">Hz</span>
@@ -417,7 +417,7 @@ export function LabsPage({
               value={settings.pitchAlgorithm}
               onValueChange={(v) => update({ pitchAlgorithm: v as PitchAlgorithm })}
             >
-              <SelectTrigger className="w-40 border-0 bg-transparent px-0 text-sm shadow-none">
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">

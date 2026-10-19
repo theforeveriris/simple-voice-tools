@@ -57,6 +57,23 @@ export function SettingRow({
   );
 }
 
+/**
+ * 设置行内下拉控件的统一皮肤（值右对齐、箭头紧随、无固定宽度）
+ * 每处不再各写 w-24 / w-36 / w-52——右侧一律「值 + 箭头」贴齐容器右缘，
+ * 与开关的右缘对齐；长内容（麦克风名）可用 withTruncateMaxWidth 追加限宽。
+ */
+export const SELECT_TRIGGER_CLASS =
+  'h-6 w-fit justify-end gap-1 border-0 bg-transparent px-0 text-sm font-medium text-ink shadow-none '
+  + '[&_[data-slot=select-value]]:flex-none data-[placeholder]:text-ink-2';
+
+/** 长文本选项（设备名等）：限宽 + 省略号，仍保持右对齐 */
+export const SELECT_TRIGGER_TRUNCATE = 'max-w-[11rem] [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate';
+
+/** 设置行内数值输入框的统一皮肤（右对齐、同一高度与字重） */
+export const NUMBER_INPUT_CLASS =
+  'w-14 rounded-xl border border-black/10 bg-surface-hi px-2 py-1.5 text-right text-sm tabular-nums '
+  + 'text-ink outline-none focus:border-accent';
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function fmtBytes(n: number): string {
   if (!isFinite(n) || n <= 0) return '0 B';

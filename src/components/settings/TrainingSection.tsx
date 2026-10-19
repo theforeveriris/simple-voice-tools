@@ -14,7 +14,8 @@ import {
   SelectValue,
   Switch,
 } from '@/components/ui';
-import { SettingsSection, SettingRow } from './rows';
+import { cn } from '@/lib/utils';
+import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS, SELECT_TRIGGER_TRUNCATE } from './rows';
 import { InfoTip } from './InfoTip';
 
 export function TrainingSection({
@@ -62,7 +63,7 @@ export function TrainingSection({
     return Math.max(50, Math.min(800, Math.round(n)));
   };
   const numCls =
-    'w-16 rounded-xl border border-black/10 bg-surface-hi px-2 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent';
+    'w-16 rounded-xl border border-black/10 bg-surface-hi px-2 py-1.5 text-right text-sm tabular-nums text-ink outline-none focus:border-accent';
 
   /** 基线选择器可选项（最近 50 条） */
   const baselineOptions = records.slice(0, 50);
@@ -86,7 +87,7 @@ export function TrainingSection({
               max={500}
               value={settings.targetF0Min}
               onChange={(e) => setTargetMin(e.target.value)}
-              className="w-14 rounded-xl border border-black/10 bg-surface-hi px-2 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+              className={numCls}
               aria-label={t('settings.targetRange')}
             />
             <span className="text-ink-2">–</span>
@@ -97,7 +98,7 @@ export function TrainingSection({
               max={500}
               value={settings.targetF0Max}
               onChange={(e) => setTargetMax(e.target.value)}
-              className="w-14 rounded-xl border border-black/10 bg-surface-hi px-2 py-2 text-center text-sm tabular-nums text-ink outline-none focus:border-accent"
+              className={numCls}
               aria-label={t('settings.targetRange')}
             />
           </div>
@@ -164,7 +165,7 @@ export function TrainingSection({
           value={settings.baselineRecordId ?? 'none'}
           onValueChange={(v) => update({ baselineRecordId: v === 'none' ? undefined : v })}
         >
-          <SelectTrigger className="w-44 border border-black/10 bg-surface-hi px-3 text-sm shadow-none">
+          <SelectTrigger className={cn(SELECT_TRIGGER_CLASS, SELECT_TRIGGER_TRUNCATE)}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">

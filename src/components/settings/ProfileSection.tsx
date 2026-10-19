@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui';
-import { SettingsSection, SettingRow } from './rows';
+import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS } from './rows';
 import { InfoTip } from './InfoTip';
 
 /** 切换训练方向：同步更新训练靶标（目标 F0 区间 + 共振峰靶标中心） */
@@ -53,7 +53,7 @@ export function ProfileSection({
           value={settings.userGoal}
           onValueChange={(v) => applyGoalDefaults(v as UserGoal, update)}
         >
-          <SelectTrigger className="w-36 border-0 bg-transparent px-0 text-sm shadow-none">
+          <SelectTrigger className={SELECT_TRIGGER_CLASS}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
@@ -78,7 +78,7 @@ export function ProfileSection({
           value={settings.ageGroup}
           onValueChange={(v) => update({ ageGroup: v as AgeGroup })}
         >
-          <SelectTrigger className="w-36 border-0 bg-transparent px-0 text-sm shadow-none">
+          <SelectTrigger className={SELECT_TRIGGER_CLASS}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
