@@ -78,9 +78,12 @@ describe('reanalyzePcm', () => {
     expect(original.reanalyzedAt).toBeUndefined();
   });
 
-  it('重算出的 sampleHz 与序列帧率一致（约 30fps）', async () => {
+  it('重算出的 sampleHz 与序列帧率一致（按全跨度反推，不是单帧差）', async () => {
     const { record: next } = await reanalyzePcm(makePcm(), makeOriginal());
-    expect(Math.abs(next.sampleHz - 30)).toBeLessThan(1);
+    // 单帧差受 ms 取整影响会偏到 ≈30.3；跨度公式应贴着 30
+    expect(Math.abs(next.sampleHz - 30)).toBeLessThan(0.2);
+    const span = next.series.t[next.series.t.length - 1] - next.series.t[0];
+    expect(next.sampleHz).toBeCloseTo((next.series.t.length - 1) / span, 6);
   });
 
   it('有效内容不足（过短）抛错且原记录不受影响', async () => {
