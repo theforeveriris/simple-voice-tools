@@ -29,7 +29,7 @@ npx tsc -b --force
 ```
 
 不用麦克风也能调试：任意 URL 加 `?demo=1` 载入示例数据；
-「设置 → 实验性功能 → 导入音频分析」可以拖入任意音频文件走完整分析管线。
+「设置 → 数据管理 → 导入音频」可以拖入任意音频文件走完整分析管线。
 
 ### 已知的环境坑
 
@@ -132,7 +132,7 @@ src/
 │   │   ├── ConfigPage.tsx        # 配置（录音/训练/提醒/图表与回放/通用）
 │   │   ├── LlmPage.tsx           # 大模型（AI 助手入口/模型配置/档案/提示词/用量）
 │   │   ├── DataPage.tsx          # 数据管理（数据去向面板/存储用量/备份与恢复/WebDAV/导入导出）
-│   │   ├── LabsPage.tsx          # 实验性功能（开关/音区边界/算法参数/实时功能/导入音频/GitHub 备份）
+│   │   ├── AdvancedPage.tsx      # 高级（功能开关/算法参数/脚本中心）
 │   │   ├── PromptPage.tsx        # 提示词调节（LlmPage 的二级页）
 │   │   ├── PrivacyPanel.tsx      # 数据去向面板（含 AI 请求日志）
 │   │   ├── BackupEncryptionSection.tsx / BackupPassphraseDialog.tsx  # 云备份口令加密

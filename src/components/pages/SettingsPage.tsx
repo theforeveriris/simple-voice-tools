@@ -8,27 +8,28 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { DatabaseBackup, FlaskConical, Info, Languages, Palette, Settings2, Smartphone, ChevronRight, Search, Sparkles, X } from 'lucide-react';
+import { Cog, DatabaseBackup, Info, Languages, Mic, Palette, Settings2, Smartphone, Target, ChevronRight, Search, Sparkles, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { registerBackClose } from '@/lib/backNav';
 import type { AppSettings } from '@/types';
-import { LabsPage } from '@/components/settings/LabsPage';
+import { AdvancedPage } from '@/components/settings/AdvancedPage';
+import { RecordingPage } from '@/components/settings/RecordingPage';
+import { TrainingPage } from '@/components/settings/TrainingPage';
 import { DataPage } from '@/components/settings/DataPage';
 import { AppearancePage } from '@/components/settings/AppearancePage';
 import { LanguagePage } from '@/components/settings/LanguagePage';
 import { AppPage } from '@/components/settings/AppPage';
-import { ConfigPage } from '@/components/settings/ConfigPage';
 import { LlmPage } from '@/components/settings/LlmPage';
 import { AboutTab } from '@/components/settings/AboutTab';
 import { cn } from '@/lib/utils';
 import type { DictKey } from '@/i18n';
 
 /** 设置项搜索索引：点击结果直达对应子页面 */
-type SubPage = 'appearance' | 'language' | 'app' | 'config' | 'data' | 'labs' | 'llm';
+type SubPage = 'appearance' | 'language' | 'recording' | 'training' | 'app' | 'data' | 'advanced' | 'llm';
 const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] = [
-  // 外观
+  // 外观（主题 / 氛围彩蛋 / 图表与显示 / 花园 / 主题分享）
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.theme' },
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.huePreset' },
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.hue' },
@@ -39,34 +40,60 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'appearance', sectionKey: 'settings.theme', labelKey: 'settings.volumeBreath' },
   { page: 'appearance', sectionKey: 'settings.bgImage', labelKey: 'settings.bgImage' },
   { page: 'appearance', sectionKey: 'settings.bgImage', labelKey: 'settings.bgImageBlur' },
-  { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.showGrid' },
-  { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.syncRange' },
-  { page: 'appearance', sectionKey: 'settings.chartAids', labelKey: 'settings.mobileSpark' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.showGrid' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.syncRange' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.mobileSpark' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.liveWindow' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.pitchAxis' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.specColormap' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.playbackRateSel' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.diaryWeekStart' },
+  { page: 'appearance', sectionKey: 'settings.gardenLayout', labelKey: 'garden.colsLabel' },
+  { page: 'appearance', sectionKey: 'themeShare.title', labelKey: 'themeShare.title' },
   // 语言
   { page: 'language', sectionKey: 'settings.language', labelKey: 'settings.language' },
   { page: 'language', sectionKey: 'settings.aiTranslate', labelKey: 'settings.aiTranslate' },
-  // 应用
-  { page: 'app', sectionKey: 'settings.app', labelKey: 'settings.install' },
-  { page: 'app', sectionKey: 'settings.updateSection', labelKey: 'settings.checkUpdate' },
-  // 配置 · 用户画像
-  { page: 'config', sectionKey: 'settings.profile', labelKey: 'settings.userGoal' },
-  { page: 'config', sectionKey: 'settings.profile', labelKey: 'settings.ageGroup' },
-  // 配置 · 录音
-  { page: 'config', sectionKey: 'settings.recording', labelKey: 'settings.autoEnter' },
-  { page: 'config', sectionKey: 'settings.recording', labelKey: 'settings.audioSave' },
-  { page: 'config', sectionKey: 'settings.recording', labelKey: 'settings.maxDuration' },
-  { page: 'config', sectionKey: 'settings.recording', labelKey: 'settings.mic' },
-  // 配置 · 训练
-  { page: 'config', sectionKey: 'settings.training', labelKey: 'settings.targetEnable' },
-  { page: 'config', sectionKey: 'settings.training', labelKey: 'settings.targetRange' },
-  { page: 'config', sectionKey: 'settings.training', labelKey: 'settings.baseline' },
-  // 数据管理
+  // 录音
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.autoEnter' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.audioSave' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.silenceStop' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.maxDuration' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.audioBitrate' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.micEnhance' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.haptics' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.autoReplay' },
+  { page: 'recording', sectionKey: 'settings.recording', labelKey: 'settings.mic' },
+  // 训练（画像 / 靶标 / 建议 / 音区边界 / 实时视图 / 提醒）
+  { page: 'training', sectionKey: 'settings.profile', labelKey: 'settings.userGoal' },
+  { page: 'training', sectionKey: 'settings.profile', labelKey: 'settings.ageGroup' },
+  { page: 'training', sectionKey: 'settings.training', labelKey: 'settings.targetEnable' },
+  { page: 'training', sectionKey: 'settings.training', labelKey: 'settings.targetRange' },
+  { page: 'training', sectionKey: 'settings.training', labelKey: 'settings.baseline' },
+  { page: 'training', sectionKey: 'settings.adviceSection', labelKey: 'settings.adviceMode' },
+  { page: 'training', sectionKey: 'settings.adviceSection', labelKey: 'settings.adviceOnCompare' },
+  { page: 'training', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandBounds' },
+  { page: 'training', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandReset' },
+  { page: 'training', sectionKey: 'labs.realtime', labelKey: 'vowelLive.title' },
+  { page: 'training', sectionKey: 'settings.reminderSection', labelKey: 'settings.reminderEnable' },
+  { page: 'training', sectionKey: 'settings.reminderSection', labelKey: 'settings.reminderTime' },
+  // 大模型
+  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmModelConfig' },
+  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmProfiles' },
+  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmPromptEntry' },
+  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'assistant.entry' },
+  // 数据
   { page: 'data', sectionKey: 'settings.storageUsage', labelKey: 'settings.storageUsage' },
+  { page: 'data', sectionKey: 'settings.importAudio', labelKey: 'settings.importAudio' },
+  { page: 'data', sectionKey: 'lanSync.title', labelKey: 'lanSync.title' },
   { page: 'data', sectionKey: 'settings.backupRestore', labelKey: 'settings.zipBackup' },
   { page: 'data', sectionKey: 'settings.backupRestore', labelKey: 'settings.zipRestore' },
   { page: 'data', sectionKey: 'settings.backupRestore', labelKey: 'settings.autoBackup' },
   { page: 'data', sectionKey: 'settings.backupRestore', labelKey: 'settings.autoBackupFolder' },
   { page: 'data', sectionKey: 'settings.backupRestore', labelKey: 'settings.autoBackupNow' },
+  { page: 'data', sectionKey: 'settings.webdav', labelKey: 'settings.webdavUser' },
+  { page: 'data', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghRepo' },
+  { page: 'data', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghPush' },
+  { page: 'data', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghPull' },
   { page: 'data', sectionKey: 'settings.dataOps', labelKey: 'settings.exportJson' },
   { page: 'data', sectionKey: 'settings.dataOps', labelKey: 'settings.importJson' },
   { page: 'data', sectionKey: 'settings.dataOps', labelKey: 'settings.exportCsv' },
@@ -74,39 +101,29 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'data', sectionKey: 'settings.dataOps', labelKey: 'settings.importSettings' },
   { page: 'data', sectionKey: 'settings.dataOps', labelKey: 'settings.loadDemo' },
   { page: 'data', sectionKey: 'settings.dataOps', labelKey: 'settings.clearAll' },
-  // 实验性功能
-  { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.showSpec' },
-  { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.liveSpectrum' },
-  { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceMode' },
-  { page: 'labs', sectionKey: 'settings.labsToggles', labelKey: 'settings.adviceOnCompare' },
-  { page: 'labs', sectionKey: 'labs.scripts', labelKey: 'labs.scripts' },
-  { page: 'labs', sectionKey: 'settings.llmSection', labelKey: 'settings.llmBaseUrl' },
-  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmProfiles' },
-  { page: 'labs', sectionKey: 'settings.llmUsageTitle', labelKey: 'settings.llmUsageTitle' },
-  { page: 'labs', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandBounds' },
-  { page: 'labs', sectionKey: 'settings.bandCustom', labelKey: 'settings.bandReset' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoParams' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoYinThreshold' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoPitchRange' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoPreEmphasis' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoF1Min' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoF2Max' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoVoicedGate' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoActiveGate' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoLpcOrder' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoVqMinProb' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoVqMinPeriods' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoCppsF0Max' },
-  { page: 'labs', sectionKey: 'settings.algoParams', labelKey: 'settings.algoCppsSmooth' },
-  { page: 'labs', sectionKey: 'vowelLive.title', labelKey: 'vowelLive.title' },
-  { page: 'labs', sectionKey: 'settings.importAudio', labelKey: 'settings.importAudio' },
-  // 大模型
-  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmModelConfig' },
-  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'settings.llmPromptEntry' },
-  { page: 'llm', sectionKey: 'settings.llmPage', labelKey: 'assistant.entry' },
-  { page: 'labs', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghClientId' },
-  { page: 'labs', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghPush' },
-  { page: 'labs', sectionKey: 'settings.ghTitle', labelKey: 'settings.ghPull' },
+  // 应用
+  { page: 'app', sectionKey: 'settings.app', labelKey: 'settings.install' },
+  { page: 'app', sectionKey: 'settings.app', labelKey: 'settings.startTab' },
+  { page: 'app', sectionKey: 'settings.app', labelKey: 'settings.splashScreen' },
+  { page: 'app', sectionKey: 'settings.updateSection', labelKey: 'settings.checkUpdate' },
+  // 高级
+  { page: 'advanced', sectionKey: 'settings.labsToggles', labelKey: 'settings.showSpec' },
+  { page: 'advanced', sectionKey: 'settings.labsToggles', labelKey: 'settings.liveSpectrum' },
+  { page: 'advanced', sectionKey: 'settings.labsToggles', labelKey: 'labs.pitchCompare' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoParams' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoYinThreshold' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoPitchRange' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoPreEmphasis' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoLpcOrder' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoF1Min' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoF2Max' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoVoicedGate' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoActiveGate' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoVqMinProb' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoVqMinPeriods' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoCppsF0Max' },
+  { page: 'advanced', sectionKey: 'settings.algoParams', labelKey: 'settings.algoCppsSmooth' },
+  { page: 'advanced', sectionKey: 'labs.scripts', labelKey: 'labs.scripts' },
 ];
 
 export function SettingsPage() {
@@ -118,26 +135,29 @@ export function SettingsPage() {
   const [query, setQuery] = useState('');
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [recordingOpen, setRecordingOpen] = useState(false);
+  const [trainingOpen, setTrainingOpen] = useState(false);
   const [appOpen, setAppOpen] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
   const [llmOpen, setLlmOpen] = useState(false);
-  const [labsOpen, setLabsOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [dataOpen, setDataOpen] = useState(false);
 
   const update = (patch: Partial<AppSettings>) => updateSettings(patch);
 
   // 子页面返回手势：任一子页打开时压入一条 history（系统返回 / 侧滑 → 关闭回主视图）；
   // 子页头的返回按钮调 history.back() 走同一链路。切页签卸载本组件时清理。
-  const anySubOpen = appearanceOpen || languageOpen || appOpen || configOpen || llmOpen || labsOpen || dataOpen;
+  const anySubOpen = appearanceOpen || languageOpen || recordingOpen || trainingOpen || appOpen
+    || llmOpen || advancedOpen || dataOpen;
   useEffect(() => {
     if (!anySubOpen) return;
     return registerBackClose(() => {
       setAppearanceOpen(false);
       setLanguageOpen(false);
+      setRecordingOpen(false);
+      setTrainingOpen(false);
       setAppOpen(false);
-      setConfigOpen(false);
       setLlmOpen(false);
-      setLabsOpen(false);
+      setAdvancedOpen(false);
       setDataOpen(false);
     });
   }, [anySubOpen]);
@@ -152,20 +172,23 @@ export function SettingsPage() {
   if (languageOpen) {
     return <LanguagePage settings={settings} update={update} onBack={subBack()} />;
   }
-  if (appOpen) {
-    return <AppPage onBack={subBack()} />;
+  if (recordingOpen) {
+    return <RecordingPage settings={settings} update={update} onBack={subBack()} />;
   }
-  if (configOpen) {
-    return <ConfigPage settings={settings} update={update} onBack={subBack()} />;
+  if (trainingOpen) {
+    return <TrainingPage settings={settings} update={update} onBack={subBack()} />;
+  }
+  if (appOpen) {
+    return <AppPage settings={settings} update={update} onBack={subBack()} />;
   }
   if (llmOpen) {
     return <LlmPage settings={settings} update={update} onBack={subBack()} />;
   }
-  if (labsOpen) {
-    return <LabsPage settings={settings} update={update} onBack={subBack()} />;
-  }
   if (dataOpen) {
     return <DataPage settings={settings} update={update} onBack={subBack()} />;
+  }
+  if (advancedOpen) {
+    return <AdvancedPage settings={settings} update={update} onBack={subBack()} />;
   }
 
   // 搜索结果（仅在设置标签且输入非空时展示；过滤开销极小，无需 memo——
@@ -263,11 +286,12 @@ export function SettingsPage() {
                       setQuery('');
                       if (e.page === 'appearance') setAppearanceOpen(true);
                       else if (e.page === 'language') setLanguageOpen(true);
+                      else if (e.page === 'recording') setRecordingOpen(true);
+                      else if (e.page === 'training') setTrainingOpen(true);
                       else if (e.page === 'app') setAppOpen(true);
-                      else if (e.page === 'config') setConfigOpen(true);
                       else if (e.page === 'llm') setLlmOpen(true);
                       else if (e.page === 'data') setDataOpen(true);
-                      else setLabsOpen(true);
+                      else setAdvancedOpen(true);
                     }}
                     className="flex w-full items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-left first:border-t-0"
                   >
@@ -284,11 +308,12 @@ export function SettingsPage() {
             <>
               {entry(t('settings.appearance'), Palette, () => setAppearanceOpen(true))}
               {entry(t('settings.language'), Languages, () => setLanguageOpen(true))}
-              {entry(t('settings.app'), Smartphone, () => setAppOpen(true))}
-              {entry(t('settings.config'), Settings2, () => setConfigOpen(true))}
+              {entry(t('settings.recording'), Mic, () => setRecordingOpen(true))}
+              {entry(t('settings.training'), Target, () => setTrainingOpen(true))}
               {entry(t('settings.llmPage'), Sparkles, () => setLlmOpen(true))}
               {entry(t('settings.data'), DatabaseBackup, () => setDataOpen(true))}
-              {entry(t('settings.labs'), FlaskConical, () => setLabsOpen(true))}
+              {entry(t('settings.app'), Smartphone, () => setAppOpen(true))}
+              {entry(t('settings.advanced'), Cog, () => setAdvancedOpen(true))}
             </>
           )}
         </>

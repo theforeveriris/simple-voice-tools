@@ -1,9 +1,52 @@
 /**
- * 设置页共享行原语：分区卡片、单行设置项、字节格式化
- * （设置主视图与 Labs 子页面共用）
+ * 设置页共享原语：子页外壳、分区卡片、单行设置项、控件皮肤、字节格式化
+ * （设置主视图与全部子页面共用）
  */
 
 import type { ElementType, ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
+import { t } from '@/i18n';
+
+/**
+ * 设置子页共享外壳：返回按钮 + 标题 + 入场动画 + 卡片流容器
+ * 所有设置子页面（外观 / 语言 / 录音 / 训练 / 应用 / 大模型 / 数据 / 高级）共用，
+ * 保证页头与动画完全一致；内容各页自持。
+ */
+
+export function SettingsSubPage({
+  title,
+  onBack,
+  children,
+}: {
+  title: string;
+  /** 返回设置主视图 */
+  onBack: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3.5 pb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+        className="flex flex-col gap-3.5"
+      >
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            aria-label={t('common.back')}
+            className="grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_2px_14px_rgba(28,25,45,0.05),0_1px_3px_rgba(28,25,45,0.04)] transition-transform active:scale-90"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <p className="text-base font-semibold text-ink">{title}</p>
+        </div>
+        {children}
+      </motion.div>
+    </div>
+  );
+}
 
 export function SettingsSection({
   icon: Icon,
@@ -48,11 +91,18 @@ export function SettingRow({
   }
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-black/[0.04] py-2 first:border-t-0">
-      <div>
+      {/* 左列可压缩（min-w-0）：长描述在列内换行。控件列 shrink-0 + ml-auto：
+          放得下时留在本行右侧，放不下换行时仍贴右缘（不再左对齐外溢） */}
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-ink">{label}</p>
-        {desc && <p className="mt-0.5 text-[11px] text-ink-2">{desc}</p>}
+        {desc && <p className="mt-0.5 text-[11px] leading-relaxed text-ink-2">{desc}</p>}
       </div>
-      {children}
+      {/* 控件列：贴右缘（ml-auto），宽度不足时在列内换行而不是横向溢出 */}
+      {children != null && (
+        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

@@ -23,10 +23,13 @@ import { t, localeTag } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { isNative } from '@/lib/platform';
 import { cn } from '@/lib/utils';
+import type { AppSettings, ViewType } from '@/types';
+import { NAV, navLabelKey } from './navItems';
 import {
-  SettingsSection, SettingRow,
+  SettingsSection, SettingRow, SELECT_TRIGGER_CLASS,
 } from './rows';
 import { InfoTip } from './InfoTip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,8 +52,12 @@ function StatusRow({ label, value, valueCls }: { label: string; value: string; v
 }
 
 export function AppPage({
+  settings,
+  update,
   onBack,
 }: {
+  settings: AppSettings;
+  update: (patch: Partial<AppSettings>) => void;
   /** 返回设置主视图（appOpen 由父组件持有，不持久化） */
   onBack: () => void;
 }) {
@@ -221,6 +228,31 @@ export function AppPage({
               {t('settings.shareAppAction')}
             </button>
           </SettingRow>
+          {/* 启动默认页签（原「配置 · 通用」迁入：属于 App 行为，不属于训练/显示） */}
+          <SettingRow label={t('settings.startTab')}>
+            <Select
+              value={settings.startTab}
+              onValueChange={(v) => update({ startTab: v as ViewType })}
+            >
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                {NAV.map((n) => (
+                  <SelectItem key={n} value={n}>{t(navLabelKey[n])}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingRow>
+          {/* 原生壳启动页（仅在原生壳内有意义） */}
+          {isNative && (
+            <SettingRow label={<InfoTip label={t('settings.splashScreen')} text={t('settings.splashScreenDesc')} />}>
+              <Switch
+                checked={settings.splashScreen}
+                onCheckedChange={(v) => update({ splashScreen: v })}
+              />
+            </SettingRow>
+          )}
         </SettingsSection>
 
         {/* 版本与更新 */}

@@ -73,17 +73,17 @@ export function ReminderSection({
           aria-label={t('settings.reminderTime')}
         />
       </SettingRow>
-      <SettingRow label={<InfoTip label={t('settings.reminderPermission')} text={t('settings.reminderPermDesc')} />}>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-ink-2">{permLabel(perm)}</span>
-          <button
-            onClick={onTest}
-            className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
-          >
-            <BellRing size={13} />
-            {t('settings.reminderTest')}
-          </button>
-        </div>
+      <SettingRow
+        label={<InfoTip label={t('settings.reminderPermission')} text={t('settings.reminderPermDesc')} />}
+        desc={permLabel(perm)}
+      >
+        <button
+          onClick={onTest}
+          className="flex items-center gap-1.5 px-1 py-2 text-xs font-medium text-accent transition-opacity hover:opacity-70"
+        >
+          <BellRing size={13} />
+          {t('settings.reminderTest')}
+        </button>
       </SettingRow>
     </SettingsSection>
   );

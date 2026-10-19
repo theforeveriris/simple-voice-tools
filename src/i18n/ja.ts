@@ -183,7 +183,7 @@ export const ja = {
   'analysis.adviceLlmCancelled': '生成をキャンセルしました',
   'analysis.adviceLlmError': '生成に失敗しました',
   'analysis.adviceLlmRetry': '再試行',
-  'analysis.adviceLlmNoConfig': '先に 実験的機能 → LLM 設定 でエンドポイントを入力してください',
+  'analysis.adviceLlmNoConfig': '先に LLM でエンドポイントを入力してください',
   'analysis.adviceStatusGood': '良好',
   'analysis.adviceStatusFair': 'まずまず',
   'analysis.adviceStatusAttention': '要注意',
@@ -233,7 +233,7 @@ export const ja = {
   'history.reportRegenerate': '再生成',
   'history.reportUsage': '直近 7 日のAI使用量：{calls} 回 · {tokens} tokens',
   'history.reportEmpty': '直近 7 日間の記録がありません。まず 1 件録音しましょう',
-  'history.reportNeedLlm': '週次レビューには LLM が必要です：実験的機能 → LLM 設定 でエンドポイントを入力してください',
+  'history.reportNeedLlm': '週次レビューには LLM が必要です：LLM でエンドポイントを入力してください',
   'history.reportLoading': '今週のレビューを生成中…',
   'history.reportFail': '週次レビューの生成に失敗しました',
   'history.trendAria': '履歴推移グラフ：タップで数値を確認、もう一度タップで記録を開きます',
@@ -284,7 +284,7 @@ export const ja = {
   'settings.recording': '録音',
   'settings.training': 'トレーニング',
   'settings.data': 'データ管理',
-  'settings.labs': '実験的機能',
+  'settings.labs': 'データ',
   'settings.labsToggles': '機能の切り替え',
   'settings.showSpec': '分析ページのスペクトログラム',
   'settings.siRename': '「AI」を「SI」と表示',
@@ -340,7 +340,7 @@ export const ja = {
   'onboard.appearanceDesc': '大まかな方向を選んでから後で微調整できます。「システムに従う」をおすすめします（ライト / ダークが自動切替）',
   'onboard.machine': '機械',
 
-  /* ---------- 実験的機能 · カスタム音区境界 ---------- */
+  /* ---------- データ · カスタム音区境界 ---------- */
   'settings.bandCustom': 'カスタム音区境界',
   'settings.bandBounds': '音区境界（Hz）',
   'settings.bandCustomDesc': '4 つの境界でピッチを低め / 男性声 / 遷移 / 女性声 / 高めの 5 音区に分割し、曲線の色分け・帯・占有率統計に即時反映。変声期・子ども・低音女性声に対応',
@@ -381,7 +381,7 @@ export const ja = {
   'toast.bandResetDone': '音区境界をデフォルトに戻しました',
   'toast.algoResetDone': 'アルゴリズムパラメータをリセットしました',
 
-  /* ---------- 実験的機能 · リアルタイム母音マッピング ---------- */
+  /* ---------- データ · リアルタイム母音マッピング ---------- */
   'vowelLive.title': 'リアルタイム母音マッピング',
   'vowelLive.openAction': 'ライブ練習を開く',
   'vowelLive.openAria': 'リアルタイム母音マッピングを開く',
@@ -453,14 +453,14 @@ export const ja = {
   'vrpLive.hint': '縦軸半音（C2–C6）· 横軸音量（自動）· 濃い = 滞留長い · 直近約 2 分を保持',
   'vrpLive.noSignal': '発声を待機中…',
 
-  /* ---------- 実験的機能 · 音声ファイル取り込み分析 ---------- */
+  /* ---------- データ · 音声ファイル取り込み分析 ---------- */
   'settings.importAudio': '音声ファイル取り込み分析',
   'settings.importAudioDesc': 'ボイスメモやメッセージの音声などの外部音声ファイルをドラッグ＆ドロップまたは選択すると、録音と同じオフライン解析で完全なレポートを生成。アプリとしてインストールすれば OS の「共有」からも実行できます',
   'settings.importAudioPick': '音声ファイルを選択',
   'importAudio.processing': '解析中',
   'settings.importAudioHint': 'wav / mp3 / m4a / ogg / webm / amr など対応 · 先頭 5 分を解析 · データは端末内にのみ保存',
 
-  /* ---------- 実験的機能 · LLM 設定 ---------- */
+  /* ---------- データ · LLM 設定 ---------- */
   'settings.llmSection': 'LLM 設定',
   'settings.llmBaseUrl': 'Base URL',
   'settings.llmBaseUrlPlaceholder': 'https://api.example.com/v1',
@@ -566,7 +566,7 @@ export const ja = {
   'settings.promptRulesDesc': '内蔵の分析基準の後に追加。競合する場合はルールが優先',
   'settings.promptRulePlaceholder': '例：ピッチより共鳴を優先して評価',
   'settings.promptEmpty': '追加ルールはまだありません。右上の ＋ で追加',
-  /* ---------- 実験的機能 · トークン使用量 ---------- */
+  /* ---------- データ · トークン使用量 ---------- */
   'settings.llmUsageTitle': 'トークン使用量',
   'settings.llmUsageCounting': '読み込み中…',
   'settings.llmUsageEmpty': '呼び出し記録はまだありません。AI アドバイスや週次レポートを生成すると、ここに API 消費が表示されます',
@@ -771,6 +771,9 @@ export const ja = {
   'settings.docRefsTitle': '参考文献',
   'settings.docRefsDesc': '各参照範囲とアルゴリズム選択の文献出典',
 
+  'settings.advanced': '詳細設定',
+  'settings.chartDisplay': 'チャートと表示',
+  'settings.adviceSection': 'トレーニングのアドバイス',
   'docs.loading': 'ドキュメントを読み込み中…',
   'docs.loadFail': 'ドキュメントの読み込みに失敗しました。後でもう一度お試しください',
   'docs.copyAll': '全文をコピー',
@@ -861,7 +864,7 @@ export const ja = {
   'toast.storageUnavailable': 'ブラウザのローカルストレージを利用できないため、今回のデータはメモリ上にのみ保存されます',
   'toast.autoBackupDone': 'ローカルフォルダに自動バックアップしました',
   'toast.autoBackupFail': 'ローカル自動バックアップに失敗しました',
-  'toast.autoBackupNeedAuth': 'バックアップフォルダの権限が期限切れです。実験的機能で再承認してください',
+  'toast.autoBackupNeedAuth': 'バックアップフォルダの権限が期限切れです。データで再承認してください',
 
   /* ---------- バックアップ形式検証 / GitHub クラウドバックアップエラー ---------- */
   'backup.errJsonParse': 'バックアップファイルは有効な JSON ではありません',
@@ -933,7 +936,7 @@ export const ja = {
   'toast.aiImported': '{label} をインポートしました（{n} 項目）',
   'toast.aiImportFail': '辞書のインポートに失敗：ファイル形式が不正です',
   'settings.aiTranslate': 'AI 翻訳を許可',
-  'settings.aiTranslateDesc': '実験的機能 → 大モデル設定 で設定した API を使い、UI 文字列を他の言語に翻訳してローカルに保存します。全体翻訳には約 8 回の API 呼び出しが必要で、費用はご利用の API に発生します。いつでも再生成・クリア可能。未翻訳の項目は簡体字中国語にフォールバックします',
+  'settings.aiTranslateDesc': 'データ → 大モデル設定 で設定した API を使い、UI 文字列を他の言語に翻訳してローカルに保存します。全体翻訳には約 8 回の API 呼び出しが必要で、費用はご利用の API に発生します。いつでも再生成・クリア可能。未翻訳の項目は簡体字中国語にフォールバックします',
   'settings.aiLanguageLabel': '対象言語',
   'settings.aiLanguagePlaceholder': '例：Deutsch / Español / 한국어…',
   'settings.aiGenerate': '翻訳を生成',
@@ -948,7 +951,7 @@ export const ja = {
   'toast.aiFail': 'AI 翻訳に失敗：{msg}',
   'toast.aiCleared': 'AI 言語をクリアし、英語 UI に戻しました',
   'toast.aiCacheMissing': 'AI 言語のキャッシュがありません。再生成してください',
-  'toast.aiNeedLlm': 'まず 実験的機能 → 大モデル設定 で API を設定してください',
+  'toast.aiNeedLlm': 'まず データ → 大モデル設定 で API を設定してください',
   'settings.huePreset': '配色プリセット',
   'settings.presetPride': 'プライド旗',
   'settings.prideFlag': '旗',

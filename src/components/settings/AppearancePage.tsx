@@ -26,7 +26,7 @@ import { PRIDE_FLAGS } from '@/constants';
 import { t } from '@/i18n';
 import type { DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
-import type { AppSettings, BgImageFocus, HuePreset, PrideFlag, ThemeMode } from '@/types';
+import type { AppSettings, BgImageFocus, HuePreset, PrideFlag, SpecColormap, ThemeMode } from '@/types';
 import {
   Select,
   SelectContent,
@@ -36,7 +36,7 @@ import {
   Switch,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { SettingsSection, SettingRow, SELECT_TRIGGER_CLASS } from './rows';
+import { SettingsSection, SettingRow, NUMBER_INPUT_CLASS, SELECT_TRIGGER_CLASS } from './rows';
 import { InfoTip } from './InfoTip';
 import { FlagSwatch, GlassRow, MonetSwatch, PrideSlider, ThemeCard } from './ThemePicker';
 
@@ -432,8 +432,9 @@ export function AppearancePage({
           </SettingRow>
         </SettingsSection>
 
-        {/* 图表辅助选项 */}
-        <SettingsSection icon={SlidersHorizontal} title={t('settings.chartAids')}>
+        {/* 图表与显示：外观类显示选项 + 图表与回放（原「配置 · 图表与回放」并入此处，
+            同一件事只出现在一个地方） */}
+        <SettingsSection icon={SlidersHorizontal} title={t('settings.chartDisplay')}>
           <SettingRow label={<InfoTip label={t('settings.showGrid')} text={t('settings.showGridDesc')} />}>
             <Switch
               checked={settings.showGrid}
@@ -451,6 +452,98 @@ export function AppearancePage({
               checked={settings.mobileSpark}
               onCheckedChange={(v) => update({ mobileSpark: v })}
             />
+          </SettingRow>
+          <SettingRow label={<InfoTip label={t('settings.liveWindow')} text={t('settings.liveWindowDesc')} />}>
+            <Select
+              value={String(settings.liveWindowSec)}
+              onValueChange={(v) => update({ liveWindowSec: Number(v) })}
+            >
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                <SelectItem value="6">{t('common.sec', { n: 6 })}</SelectItem>
+                <SelectItem value="12">{t('common.sec', { n: 12 })}</SelectItem>
+                <SelectItem value="20">{t('common.sec', { n: 20 })}</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingRow>
+          <SettingRow label={<InfoTip label={t('settings.pitchAxis')} text={t('settings.pitchAxisDesc')} />}>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={30}
+                max={200}
+                value={settings.pitchAxisMin}
+                onChange={(e) => {
+                  const min = Math.max(30, Math.min(200, Number(e.target.value) || 50));
+                  update({ pitchAxisMin: Math.min(min, settings.pitchAxisMax - 50) });
+                }}
+                className={NUMBER_INPUT_CLASS}
+                aria-label={t('settings.pitchAxis')}
+              />
+              <span className="text-ink-2">–</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={300}
+                max={2000}
+                value={settings.pitchAxisMax}
+                onChange={(e) => {
+                  const max = Math.max(300, Math.min(2000, Number(e.target.value) || 520));
+                  update({ pitchAxisMax: Math.max(max, settings.pitchAxisMin + 50) });
+                }}
+                className={NUMBER_INPUT_CLASS}
+                aria-label={t('settings.pitchAxis')}
+              />
+              <span className="text-xs text-ink-2">Hz</span>
+            </div>
+          </SettingRow>
+          <SettingRow label={<InfoTip label={t('settings.specColormap')} text={t('settings.specColormapDesc')} />}>
+            <Select
+              value={settings.specColormap}
+              onValueChange={(v) => update({ specColormap: v as SpecColormap })}
+            >
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                <SelectItem value="magma">{t('settings.colormapMagma')}</SelectItem>
+                <SelectItem value="gray">{t('settings.colormapGray')}</SelectItem>
+                <SelectItem value="accent">{t('settings.colormapAccent')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingRow>
+          <SettingRow label={t('settings.playbackRateSel')}>
+            <Select
+              value={String(settings.playbackRate)}
+              onValueChange={(v) => update({ playbackRate: Number(v) })}
+            >
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                <SelectItem value="0.5">0.5×</SelectItem>
+                <SelectItem value="0.75">0.75×</SelectItem>
+                <SelectItem value="1">{t('settings.playbackNormal')}</SelectItem>
+                <SelectItem value="1.5">1.5×</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingRow>
+          <SettingRow label={t('settings.diaryWeekStart')}>
+            <Select
+              value={String(settings.diaryWeekStart)}
+              onValueChange={(v) => update({ diaryWeekStart: Number(v) as 0 | 1 })}
+            >
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                <SelectItem value="1">{t('settings.weekMonday')}</SelectItem>
+                <SelectItem value="0">{t('settings.weekSunday')}</SelectItem>
+              </SelectContent>
+            </Select>
           </SettingRow>
         </SettingsSection>
 

@@ -54,6 +54,8 @@ import { SettingsSection, SettingRow } from './rows';
 import { InfoTip } from './InfoTip';
 import { PrivacyPanel } from './PrivacyPanel';
 import { LanSyncSection } from './LanSyncSection';
+import { ImportAudioSection } from './ImportAudioSection';
+import { GithubBackupSection } from './GithubBackupSection';
 import { BackupEncryptionSection } from './BackupEncryptionSection';
 import { BackupPassphraseDialog } from './BackupPassphraseDialog';
 
@@ -325,7 +327,10 @@ export function DataPage({
           <StorageUsage />
         </SettingsSection>
 
-        {/* 局域网点对点同步 */}
+        {/* 导入：外部音频（拖入手机录音 / 语音消息走同一离线管线） */}
+        <ImportAudioSection settings={settings} />
+
+        {/* 设备同步：局域网点对点 */}
         <LanSyncSection />
 
         {/* 备份与恢复 */}
@@ -617,6 +622,9 @@ export function DataPage({
             </AlertDialog>
           </SettingRow>
         </SettingsSection>
+
+        {/* GitHub 云备份（原「实验性功能」迁入：备份体系归数据） */}
+        <GithubBackupSection settings={settings} update={update} />
 
         {/* 云备份加密口令对话框（推/拉撞上锁定态时弹出） */}
         <BackupPassphraseDialog
