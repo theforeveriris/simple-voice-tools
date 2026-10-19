@@ -91,8 +91,35 @@ function remoteUrl(cfg: WebdavConfig, filename: string): string {
   return `${base}/${path.split('/').map(encodeURIComponent).join('/')}`;
 }
 
+/** 远程目录本身的 URL（带尾斜杠，MKCOL 用） */
+function remoteCollectionUrl(cfg: WebdavConfig): string {
+  const base = cfg.url.replace(/\/+$/, '');
+  const dir = (cfg.dir ?? 'svt-backup').replace(/^\/+|\/+$/g, '');
+  if (!dir) return `${base}/`;
+  return `${base}/${dir.split('/').map(encodeURIComponent).join('/')}/`;
+}
+
+/** 确保远程目录存在：MKCOL 建集合，已存在/服务端不允许时静默忽略（PUT 会给出权威错误） */
+async function ensureRemoteDir(cfg: WebdavConfig): Promise<void> {
+  try {
+    await fetch(remoteCollectionUrl(cfg), {
+      method: 'MKCOL',
+      headers: { Authorization: authHeader(cfg) },
+    });
+  } catch {
+    /* 网络层失败不在此处报错，避免掩盖后续 PUT 的真正原因 */
+  }
+}
+
+/** UTF-8 → base64（btoa 只接受 Latin-1，中文用户名 / 口令会直接抛 InvalidCharacterError） */
+function base64Utf8(s: string): string {
+  let bin = '';
+  for (const b of new TextEncoder().encode(s)) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
 function authHeader(cfg: WebdavConfig): string {
-  return `Basic ${btoa(`${cfg.username}:${cfg.password}`)}`;
+  return `Basic ${base64Utf8(`${cfg.username}:${cfg.password}`)}`;
 }
 
 /** 连接测试：OPTIONS 请求，401/403 视为凭据错误 */
@@ -141,6 +168,8 @@ export async function pushWebdavBackup(cfg: WebdavConfig): Promise<WebdavPushRes
     body = await encryptForBackup(new Uint8Array(await built.blob.arrayBuffer()));
     contentType = 'application/octet-stream';
   }
+  // 首次推送时默认目录尚不存在，PUT 会 409：先补一次 MKCOL
+  await ensureRemoteDir(cfg);
   try {
     const res = await fetch(remoteUrl(cfg, WEBDAV_BACKUP_NAME), {
       method: 'PUT',
