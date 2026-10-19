@@ -114,7 +114,10 @@ export function RecordCard({
       transition={{ duration: 0.25, ease: 'easeOut' }}
       onClick={handleClick}
       onKeyDown={(e) => {
-        // 键盘等价操作：Enter/Space 打开（多选模式下切换选中）
+        // 键盘等价操作：Enter/Space 打开（多选模式下切换选中）。
+        // 必须排除来自内部交互元素（删除按钮）的事件，否则删除按钮上的
+        // Enter 会被 preventDefault 并变成「打开记录」，删除永远不生效。
+        if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           handleClick();
