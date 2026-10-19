@@ -35,6 +35,8 @@ const KV_PROFILES = 'llm:profiles';
 
 let profiles: LlmProfile[] | null = null;
 let loaded: Promise<void> | null = null;
+/** kv 是否已成功读取（含确认无数据）；未成功前禁止落盘，避免整键覆盖把旧档案（含 API Key）冲掉 */
+let kvReadOk = false;
 const listeners = new Set<() => void>();
 let queue: Promise<void> = Promise.resolve();
 
@@ -72,14 +74,24 @@ function normalizeProfile(
 }
 
 async function ensureLoaded(): Promise<void> {
-  if (profiles != null) return;
+  if (profiles != null && kvReadOk) return;
   loaded ??= (async () => {
+    let raw: LlmProfile[] = [];
     try {
-      const raw = await idbGetKV<LlmProfile[]>(KV_PROFILES);
-      profiles = Array.isArray(raw) ? raw.filter(validProfile).map(normalizeProfile) : [];
+      const stored = await idbGetKV<LlmProfile[]>(KV_PROFILES);
+      raw = Array.isArray(stored) ? stored.filter(validProfile).map(normalizeProfile) : [];
     } catch {
-      profiles = []; // IndexedDB 不可用：本会话内仍可保存/切换（内存态）
+      // IndexedDB 瞬态不可用（打开阻塞等）：不把「失败」当「无数据」缓存，
+      // 置空 loaded 让下一次订阅/写入重试；本会话先以内存态运行
+      loaded = null;
+      return;
     }
+    kvReadOk = true;
+    // 加载期间可能有写入（新建档案会先建内存项）：按 id 合并而非覆盖，内存态优先
+    const byId = new Map<string, LlmProfile>();
+    for (const p of raw) byId.set(p.id, p);
+    for (const p of profiles ?? []) byId.set(p.id, p);
+    profiles = [...byId.values()];
   })();
   await loaded;
 }
@@ -109,6 +121,9 @@ function genId(): string {
 }
 
 async function persist(): Promise<void> {
+  // 读取未成功（瞬态失败 / 尚未完成）前不落盘：此时内存列表不含 kv 里的旧档案，
+  // 整键写回会把它们（含 API Key）永久覆盖掉；保持内存态，下次写入重试
+  if (!kvReadOk) return;
   try {
     await idbPutKV(KV_PROFILES, profiles!);
   } catch {
