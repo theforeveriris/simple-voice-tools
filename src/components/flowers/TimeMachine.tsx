@@ -208,6 +208,8 @@ export function TimeMachine({ a, b }: { a: AnalysisRecord; b: AnalysisRecord }) 
   const lastTsRef = useRef<number | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  /** 录制完成兜底轮询：只在自身回调里 clearInterval 会随卸载永久空转 */
+  const recordPollRef = useRef<number | null>(null);
 
   const draw = useCallback((p: number) => {
     const canvas = canvasRef.current;
@@ -244,6 +246,22 @@ export function TimeMachine({ a, b }: { a: AnalysisRecord; b: AnalysisRecord }) 
 
   // 数据 / 模式变化重绘当前帧
   useEffect(() => { draw(pRef.current); }, [draw]);
+
+  // 卸载清理：停掉兜底轮询与进行中的录制（含画布流轨道）。
+  // 否则录制途中离开页面会留下永久空转的 interval 与未停止的 MediaRecorder/流。
+  useEffect(() => () => {
+    if (recordPollRef.current !== null) {
+      window.clearInterval(recordPollRef.current);
+      recordPollRef.current = null;
+    }
+    const mr = recorderRef.current;
+    if (mr) {
+      mr.onstop = null; // 卸载时丢弃半成品录像，不触发下载
+      if (mr.state !== 'inactive') mr.stop();
+      mr.stream.getTracks().forEach((tr) => tr.stop());
+      recorderRef.current = null;
+    }
+  }, []);
 
   // 动画循环
   useEffect(() => {
@@ -311,13 +329,15 @@ export function TimeMachine({ a, b }: { a: AnalysisRecord; b: AnalysisRecord }) 
       toast.success(t('timelapse.recording'));
       // 播完自动停录制（监听 playing 状态变化之外的兜底：进度到 1 由动画循环置 false，
       // 这里用轮询简单兜底）
-      const check = setInterval(() => {
+      const check = window.setInterval(() => {
         if (pRef.current >= 1 || !recorderRef.current) {
-          clearInterval(check);
+          window.clearInterval(check);
+          recordPollRef.current = null;
           if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
           recorderRef.current = null;
         }
       }, 300);
+      recordPollRef.current = check;
     } catch {
       toast.error(t('timelapse.recordUnsupported'));
       recorderRef.current = null;
