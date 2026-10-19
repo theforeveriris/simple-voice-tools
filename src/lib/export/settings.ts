@@ -49,6 +49,8 @@ const OPTIONAL_STRING_KEYS = [
 const OPTIONAL_NUMBER_KEYS: Partial<Record<keyof AppSettings, [number, number]>> = {
   llmPriceIn: [0, 1_000_000],
   llmPriceOut: [0, 1_000_000],
+  // SPL 校准偏移：与 RecordingSection 的输入夹取范围一致（否则导出后导不回来）
+  splOffsetDb: [0, 160],
 };
 
 /** 枚举字符串字段：导入时校验取值，非法值忽略（保持当前设置） */

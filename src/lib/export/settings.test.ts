@@ -23,6 +23,7 @@ const SAMPLE: AppSettings = {
   llmActiveProfileId: 'p_abc',
   llmPriceIn: 2,
   llmPriceOut: 8,
+  splOffsetDb: 94,
   llmApiKey: 'sk-secret',
 };
 
@@ -56,6 +57,8 @@ describe('parseSettingsPayload', () => {
     expect(parsed.llmActiveProfileId).toBe('p_abc');
     expect(parsed.llmPriceIn).toBe(2);
     expect(parsed.llmPriceOut).toBe(8);
+    // SPL 校准是可选数值字段，必须随导出往返（曾漏在白名单外被静默丢弃）
+    expect(parsed.splOffsetDb).toBe(94);
     expect(parsed.llmApiKey).toBeUndefined();
   });
 

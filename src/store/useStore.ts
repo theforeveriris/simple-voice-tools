@@ -151,6 +151,11 @@ export const useStore = create<AppState>()(
         if ((p as { bgImageEnabled?: unknown }).bgImageEnabled === true && settings.huePreset !== 'image') {
           settings.huePreset = 'image';
         }
+        // 迁移是一次性的：遗留键必须从 settings 里剔除。否则 partialize 会把它写回
+        // localStorage，下次启动又满足迁移条件，用户永远无法切换到别的预设。
+        const settingsBag = settings as unknown as Record<string, unknown>;
+        delete settingsBag.bgImageEnabled;
+        delete settingsBag.adviceEnabled;
         // 旧版把 API Key 存在 localStorage：一次性迁入 IDB kv，内存态保留可用
         const legacyKey = (p as { llmApiKey?: unknown }).llmApiKey;
         if (typeof legacyKey === 'string' && legacyKey) {
