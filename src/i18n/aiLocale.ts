@@ -28,25 +28,53 @@ export interface AiLocaleCache {
   at: number;
 }
 
-/** 语言显示名 → 缓存键 slug（小写字母数字） */
-export function aiSlug(label: string): string {
-  return (
-    label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24)
-    || 'custom'
-  );
+/** 旧版兜底 slug：非拉丁显示名曾一律落到该键，多个语言因此互相覆盖 */
+const LEGACY_CUSTOM_SLUG = 'custom';
+
+/** 稳定短散列（FNV-1a）：显示名归不出 ASCII slug 时用来区分不同语言 */
+function hashLabel(label: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < label.length; i++) {
+    h ^= label.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
 }
 
-/** 读取某语言的 AI 词典缓存；无或损坏返回 null */
-export function loadAiCache(label: string): AiLocaleCache | null {
+/**
+ * 语言显示名 → 缓存键 slug。
+ * 拉丁显示名归一为小写连字符（既有键不变）；「日本語 / 한국어 / Русский」这类
+ * 归不出 ASCII 的显示名不能再一律落 'custom'——那会让第二种语言覆盖第一种，
+ * 甚至跨语言读到别人的词典；改用 'custom-<散列>'。
+ */
+export function aiSlug(label: string): string {
+  const ascii = label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24);
+  return ascii || `custom-${hashLabel(label.trim().toLowerCase())}`;
+}
+
+/** 读取并校验缓存：显示名必须与请求一致（防撞键后读到别的语言） */
+function readCache(key: string, label: string): AiLocaleCache | null {
   try {
-    const raw = localStorage.getItem(LS_PREFIX + aiSlug(label));
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AiLocaleCache;
     if (typeof parsed.label !== 'string' || typeof parsed.dict !== 'object' || parsed.dict == null) return null;
+    if (parsed.label.trim().toLowerCase() !== label.trim().toLowerCase()) return null;
     return parsed;
   } catch {
     return null;
   }
+}
+
+/** 读取某语言的 AI 词典缓存；无、损坏或显示名不符返回 null（含旧版 'custom' 键兼容） */
+export function loadAiCache(label: string): AiLocaleCache | null {
+  return readCache(LS_PREFIX + aiSlug(label), label)
+    ?? readCache(LS_PREFIX + LEGACY_CUSTOM_SLUG, label);
 }
 
 function saveAiCache(cache: AiLocaleCache): void {
@@ -57,10 +85,11 @@ function saveAiCache(cache: AiLocaleCache): void {
   }
 }
 
-/** 清除某语言的 AI 词典缓存 */
+/** 清除某语言的 AI 词典缓存（新键与旧版 'custom' 键一并清理） */
 export function clearAiCache(label: string): void {
   try {
     localStorage.removeItem(LS_PREFIX + aiSlug(label));
+    localStorage.removeItem(LS_PREFIX + LEGACY_CUSTOM_SLUG);
   } catch {
     /* 忽略存储异常 */
   }
@@ -164,7 +193,7 @@ export interface TranslateProgress {
   entriesTotal: number;
 }
 
-/** 分批翻译词条并并入 dict（每批完成与开始时上报进度） */
+/** 分批翻译词条并并入 dict（每批完成与开始时上报进度，每批完成即回调落盘） */
 async function translateInto(
   entries: [string, string][],
   dict: Record<string, string>,
@@ -173,6 +202,7 @@ async function translateInto(
   glossary: [string, string][],
   onProgress?: (p: TranslateProgress) => void,
   signal?: AbortSignal,
+  onBatch?: () => void,
 ): Promise<void> {
   const totalBatches = Math.max(1, Math.ceil(entries.length / BATCH));
   const system = systemPrompt(lang, glossary);
@@ -196,6 +226,7 @@ async function translateInto(
     );
     Object.assign(dict, parsed);
     report(i + 1);
+    onBatch?.();
   }
 }
 
@@ -213,7 +244,11 @@ export interface GenerateOptions {
   signal?: AbortSignal;
 }
 
-/** 全量生成：把整个基准词典翻译成目标语言，写入缓存并注册生效 */
+/**
+ * 全量生成：把整个基准词典翻译成目标语言，写入缓存并注册生效。
+ * 每批完成即落盘：中途取消 / 失败时已完成批次留在缓存里，界面可继续用，
+ * 下次「增量补全」只补剩下的词条（不浪费已付费的翻译）。
+ */
 export async function generateAiLocale(
   label: string,
   cfg: LlmConfig,
@@ -221,13 +256,18 @@ export async function generateAiLocale(
   opts: GenerateOptions = {},
 ): Promise<AiLocaleCache> {
   const dict: Record<string, string> = {};
-  await translateInto(baseEntries(), dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress, opts.signal);
+  const persistBatch = () => {
+    saveAndRegister(label, dict, cfg.modelId);
+  };
+  await translateInto(
+    baseEntries(), dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress, opts.signal, persistBatch,
+  );
   return saveAndRegister(label, dict, cfg.modelId);
 }
 
 /**
  * 增量补全：只翻译缓存缺失的基准词条（应用升级新增的界面文案），
- * 并入现有词典后保存注册。无缓存时等价于全量生成。
+ * 并入现有词典后保存注册。无缓存时等价于全量生成。同样每批落盘。
  */
 export async function translateMissing(
   label: string,
@@ -237,11 +277,17 @@ export async function translateMissing(
 ): Promise<AiLocaleCache> {
   const cache = loadAiCache(label);
   const dict: Record<string, string> = { ...(cache?.dict ?? {}) };
+  const model = cache?.model ?? cfg.modelId;
   const have = new Set(Object.keys(dict));
   const missing = baseEntries().filter(([k]) => !have.has(k));
-  if (missing.length === 0) return cache ?? saveAndRegister(label, dict, cfg.modelId);
-  await translateInto(missing, dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress, opts.signal);
-  return saveAndRegister(label, dict, cache?.model ?? cfg.modelId);
+  if (missing.length === 0) return cache ?? saveAndRegister(label, dict, model);
+  const persistBatch = () => {
+    saveAndRegister(label, dict, model);
+  };
+  await translateInto(
+    missing, dict, cfg, label.trim(), parseGlossary(opts.glossary), onProgress, opts.signal, persistBatch,
+  );
+  return saveAndRegister(label, dict, model);
 }
 
 /* ------------------------------ 词典分享（导出 / 导入） ------------------------------ */
