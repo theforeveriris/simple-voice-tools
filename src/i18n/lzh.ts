@@ -428,6 +428,8 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'labs.scriptUntitled': '無名之術',
   'labs.scriptNamePlaceholder': '術之名',
   'labs.scriptTest': '試行',
+  'labs.preview': '試行之覽',
+  'labs.previewEmpty': '無出',
   'labs.scriptTestOk': '行成：得諫 {n} 條',
   'labs.scriptTestFail': '行敗',
   'labs.scriptSaved': '已存',

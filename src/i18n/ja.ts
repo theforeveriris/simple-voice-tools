@@ -428,6 +428,8 @@ export const ja = {
   'labs.scriptUntitled': '無題のスクリプト',
   'labs.scriptNamePlaceholder': 'スクリプト名',
   'labs.scriptTest': 'テスト実行',
+  'labs.preview': 'プレビュー',
+  'labs.previewEmpty': '出力なし',
   'labs.scriptTestOk': '成功：{n} 件のアドバイス',
   'labs.scriptTestFail': '失敗',
   'labs.scriptSaved': '保存しました',

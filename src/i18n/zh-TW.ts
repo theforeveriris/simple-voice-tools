@@ -312,6 +312,8 @@ export const zhTW = {
   'labs.scriptUntitled': '未命名腳本',
   'labs.scriptNamePlaceholder': '腳本名稱',
   'labs.scriptTest': '試執行',
+  'labs.preview': '試跑預覽',
+  'labs.previewEmpty': '無輸出',
   'labs.scriptTestOk': '執行成功：{n} 條建議',
   'labs.scriptTestFail': '執行失敗',
   'labs.scriptSaved': '已儲存',

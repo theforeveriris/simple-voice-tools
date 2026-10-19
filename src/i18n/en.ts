@@ -427,6 +427,8 @@ export const en = {
   'labs.scriptUntitled': 'Untitled script',
   'labs.scriptNamePlaceholder': 'Script name',
   'labs.scriptTest': 'Test run',
+  'labs.preview': 'Preview',
+  'labs.previewEmpty': 'No output',
   'labs.scriptTestOk': 'OK: {n} tip(s)',
   'labs.scriptTestFail': 'Failed',
   'labs.scriptSaved': 'Saved',

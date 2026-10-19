@@ -210,17 +210,15 @@ function drawFooterQr(ctx: CanvasRenderingContext2D): void {
 }
 
 /**
- * 渲染 Lua 模板卡：无启用 card 脚本或全部出错时返回 null（调用方回退内置样式）。
+ * 按给定绘制指令渲染画布（脚本中心预览 / renderLuaCard 共用）。
+ * 脚本未画背景时先铺白底，避免透明 PNG；单条指令失败跳过。
  */
-export async function renderLuaCard(record: AnalysisRecord): Promise<HTMLCanvasElement | null> {
-  const ops = await luaCardOps(record);
-  if (!ops) return null;
+export function renderCardOps(ops: CardOp[], record: AnalysisRecord): HTMLCanvasElement | null {
   const canvas = document.createElement('canvas');
   canvas.width = CARD_W;
   canvas.height = CARD_H;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
-  // 脚本未画背景时先铺白底，避免透明 PNG
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, CARD_W, CARD_H);
   for (const op of ops) {
@@ -231,4 +229,13 @@ export async function renderLuaCard(record: AnalysisRecord): Promise<HTMLCanvasE
     }
   }
   return canvas;
+}
+
+/**
+ * 渲染 Lua 模板卡：无启用 card 脚本或全部出错时返回 null（调用方回退内置样式）。
+ */
+export async function renderLuaCard(record: AnalysisRecord): Promise<HTMLCanvasElement | null> {
+  const ops = await luaCardOps(record);
+  if (!ops) return null;
+  return renderCardOps(ops, record);
 }

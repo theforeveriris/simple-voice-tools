@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Braces, Download, FilePlus2, Pencil, Play, Trash2, Upload,
+  Braces, Download, Eye, FilePlus2, Pencil, Play, Trash2, Upload, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { t } from '@/i18n';
@@ -16,8 +16,15 @@ import {
   putUserScript, setScriptEnabled, type LuaScriptView,
 } from '@/lib/lua/scripts';
 import { runLuaFn } from '@/lib/lua/engine';
+import { normalizeOps } from '@/lib/lua/card';
+import { renderCardOps } from '@/lib/lua/cardRender';
+import { normalizeFlower } from '@/lib/lua/flower';
+import { recordView } from '@/lib/lua/filter';
+import { createDemoRecord } from '@/lib/audio/demo';
+import { FlowerSvg } from '@/components/flowers/FlowerSvg';
+import type { Flower } from '@/lib/flower';
 import type { AdviceTarget } from '@/lib/advice';
-import type { VoiceStats } from '@/types';
+import type { AnalysisRecord, VoiceStats } from '@/types';
 import { Switch } from '../ui';
 import { cn } from '@/lib/utils';
 /** 脚本类型徽标（列表里区分消费方） */
@@ -62,6 +69,12 @@ const DEMO_STATS: VoiceStats = {
 
 const DEMO_TARGET: AdviceTarget = { enabled: true, min: 130, max: 210 };
 
+/** 预览用示例记录（懒生成一次；复用真实 demo 管线，分享卡/音高指令才有内容） */
+let demoRecord: AnalysisRecord | null = null;
+function demoOf(): AnalysisRecord {
+  return (demoRecord ??= createDemoRecord());
+}
+
 /** 编辑器展开态的本地草稿 */
 interface Draft {
   id: string | null; // null = 新建
@@ -71,11 +84,80 @@ interface Draft {
   kind: LuaScriptView['kind'];
 }
 
+/** 试跑预览状态（按脚本种类承载不同产物） */
+interface PreviewState {
+  name: string;
+  kind: LuaScriptView['kind'];
+  status: 'loading' | 'ok' | 'error';
+  error?: string;
+  advice?: string[];
+  flower?: Flower | null;
+  cardUrl?: string;
+  exportName?: string;
+  exportContent?: string;
+}
+
 export function ScriptHubSection() {
   useI18n();
   const [scripts, setScripts] = useState<LuaScriptView[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [testing, setTesting] = useState(false);
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+
+  /**
+   * 试跑预览：用示例数据跑一遍脚本并把产物渲染出来（点击才跑，不自动全跑）。
+   * advice → 建议列表；flower → 花朵 SVG；card → 分享卡缩略图；export → 样例输出文本。
+   */
+  const runPreview = async (script: LuaScriptView) => {
+    const base = { name: script.name, kind: script.kind };
+    setPreview({ ...base, status: 'loading' });
+    const demo = demoOf();
+    try {
+      if (script.kind === 'advice') {
+        const res = await runLuaFn<unknown>(script.code, 'advise', [{ ...DEMO_STATS, target: DEMO_TARGET }]);
+        if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
+        const list = Array.isArray(res.value) ? res.value.map((x) => String(x)) : [];
+        setPreview({ ...base, status: 'ok', advice: list });
+        return;
+      }
+      if (script.kind === 'card') {
+        const res = await runLuaFn<unknown>(script.code, 'template', [recordView(demo)]);
+        if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
+        const ops = normalizeOps(res.value);
+        const canvas = ops.length > 0 ? renderCardOps(ops, demo) : null;
+        setPreview({ ...base, status: 'ok', cardUrl: canvas?.toDataURL('image/png') });
+        return;
+      }
+      if (script.kind === 'flower') {
+        const res = await runLuaFn<unknown>(script.code, 'flower', [
+          { ...DEMO_STATS, f2f1GapHz: null, jitterPct: null, shimmerPct: null, hnrDb: null, cppsDb: null, bands: { hz: {}, energy: {} } },
+        ]);
+        if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
+        setPreview({ ...base, status: 'ok', flower: normalizeFlower(res.value, { petalsFrom: 'template', facts: [] }) });
+        return;
+      }
+      // export：喂样例记录视图（含 series.frames）
+      const view = recordView(demo);
+      const res = await runLuaFn<unknown>(script.code, 'export', [{
+        ...view,
+        series: {
+          frames: demo.series.t.map((tt, i) => ({
+            t: tt, f0: demo.series.f0[i], rmsDb: demo.series.rmsDb[i], f1: demo.series.f1[i], f2: demo.series.f2[i],
+          })).slice(0, 240),
+        },
+      }]);
+      if (!res.ok) { setPreview({ ...base, status: 'error', error: res.error }); return; }
+      const v = res.value as { filename?: unknown; content?: unknown } | null;
+      setPreview({
+        ...base,
+        status: 'ok',
+        exportName: typeof v?.filename === 'string' ? v.filename : undefined,
+        exportContent: typeof v?.content === 'string' ? v.content : undefined,
+      });
+    } catch (e) {
+      setPreview({ ...base, status: 'error', error: String(e) });
+    }
+  };
 
   const reload = () => void listScripts().then(setScripts);
   useEffect(reload, []);
@@ -198,12 +280,12 @@ export function ScriptHubSection() {
               </span>
             </span>
             <button
-              onClick={() => void testRun(s.code, s.kind)}
-              disabled={testing}
-              aria-label={t('labs.scriptTest')}
-              className="grid size-7 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-black/5 hover:text-accent disabled:opacity-40"
+              onClick={() => void runPreview(s)}
+              aria-label={t('labs.preview')}
+              title={t('labs.preview')}
+              className="grid size-7 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-black/5 hover:text-accent"
             >
-              <Play size={13} />
+              <Eye size={13} />
             </button>
             {!s.builtin && (
               <>
@@ -299,6 +381,74 @@ export function ScriptHubSection() {
             >
               {t('common.cancel')}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 试跑预览（点击才跑，不自动全跑）：按脚本种类渲染不同产物 */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-black/30 px-6 backdrop-blur-sm"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="card-surface relative flex max-h-[80dvh] w-full max-w-sm flex-col items-center overflow-y-auto p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreview(null)}
+              aria-label={t('common.close')}
+              className="absolute right-3 top-3 grid size-8 place-items-center rounded-full text-ink-2 hover:bg-surface-hi"
+            >
+              <X size={15} />
+            </button>
+            <p className="max-w-[80%] truncate text-sm font-semibold text-ink">{preview.name}</p>
+            <p className="mb-2 text-[10px] text-ink-2">{KIND_LABEL[preview.kind]}</p>
+
+            {preview.status === 'loading' && <p className="py-6 text-xs text-ink-2">…</p>}
+
+            {preview.status === 'error' && (
+              <p className="py-3 text-center text-[11px] leading-relaxed text-[#B0532F]">
+                {t('labs.scriptTestFail')}{preview.error ? `：${preview.error}` : ''}
+              </p>
+            )}
+
+            {preview.status === 'ok' && preview.kind === 'advice' && (
+              (preview.advice?.length ?? 0) > 0 ? (
+                <ul className="w-full space-y-1">
+                  {preview.advice!.map((a, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-2">
+                      <span className="mt-[6px] size-1 shrink-0 rounded-full bg-accent/70" />{a}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="py-6 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+            )}
+
+            {preview.status === 'ok' && preview.kind === 'card' && (
+              preview.cardUrl
+                ? <img src={preview.cardUrl} alt={t('labs.preview')} className="w-full rounded-xl" />
+                : <p className="py-6 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+            )}
+
+            {preview.status === 'ok' && preview.kind === 'flower' && (
+              preview.flower
+                ? <FlowerSvg flower={preview.flower} rotation={0} className="h-44 w-44" />
+                : <p className="py-6 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+            )}
+
+            {preview.status === 'ok' && preview.kind === 'export' && (
+              preview.exportContent
+                ? (
+                  <>
+                    {preview.exportName && <p className="w-full truncate text-[11px] font-medium text-ink">{preview.exportName}</p>}
+                    <pre className="mt-1 max-h-64 w-full overflow-auto whitespace-pre-wrap break-all rounded-xl bg-surface-hi p-2.5 text-[10px] leading-relaxed text-ink-2">
+                      {preview.exportContent.slice(0, 4000)}
+                    </pre>
+                  </>
+                )
+                : <p className="py-6 text-xs text-ink-2">{t('labs.previewEmpty')}</p>
+            )}
           </div>
         </div>
       )}

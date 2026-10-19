@@ -428,6 +428,8 @@ export const zhCN = {
   'labs.scriptUntitled': '未命名脚本',
   'labs.scriptNamePlaceholder': '脚本名称',
   'labs.scriptTest': '试运行',
+  'labs.preview': '试跑预览',
+  'labs.previewEmpty': '无输出',
   'labs.scriptTestOk': '运行成功：{n} 条建议',
   'labs.scriptTestFail': '运行失败',
   'labs.scriptSaved': '已保存',
