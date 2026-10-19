@@ -1,20 +1,18 @@
 /**
  * 内置文档知识库（AI 助手的检索语料，实验性）
- * 以 vite ?raw 把 documentation/ 下的核心文档打进应用包（全部离线）：
+ * 语料来源：documentation/ 下的核心文档——
  *   - PARAMETERS-GUIDE.md（参数说明书：每个指标的含义/参考区间/训练意义——回答
  *     「我的 CPPS 3.2dB 正常吗」这类问题的主力语料）
  *   - REFERENCES.md（参考文献：参考区间的出处）
  *   - ALGORITHM-YIN / FORMANT-LPC / ENERGY / CPPS（算法原理）
+ * 文档经 docs.loadDoc（import.meta.glob 懒加载）读取：每份文档单独成 chunk，
+ * 只在首次检索时才下载，不占首屏体积（此前用静态 ?raw 导入，把 6 份文档
+ * 强塞进首屏包，与 docs.ts 的懒加载意图相悖）。
  * 检索：把文档按「## 标题」切块，查询时按关键词命中度（词频 × 标题权重）打分，
  * 取前 N 块注入助手系统提示。纯本地零网络，无嵌入模型依赖。
  */
 
-import paramsGuide from '../../documentation/PARAMETERS-GUIDE.md?raw';
-import references from '../../documentation/REFERENCES.md?raw';
-import algoYin from '../../documentation/ALGORITHM-YIN.md?raw';
-import algoLpc from '../../documentation/ALGORITHM-FORMANT-LPC.md?raw';
-import algoEnergy from '../../documentation/ALGORITHM-ENERGY.md?raw';
-import algoCpps from '../../documentation/ALGORITHM-CPPS.md?raw';
+import { loadDoc } from './docs';
 
 export interface DocChunk {
   /** 所属文档标题 */
@@ -27,13 +25,13 @@ export interface DocChunk {
 /** 块大小上限（字符）：超长块在段落边界截断（文档本身按标题组织，通常不会超） */
 const MAX_CHUNK_CHARS = 2600;
 
-const SOURCES: { doc: string; md: string }[] = [
-  { doc: '参数说明书', md: paramsGuide },
-  { doc: '参考文献', md: references },
-  { doc: 'YIN 算法', md: algoYin },
-  { doc: 'LPC 共振峰算法', md: algoLpc },
-  { doc: '能量分析', md: algoEnergy },
-  { doc: 'CPPS 算法', md: algoCpps },
+const SOURCES: { doc: string; file: string }[] = [
+  { doc: '参数说明书', file: 'PARAMETERS-GUIDE.md' },
+  { doc: '参考文献', file: 'REFERENCES.md' },
+  { doc: 'YIN 算法', file: 'ALGORITHM-YIN.md' },
+  { doc: 'LPC 共振峰算法', file: 'ALGORITHM-FORMANT-LPC.md' },
+  { doc: '能量分析', file: 'ALGORITHM-ENERGY.md' },
+  { doc: 'CPPS 算法', file: 'ALGORITHM-CPPS.md' },
 ];
 
 /** 段落边界附近截断（回退到最近的空行） */
@@ -73,7 +71,26 @@ function splitDoc(doc: string, md: string): DocChunk[] {
   return chunks;
 }
 
-export const DOC_CHUNKS: DocChunk[] = SOURCES.flatMap(({ doc, md }) => splitDoc(doc, md));
+/** 惰性构建的语料缓存（首次检索时按需加载文档 chunk；失败可重试） */
+let chunksPromise: Promise<DocChunk[]> | null = null;
+
+/**
+ * 惰性加载并切分全部语料（每份文档单独 chunk，只在首次检索时下载）。
+ * 返回同一 Promise，重复调用不重复加载。
+ */
+export function loadChunks(): Promise<DocChunk[]> {
+  if (!chunksPromise) {
+    chunksPromise = Promise.all(
+      SOURCES.map(async ({ doc, file }) => splitDoc(doc, await loadDoc(file))),
+    )
+      .then((parts) => parts.flat())
+      .catch((err) => {
+        chunksPromise = null;
+        throw err;
+      });
+  }
+  return chunksPromise;
+}
 
 /* ------------------------------ 检索 ------------------------------ */
 
@@ -114,11 +131,18 @@ function chunkScore(chunk: DocChunk, terms: string[]): number {
 /**
  * 检索与查询最相关的文档块（0–4 块，总分 > 0 才返回）。
  * 返回格式化好的系统提示注入段（含来源标注）。
+ * 文档按需加载：加载失败时返回空串，静默跳过注入。
  */
-export function retrieveDocs(query: string, maxChunks = 4): string {
+export async function retrieveDocs(query: string, maxChunks = 4): Promise<string> {
   const terms = queryTerms(query);
   if (terms.length === 0) return '';
-  const scored = DOC_CHUNKS
+  let chunks: DocChunk[];
+  try {
+    chunks = await loadChunks();
+  } catch {
+    return '';
+  }
+  const scored = chunks
     .map((c) => ({ c, s: chunkScore(c, terms) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s)
@@ -130,7 +154,11 @@ export function retrieveDocs(query: string, maxChunks = 4): string {
   return `\n\n## 应用内置文档摘录（与问题相关时引用；这是本应用的官方文档，可信度高于你的先验知识；无关时忽略）\n${sections}`;
 }
 
-/** 知识库是否可用（文档导入失败时为空数组，注入端静默跳过） */
-export function docsAvailable(): boolean {
-  return DOC_CHUNKS.length > 0;
+/** 知识库是否可用（文档加载失败时返回 false，注入端静默跳过） */
+export async function docsAvailable(): Promise<boolean> {
+  try {
+    return (await loadChunks()).length > 0;
+  } catch {
+    return false;
+  }
 }

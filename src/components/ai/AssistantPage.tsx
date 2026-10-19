@@ -282,7 +282,7 @@ export function AssistantPage({ onClose }: { onClose: () => void }) {
     const hist = await historySection(histBudget);
     // 内置文档检索：拿最近一条用户消息查相关文档摘录（官方口径注入，模型不瞎猜参考区间）
     const lastUser = [...history].reverse().find((m) => m.role === 'user');
-    const docs = lastUser ? retrieveDocs(lastUser.content) : '';
+    const docs = lastUser ? await retrieveDocs(lastUser.content) : '';
     const sys = systemPrompt(hist, docs);
     const reserve = estTokens(sys) + replyReserve;
     let turns = history;
