@@ -7,7 +7,7 @@
 
 import { computeSustainedMetrics } from '@/lib/audio/sustained';
 import type { DictKey } from '@/i18n';
-import type { AnalysisRecord } from '@/types';
+import type { AnalysisRecord, UserGoal } from '@/types';
 
 /** 一条建议：词典键 + 占位参数（渲染时用 t() 取文案） */
 export interface AdviceItem {
@@ -35,8 +35,13 @@ const F2F1_GAP_MIN_HZ = 1000;
 
 /**
  * 由记录统计生成建议（最多 3 条，按重要性排序）；全部通过时返回「保持」一条
+ * @param userGoal 训练方向：仅 MtF 消费共鸣方向建议（FtM 方向相反，未设方向时不明）
  */
-export function buildAdvice(record: AnalysisRecord, target: AdviceTarget): AdviceItem[] {
+export function buildAdvice(
+  record: AnalysisRecord,
+  target: AdviceTarget,
+  userGoal: UserGoal = 'other',
+): AdviceItem[] {
   const tips: AdviceItem[] = [];
   const s = record.stats;
 
@@ -75,8 +80,8 @@ export function buildAdvice(record: AnalysisRecord, target: AdviceTarget): Advic
   }
 
   // 6. 共鸣间距偏窄（F2−F1）：元音空间偏后/开口偏大，提示收前共鸣。
-  //    仅 MtF 方向消费（FtM 的共鸣方向相反）；参考线取女性化目标的中低段
-  if (record.stats.f2f1GapHz != null && record.stats.f2f1GapHz < F2F1_GAP_MIN_HZ) {
+  //    该方向只对 MtF 成立（FtM 的共鸣方向相反），故按训练方向门控
+  if (userGoal === 'mtf' && record.stats.f2f1GapHz != null && record.stats.f2f1GapHz < F2F1_GAP_MIN_HZ) {
     tips.push({ key: 'analysis.adviceResonance', params: { n: Math.round(record.stats.f2f1GapHz) } });
   }
 

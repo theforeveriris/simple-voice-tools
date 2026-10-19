@@ -21,7 +21,7 @@ import { useActiveLlmConfig } from '@/lib/llmProfiles';
 import { useLlmStream } from '@/hooks/useLlmStream';
 import { fmtShortDateTime } from '@/lib/utils';
 import { t } from '@/i18n';
-import type { AnalysisRecord } from '@/types';
+import type { AnalysisRecord, UserGoal } from '@/types';
 import { LlmResultView, StreamPreview } from '@/components/analysis/LlmResultView';
 
 /** 寤鸿鍗￠€氱敤楠ㄦ灦锛氭爣棰樿 + 鍐呭 + 搴曢儴鎻愮ず */
@@ -68,7 +68,7 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
         )
         : adviceMode === 'lua'
           ? <LuaAdvice records={records} target={target} />
-          : <RuleAdvice records={records} target={target} />}
+          : <RuleAdvice records={records} target={target} userGoal={userGoal} />}
       <p className="mt-2 px-0.5 text-[10px] leading-relaxed text-ink-2">
         {t(
           adviceMode === 'llm'
@@ -83,7 +83,7 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
 }
 
 /** 瑙勫垯鍒ゆ柇锛氭湰鍦伴€愭潯鐢熸垚锛涗袱鏉¤褰曟椂鎸?A / B 鍒嗙粍 */
-function RuleAdvice({ records, target }: { records: AnalysisRecord[]; target: AdviceTarget }) {
+function RuleAdvice({ records, target, userGoal }: { records: AnalysisRecord[]; target: AdviceTarget; userGoal: UserGoal }) {
   const paired = records.length > 1;
   return (
     <div className={paired ? 'flex flex-col gap-2.5' : undefined}>
@@ -100,7 +100,7 @@ function RuleAdvice({ records, target }: { records: AnalysisRecord[]; target: Ad
             </div>
           )}
           <ul className="flex flex-col gap-1.5">
-            {buildAdvice(rec, target).map((tip) => (
+            {buildAdvice(rec, target, userGoal).map((tip) => (
               <li key={tip.key} className="flex items-start gap-2 text-xs leading-relaxed text-ink">
                 <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
                 <span>{t(tip.key, tip.params)}</span>
