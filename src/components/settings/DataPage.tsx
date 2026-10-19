@@ -20,7 +20,8 @@ import { downloadText, recordsToSummaryCsv } from '@/lib/export/csv';
 import { exportFullBackup, importFullBackup, buildRecordsPayload, parseRecordsPayload, parseFullBackupZip } from '@/lib/export/backup';
 import { buildSettingsPayload, parseSettingsPayload } from '@/lib/export/settings';
 import { downloadBlob } from '@/lib/file';
-import { RestorePreviewDialog, buildRestorePreview, type RestorePreview } from './RestorePreviewDialog';
+import { RestorePreviewDialog } from './RestorePreviewDialog';
+import { buildRestorePreview, type RestorePreview } from './restorePreview';
 import {
   pickAutoBackupFolder, getAutoBackupState,
   requestAutoBackupPermission, runAutoBackupNow,

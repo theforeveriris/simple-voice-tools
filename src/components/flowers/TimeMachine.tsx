@@ -24,29 +24,9 @@ export type TimeMachineMode = 'pitch' | 'vowel';
 /* ---------------- 帧计算（纯函数，可单测） ---------------- */
 
 /** 日期插值：p ∈ [0,1] → 日期时间戳（含 Δ 天数） */
-export function dateAtProgress(a: AnalysisRecord, b: AnalysisRecord, p: number): { at: number; deltaDays: number } {
+function dateAtProgress(a: AnalysisRecord, b: AnalysisRecord, p: number): { at: number; deltaDays: number } {
   const at = Math.round(a.createdAt + (b.createdAt - a.createdAt) * p);
   return { at, deltaDays: Math.round((b.createdAt - a.createdAt) / 86_400_000) };
-}
-
-/** 序列在归一化时间 x ∈ [0,1] 的取值（线性采样，跨缺口取最近有效值） */
-export function sampleSeries(
-  s: { t: number[]; f0: (number | null)[] },
-  dur: number,
-  x: number,
-): number | null {
-  const target = x * Math.max(0.01, dur);
-  let best: number | null = null;
-  let bestDist = Infinity;
-  for (let i = 0; i < s.t.length; i++) {
-    const d = Math.abs(s.t[i] - target);
-    if (d < bestDist) {
-      bestDist = d;
-      best = s.f0[i];
-    }
-    if (s.t[i] > target && d > bestDist) break;
-  }
-  return best != null && isFinite(best) ? best : null;
 }
 
 /** 帧参数：进度、画布尺寸、模式（绘制所需的最小集合，纯函数入参） */
@@ -65,7 +45,7 @@ export interface FrameInput {
  * 绘制一帧：A/B 交叉溶解（A 淡出 = p，B 淡入 = p；中点两者各半）。
  * 曲线模式按各自时长归一化对齐；散点模式同一元音平面交叉溶解。
  */
-export function drawTimeMachineFrame(ctx: CanvasRenderingContext2D, input: FrameInput): void {
+function drawTimeMachineFrame(ctx: CanvasRenderingContext2D, input: FrameInput): void {
   const { p, w, h, mode, seriesA, seriesB, durA, durB } = input;
   const pal = chartPalette();
   ctx.clearRect(0, 0, w, h);
@@ -172,7 +152,7 @@ export function drawTimeMachineFrame(ctx: CanvasRenderingContext2D, input: Frame
 }
 
 /** 右上角日期徽章：Δ 天 + 随进度滚动的插值日期 */
-export function drawDateBadge(
+function drawDateBadge(
   ctx: CanvasRenderingContext2D,
   aAt: number, bAt: number, p: number,
 ): void {

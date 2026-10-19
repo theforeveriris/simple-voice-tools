@@ -19,7 +19,7 @@ declare const __APP_VERSION__: string;
 const ISSUES_URL = 'https://github.com/theforeveriris/simple-voice-tools/issues/new';
 
 /** 组装诊断摘要 + 反馈模板（纯函数，输出即预览所见） */
-export function buildFeedbackBody(userText: string, recordCount: number, locale: string): string {
+function buildFeedbackBody(userText: string, recordCount: number, locale: string): string {
   const platform = isNative ? 'Android (Capacitor)' : isTauri ? 'Windows (Tauri)' : 'Web / PWA';
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   // UA 精简到品牌与版本段：去掉冗长的 token，降低可辨识度
