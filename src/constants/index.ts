@@ -167,21 +167,6 @@ export function freqToNote(freq: number): { name: string; midi: number; cents: n
 }
 
 /**
- * 莫奈取色预设（种子色相）
- * 主题系统基于 OKLCH 色彩空间由色相生成全套 M3 风格色板
- */
-export const THEME_PRESETS: { id: string; hue: number; label: string }[] = [
-  { id: 'indigo', hue: 285, label: '雾鸢蓝' },
-  { id: 'sky', hue: 240, label: '晴空蓝' },
-  { id: 'cyan', hue: 205, label: '湖水青' },
-  { id: 'green', hue: 150, label: '柑绿' },
-  { id: 'amber', hue: 95, label: '柚黄' },
-  { id: 'orange', hue: 55, label: '蜜橙' },
-  { id: 'rose', hue: 15, label: '山桃红' },
-  { id: 'purple', hue: 330, label: '堇紫' },
-];
-
-/**
  * 默认应用设置
  */
 export const DEFAULT_SETTINGS: AppSettings = {

@@ -16,8 +16,6 @@ import type { AnalysisRecord, PitchBand } from '@/types';
 /** 分享图样式：themed 跟随当前主题，其余为固定风格（accent 延续主题维持品牌感）；flower = 声之花卡；lua = 用户 Lua 模板（有启用 card 脚本时出现） */
 export type ShareCardStyle = 'themed' | 'dark' | 'light' | 'aurora' | 'flower' | 'lua';
 
-export const SHARE_CARD_STYLES: ShareCardStyle[] = ['themed', 'dark', 'light', 'aurora'];
-
 /** 二维码指向的仓库地址 */
 const REPO_URL = 'https://github.com/theforeveriris/simple-voice-tools';
 

@@ -26,7 +26,7 @@ export const IMPORT_MAX_SEC = 300;
 const PROBE_MAX_SEC = 600;
 
 /** 导入失败原因（调用方据此映射提示文案） */
-export type ImportFailReason = 'decode' | 'probe' | 'tooShort' | 'tooLong';
+export type ImportFailReason = 'decode' | 'tooShort' | 'tooLong';
 
 /** erasableSyntaxOnly 下不能用参数属性，改用显式字段 */
 export class AudioImportError extends Error {
@@ -121,7 +121,7 @@ export async function resample(pcm: Float32Array<ArrayBuffer>, fromHz: number): 
 
 /**
  * 分析一个外部音频文件，产出与录音完全同构的分析记录
- * @throws AudioImportError（decode / probe / tooShort / tooLong）
+ * @throws AudioImportError（decode / tooShort / tooLong）
  */
 export async function analyzeAudioFile(
   file: File,

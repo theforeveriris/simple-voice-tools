@@ -58,8 +58,8 @@ export async function signatureBits(signature: string): Promise<Uint8Array> {
  */
 export function embedWatermark(pcm: Float32Array, bits: Uint8Array, amplitude = DEFAULT_AMPLITUDE): Float32Array {
   const out = pcm.slice();
-  const totalChips = Math.floor(out.length / CHIP_LEN) * BITS; // 码片位置按比特循环
-  if (totalChips === 0) return out;
+  // 码片位置按比特循环；不足一个码片时原样返回（每比特的完整码序列会被重复写入直到音频结束）
+  if (out.length < CHIP_LEN) return out;
   const seqs = Array.from({ length: BITS }, (_, i) => chipSequence(i));
   let chipPos = 0;
   for (let frame = 0; frame + CHIP_LEN <= out.length; frame += CHIP_LEN) {

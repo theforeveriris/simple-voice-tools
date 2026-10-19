@@ -65,11 +65,6 @@ export function registerAiDict(label: string, dict: Record<string, string>, lang
  */
 let siRename = false;
 
-/** 读取当前改名开关 */
-export function isSiRenameEnabled(): boolean {
-  return siRename;
-}
-
 /** 设置改名开关（startup 同步设置时调用；变化时 bump 触发重渲染） */
 export function setSiRenameEnabled(v: boolean): void {
   if (siRename === v) return;
@@ -172,11 +167,6 @@ export function setOverride(key: DictKey, value: string | null): void {
     /* 配额不足：仅内存生效 */
   }
   bump();
-}
-
-/** 当前语言的自定义词条数 */
-export function overrideCount(): number {
-  return Object.keys(overrideStore()).length;
 }
 
 /**

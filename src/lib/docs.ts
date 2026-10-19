@@ -52,11 +52,6 @@ const RAW = import.meta.glob('../../documentation/*.md', {
   import: 'default',
 }) as Record<string, () => Promise<string>>;
 
-/** 该文档是否打进了包里（防止文件名写错时静默失败） */
-export function docAvailable(file: string): boolean {
-  return `../../documentation/${file}` in RAW;
-}
-
 /** 读取 documentation/ 下的文档全文 */
 export function loadDoc(file: string): Promise<string> {
   const loader = RAW[`../../documentation/${file}`];

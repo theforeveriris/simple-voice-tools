@@ -115,7 +115,7 @@ export function analyzeSibilance(
       hfRatio: sum > 0 ? hf / sum : 0,
     });
   }
-  if (frames.length === 0) return null;
+  // 前面的 pcm.length < WINDOW 守卫已保证至少一帧，这里无需再判空
 
   // 电平中位数（底噪门限基准）
   const dbs = frames.map((f) => f.db).sort((a, b) => a - b);

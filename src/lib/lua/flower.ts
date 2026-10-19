@@ -123,14 +123,3 @@ export async function computeLuaFlowers(
   return out;
 }
 
-/** 单记录跑 Lua 花朵脚本（flowerOf 的异步对照；单卡/详情可用，同样需 applyLuaFlowers 或直接取返回值） */
-export async function luaFlowerOf(
-  rec: AnalysisRecord,
-  bands: BandSummary | null,
-): Promise<Flower | null> {
-  const scripts = (await listScripts()).filter((s) => s.kind === 'flower' && s.enabled);
-  if (scripts.length === 0) return null;
-  const res = await runLuaFn<unknown>(scripts[0].code, 'flower', [buildStatsView(rec, bands)]);
-  if (!res.ok) return null;
-  return normalizeFlower(res.value, { petalsFrom: 'template', facts: [] });
-}

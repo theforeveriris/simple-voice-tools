@@ -162,11 +162,6 @@ export function rotationJitter(id: string): number {
   return ((h >>> 0) % 21) - 10;
 }
 
-/** 供详情页显示的映射依据汇总（一行一条） */
-export function flowerFacts(rec: AnalysisRecord): string[] {
-  return flowerOf(rec).basis.facts;
-}
-
 /** MPT 等「不入花」的数字（花园卡片小字 / 详情展示用） */
 export function flowerSideStats(rec: AnalysisRecord): string[] {
   const out: string[] = [`${rec.stats.avgF0.toFixed(0)} Hz`];
