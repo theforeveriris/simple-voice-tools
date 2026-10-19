@@ -18,7 +18,7 @@
 
 import type { AnalysisRecord } from '@/types';
 import { luaTakeFlower } from '@/lib/lua/flower';
-import { SPEC_FMIN, SPEC_FMAX } from '@/constants';
+import { SPEC_FMIN, SPEC_FMAX, SPEC_BANDS } from '@/constants';
 
 /** 单片花瓣的绘制参数（角度制，0° = 正上方，顺时针） */
 export interface Petal {
@@ -66,8 +66,10 @@ function bandEnergies(rec: AnalysisRecord): { hz: number[]; energy: number[] } |
   try {
     const raw = atob(rec.spec.data);
     const bands = rec.spec.bands;
+    // 频带数来自导入/备份数据，必须先夹取：0 会让 rows=Infinity，循环永远出不来（卡死 UI）
+    if (!Number.isFinite(bands) || bands <= 0 || bands > SPEC_BANDS * 4) return null;
     const rows = Math.floor(raw.length / bands);
-    if (rows < 4) return null;
+    if (!Number.isFinite(rows) || rows < 4) return null;
     const energy = new Float64Array(bands);
     const useRows = Math.max(1, Math.floor(rows * 0.6)); // 掐掉尾部静音
     for (let r = 0; r < useRows; r++) {
