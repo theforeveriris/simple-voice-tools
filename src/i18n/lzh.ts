@@ -130,6 +130,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'analysis.rowH2H4': 'H2–H4（頻譜傾斜）',
   'analysis.rowH1A3': 'H1–A3（氣聲）',
   'analysis.rowBreathiness': '氣聲之度',
+  'analysis.rowNasality': '鼻化（A1–P1）',
   'analysis.reanalyzeAria': '以今參重算',
   'analysis.reanalyzeTitle': '以今參重算',
   'analysis.reanalyzeDesc': '自錄音之聲，以今之演算法參數復行全套分析。既允，方覆其分析之果；元據與音聲如故。',

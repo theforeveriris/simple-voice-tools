@@ -74,5 +74,18 @@ describe('computeSpectralVoice', () => {
     expect(v.h2h4Db).toBeNull();
     expect(v.h1a3Db).toBeNull();
     expect(v.breathiness).toBeNull();
+    expect(v.nasalityDb).toBeNull();
+  });
+
+  it('鼻化 A1–P1：低中频鼻腔峰抬高会降低 A1−P1', () => {
+    // 口腔：能量集中在 F1≈700Hz 附近（k=3–4 @200Hz）
+    const oral = harmonics(200, [0, 0.3, 0.5, 0.6, 0.45, 0.25, 0.12, 0.08]);
+    // 鼻化：300–1000Hz（k=2–5）出现强鼻腔峰
+    const nasal = harmonics(200, [0, 0.3, 0.62, 0.66, 0.7, 0.5, 0.2, 0.1]);
+    const a = computeSpectralVoice(oral, FS).nasalityDb;
+    const b = computeSpectralVoice(nasal, FS).nasalityDb;
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
+    expect(b as number).toBeLessThan(a as number);
   });
 });

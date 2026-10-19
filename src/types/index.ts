@@ -181,6 +181,8 @@ export interface VoiceStats {
   h1a3Db?: number | null;
   /** 气声综合指数（0–1，越大越气声） */
   breathiness?: number | null;
+  /** A1−P1（dB）：鼻化指标，越低鼻化越重，需录音音频，旧记录为 undefined */
+  nasalityDb?: number | null;
   /** 训练靶标达成率：落在目标音高区间内的有声帧占比（%），未启用靶标时为 undefined */
   inTargetPct?: number | null;
 }

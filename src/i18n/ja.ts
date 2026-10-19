@@ -130,6 +130,7 @@ export const ja = {
   'analysis.rowH2H4': 'H2–H4（スペクトル傾斜）',
   'analysis.rowH1A3': 'H1–A3（息漏れ）',
   'analysis.rowBreathiness': '息漏れ度',
+  'analysis.rowNasality': '鼻音化（A1–P1）',
   'analysis.reanalyzeAria': '現在のパラメータで再分析',
   'analysis.reanalyzeTitle': '現在のパラメータで再分析',
   'analysis.reanalyzeDesc': '保存済みの音声に対し、現在のアルゴリズムパラメータで完全な分析パイプラインを再実行します。確認後にのみ記録の分析結果が上書きされます。メタデータと音声は変更されません。',

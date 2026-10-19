@@ -130,6 +130,7 @@ export const zhCN = {
   'analysis.rowH2H4': 'H2–H4（频谱倾斜）',
   'analysis.rowH1A3': 'H1–A3（气声）',
   'analysis.rowBreathiness': '气声度',
+  'analysis.rowNasality': '鼻化（A1–P1）',
   'analysis.reanalyzeAria': '用当前参数重算',
   'analysis.reanalyzeTitle': '用当前参数重算',
   'analysis.reanalyzeDesc': '从录音音频重跑当前算法参数的完整分析管线。确认后才会覆盖记录的分析结果；元数据与音频不变。',

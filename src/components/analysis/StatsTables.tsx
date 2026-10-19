@@ -91,6 +91,7 @@ export function StatsTable({ record }: { record: AnalysisRecord }) {
           [t('analysis.rowH2H4'), s.h2h4Db != null ? `${s.h2h4Db.toFixed(1)} dB` : '—'],
           [t('analysis.rowH1A3'), s.h1a3Db != null ? `${s.h1a3Db.toFixed(1)} dB` : '—'],
           [t('analysis.rowBreathiness'), s.breathiness != null ? `${(s.breathiness * 100).toFixed(0)} %` : '—'],
+          [t('analysis.rowNasality'), s.nasalityDb != null ? `${s.nasalityDb.toFixed(1)} dB` : '—'],
           [t('analysis.rowNote'), <span key="hint" className="text-[10px] font-normal text-ink-2">{t('analysis.vqHint')}</span>],
         ]}
       />

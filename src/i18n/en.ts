@@ -129,6 +129,7 @@ export const en = {
   'analysis.rowH2H4': 'H2–H4 (spectral tilt)',
   'analysis.rowH1A3': 'H1–A3 (breathiness)',
   'analysis.rowBreathiness': 'Breathiness',
+  'analysis.rowNasality': 'Nasality (A1–P1)',
   'analysis.reanalyzeAria': 'Re-analyze with current parameters',
   'analysis.reanalyzeTitle': 'Re-analyze with current parameters',
   'analysis.reanalyzeDesc': 'Re-runs the full analysis pipeline on the saved audio with the current algorithm parameters. The record is only overwritten after you confirm; metadata and audio stay untouched.',

@@ -129,6 +129,7 @@ export const zhTW = {
   'analysis.rowH2H4': 'H2–H4（頻譜傾斜）',
   'analysis.rowH1A3': 'H1–A3（氣聲）',
   'analysis.rowBreathiness': '氣聲度',
+  'analysis.rowNasality': '鼻化（A1–P1）',
   'analysis.reanalyzeAria': '用目前參數重算',
   'analysis.reanalyzeTitle': '用目前參數重算',
   'analysis.reanalyzeDesc': '從錄音音訊重跑目前演算法參數的完整分析管線。確認後才會覆蓋記錄的分析結果；中繼資料與音訊不變。',

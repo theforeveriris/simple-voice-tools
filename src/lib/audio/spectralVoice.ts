@@ -13,6 +13,7 @@
  */
 
 import { fft } from './cpp';
+import { extractFormants } from './formants';
 import { detectPitchYin } from './pitch';
 import { getAlgoParams } from './algoParams';
 
@@ -25,6 +26,8 @@ export interface SpectralVoice {
   h1a3Db: number | null;
   /** 气声综合指数（0–1，越大越气声） */
   breathiness: number | null;
+  /** A1−P1（dB，A1 = F1 处谐波幅度，P1 = 300–1000Hz 鼻腔峰）：越低鼻化越重，旧记录为 undefined */
+  nasalityDb: number | null;
 }
 
 /** 帧长 / 帧移（秒），与 CPPS 口径一致 */
@@ -73,6 +76,7 @@ export function computeSpectralVoice(samples: Float32Array, sampleRate: number):
   const h2h4: number[] = [];
   const h1a3: number[] = [];
   const breath: number[] = [];
+  const nasality: number[] = [];
 
   for (let start = 0; start + win <= samples.length; start += hop) {
     let sum = 0;
@@ -116,6 +120,18 @@ export function computeSpectralVoice(samples: Float32Array, sampleRate: number):
     const a1 = ampAt(f0);
     const a2 = ampAt(2 * f0);
     const a4 = ampAt(4 * f0);
+
+    // 鼻化 A1−P1：A1 = F1 处谐波幅度，P1 = 300–1000Hz 鼻腔峰幅度（Chen 1997 口径）
+    const fm = extractFormants(frame, sampleRate, db);
+    if (fm.f1 != null && fm.f1 > 0) {
+      const a1p = ampAt(fm.f1);
+      const plo = Math.max(1, Math.floor(300 / binHz));
+      const phi = Math.min(half - 1, Math.ceil(1000 / binHz));
+      let p1 = 0;
+      for (let b = plo; b <= phi; b++) if (mag[b] > p1) p1 = mag[b];
+      if (a1p > 0 && p1 > 0) nasality.push(20 * Math.log10(a1p / p1));
+    }
+
     if (!(a1 > 0) || !(a2 > 0) || !(a4 > 0)) continue;
     const d12 = 20 * Math.log10(a1 / a2);
     h1h2.push(d12);
@@ -154,5 +170,6 @@ export function computeSpectralVoice(samples: Float32Array, sampleRate: number):
     h2h4Db: r1(median(h2h4)),
     h1a3Db: r1(median(h1a3)),
     breathiness: breathMean == null ? null : Math.round(breathMean * 100) / 100,
+    nasalityDb: r1(median(nasality)),
   };
 }

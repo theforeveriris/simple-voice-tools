@@ -59,6 +59,8 @@ export interface VqMetrics {
   h1a3Db?: number | null;
   /** 气声综合指数（0–1） */
   breathiness?: number | null;
+  /** A1−P1（dB）：鼻化指标，越低鼻化越重（A1 = F1 谐波，P1 = 300–1000Hz 鼻腔峰） */
+  nasalityDb?: number | null;
 }
 
 export interface FrameAnalysisResult extends FrameAnalysisBuffers {
