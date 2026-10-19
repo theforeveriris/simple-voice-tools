@@ -58,6 +58,8 @@ function chatHeaders(cfg: LlmConfig): Record<string, string> {
       'content-type': 'application/json',
       'x-api-key': cfg.apiKey,
       'anthropic-version': '2023-06-01',
+      // 浏览器直连 api.anthropic.com 必须显式声明，否则被 CORS 拒（authentication_error）
+      'anthropic-dangerous-direct-browser-access': 'true',
     };
   }
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` };

@@ -55,7 +55,8 @@ export function SpecLiveSheet({ onClose }: { onClose: () => void }) {
           else hi = mid;
         }
         const first = lo;
-        const n = allTimes.length - first;
+        // 窗口内行数夹到缓冲上限（含首尾端点时最多 481 行，超出会撑破 flatRef）
+        const n = Math.min(allTimes.length - first, MAX_WIN_ROWS);
         const flat = flatRef.current;
         const rowTimes = timesRef.current;
         rowTimes.length = n;

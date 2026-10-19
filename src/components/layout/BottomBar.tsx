@@ -193,7 +193,11 @@ function BallCore({ onLongPress }: { onLongPress: () => void }) {
     if (isRecording) return;
     longPressFired.current = false;
     pressOrigin.current = { x: e.clientX, y: e.clientY };
-    pressTimer.current = window.setTimeout(onLongPress, LONG_PRESS_MS);
+    // 长按已触发后，抬手产生的那次 click 必须被吞掉（否则会同时开始录音）
+    pressTimer.current = window.setTimeout(() => {
+      longPressFired.current = true;
+      onLongPress();
+    }, LONG_PRESS_MS);
   };
 
   const onPointerMove = (e: ReactPointerEvent) => {
