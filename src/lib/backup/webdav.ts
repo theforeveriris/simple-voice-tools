@@ -149,8 +149,8 @@ export async function pushWebdavBackup(cfg: WebdavConfig): Promise<WebdavPushRes
   const built = await buildFullBackupZip();
   if (!built) throw new WebdavError(t('toast.nothingToExport'));
   const encrypted = await isBackupEncryptionEnabled();
-  // 指纹比较用明文 SHA（built.sha256）；加密是确定性的，但云端字节随开关变化，
-  // 故把加密状态并入指纹，开关切换后必然重传一次
+  // 指纹比较用明文内容指纹（built.sha256，不含导出时间戳）；加密是确定性的，
+  // 但云端字节随开关变化，故把加密状态并入指纹，开关切换后必然重传一次
   const lastFp = await idbGetKV<LastPushFingerprint>(KV_LAST_FINGERPRINT);
   if (
     built.sha256

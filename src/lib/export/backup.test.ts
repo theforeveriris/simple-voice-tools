@@ -1,6 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { buildRecordsPayload, parseRecordsPayload, BACKUP_FORMAT_VERSION } from './backup';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { buildRecordsPayload, parseRecordsPayload, BACKUP_FORMAT_VERSION, buildFullBackupZip } from './backup';
+import { useHistoryStore } from '@/store/useHistoryStore';
 import type { AnalysisRecord } from '@/types';
+
+// buildFullBackupZip 会读音频与背景图：测试里只要 KV 为空、音频为 null
+vi.mock('@/lib/storage/idb', () => ({
+  idbGetKV: async () => undefined,
+  idbPutAudio: async () => {},
+}));
 
 function makeRecord(id: string): AnalysisRecord {
   return {
@@ -71,5 +78,38 @@ describe('parseRecordsPayload', () => {
   it('缺少 records 数组的载荷抛 Error', () => {
     expect(() => parseRecordsPayload('{"version":2,"foo":1}')).toThrow(Error);
     expect(() => parseRecordsPayload('null')).toThrow(Error);
+  });
+});
+
+describe('完整备份的内容指纹', () => {
+  const records = [makeRecord('a'), makeRecord('b')];
+
+  beforeEach(() => {
+    useHistoryStore.setState({
+      records,
+      getAllRecords: async () => records,
+      getAudio: async () => null,
+    });
+  });
+
+  it('内容不变时指纹稳定（不受每次打包都变的 exportedAt 影响）', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const a = await buildFullBackupZip();
+      vi.setSystemTime(new Date('2026-02-03T04:05:06Z'));
+      const b = await buildFullBackupZip();
+      expect(a?.sha256).toBeTruthy();
+      expect(b?.sha256).toBe(a?.sha256);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('记录变化时指纹随之变化', async () => {
+    const a = await buildFullBackupZip();
+    useHistoryStore.setState({ getAllRecords: async () => [records[0]] });
+    const b = await buildFullBackupZip();
+    expect(b?.sha256).not.toBe(a?.sha256);
   });
 });

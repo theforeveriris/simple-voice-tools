@@ -94,7 +94,7 @@ export interface FullBackupZip {
   audio: number;
   /** 建议的文件名（按天命名，自动备份同日覆盖） */
   filename: string;
-  /** zipSync 产物字节级 SHA-256 hex（加密前的明文指纹；同步类调用方据此跳过无变化上传） */
+  /** 内容指纹（记录 + 音频清单，不含每次打包都变的导出时间戳）：据此跳过无变化上传 */
   sha256: string;
 }
 
@@ -113,17 +113,22 @@ export async function buildFullBackupZip(): Promise<FullBackupZip | null> {
   const files: Record<string, [Uint8Array, { level: 0 | 6 }]> = {
     [JSON_NAME]: [strToU8(JSON.stringify(payload)), { level: 6 }],
   };
+  // 内容指纹的音频清单：用「id / 字节数 / 类型」概括，不重复哈希全部音频
+  const audioInv: string[] = [];
   let audio = 0;
   for (const rec of records) {
     const blob = await store.getAudio(rec.id);
     if (!blob) continue;
     files[`audio/${rec.id}${extFor(blob)}`] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }];
+    audioInv.push(`${rec.id}:${blob.size}:${blob.type}`);
     audio++;
   }
   // 自定义背景图（数百 KB 级，直存）
   const bg = await idbGetKV<Blob>(BG_IMAGE_KV);
+  let bgInv = '';
   if (bg) {
     files[`${BG_IMAGE_DIR}bg-image${extFor(bg)}`] = [new Uint8Array(await bg.arrayBuffer()), { level: 0 }];
+    bgInv = `${bg.size}:${bg.type}`;
   }
   const zipped = zipSync(files);
   const d = new Date();
@@ -133,8 +138,12 @@ export async function buildFullBackupZip(): Promise<FullBackupZip | null> {
     records: records.length,
     audio,
     filename: `voice-backup-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.zip`,
-    /** 内容指纹（zipSync 产物字节级 SHA-256 hex）：同步类调用方据此跳过无变化上传 */
-    sha256: await sha256Hex(zipped),
+    /**
+     * 内容指纹：只覆盖内容本身（记录 + 音频清单 + 背景图清单）。
+     * 不能拿 zipSync 产物算——负载里的 exportedAt 每次打包都变，
+     * 字节级哈希永不相等，「内容未变化则跳过上传」就永远不成立。
+     */
+    sha256: await sha256Hex(strToU8(JSON.stringify({ records, audio: audioInv, bg: bgInv }))),
   };
 }
 
