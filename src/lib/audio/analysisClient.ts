@@ -8,6 +8,7 @@
 
 import { analyzePcmFrames, analyzePitchFrames, computeVqMetrics, type FrameAnalysisResult, type PitchSeriesResult, type VqMetrics } from './analysisPipeline';
 import { getAlgoParams } from './algoParams';
+import { getPitchAlgorithm } from '@/constants';
 import type { AnalysisRequest } from './analysisWorker';
 import type { PitchAlgorithm } from '@/types';
 
@@ -82,8 +83,12 @@ function requestFrames(
     // PCM 以 transfer 交付（几秒音频即数 MB，结构化克隆是纯浪费的整块拷贝）；
     // 交付后主线程这份 buffer 即失效，本请求失败无法再回退主线程（见 runFrameAnalysis）。
     // 算法参数快照随请求下发（Worker 模块实例独立，见 analysisWorker）
+    // 算法参数与音高算法快照随请求下发（Worker 模块实例独立，见 analysisWorker）
     try {
-      w.postMessage({ type: 'frames', id, pcm, params: { ...getAlgoParams() } } satisfies AnalysisRequest, [pcm.buffer]);
+      w.postMessage(
+        { type: 'frames', id, pcm, params: { ...getAlgoParams() }, algo: getPitchAlgorithm() } satisfies AnalysisRequest,
+        [pcm.buffer],
+      );
     } catch (err) {
       pending.delete(id);
       reject(err);
@@ -135,7 +140,7 @@ export async function runFrameAnalysis(
 ): Promise<FrameAnalysisResult> {
   const w = ensureWorker();
   if (w) return requestFrames(w, pcm, onProgress);
-  return analyzePcmFrames(pcm, onProgress);
+  return analyzePcmFrames(pcm, onProgress, getPitchAlgorithm());
 }
 
 /** 嗓音质量四项（Jitter/Shimmer/HNR/CPPS）。pcm 交付语义同 runFrameAnalysis */

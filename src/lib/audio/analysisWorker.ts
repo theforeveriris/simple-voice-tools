@@ -15,6 +15,8 @@ export interface FramesRequest {
   pcm: Float32Array;
   /** 发起方的算法参数快照（Worker 模块实例与主线程独立，处理前写入） */
   params?: AlgoParams;
+  /** 音高检测算法（同样来自主线程设置，Worker 侧 module 实例不同步） */
+  algo?: PitchAlgorithm;
 }
 
 export interface VqRequest {
@@ -53,7 +55,7 @@ ctx.onmessage = (e: MessageEvent<AnalysisRequest>) => {
     if (msg.type === 'frames') {
       const result = analyzePcmFrames(msg.pcm, (frac) => {
         ctx.postMessage({ type: 'progress', id: msg.id, frac });
-      });
+      }, msg.algo ?? 'yin');
       ctx.postMessage({ type: 'frames', id: msg.id, result }, [result.specFlat.buffer]);
     } else if (msg.type === 'vq') {
       const metrics: VqMetrics = computeVqMetrics(msg.pcm, msg.sampleRate);

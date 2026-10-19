@@ -6,7 +6,7 @@
  * → 逐帧 Blackman 加窗 FFT → 语谱频带量化；随后计算嗓音质量四项。
  */
 
-import { detectPitchYin, rmsDb } from './pitch';
+import { rmsDb } from './pitch';
 import { detectPitch } from './pitchAlt';
 import { extractFormants } from './formants';
 import { computeVoiceQuality } from './voiceQuality';
@@ -82,10 +82,12 @@ function blackmanWindow(n: number): { win: Float32Array; cg: number } {
 /**
  * 对管线采样率（32kHz 单声道）的 PCM 逐帧分析
  * @param onProgress 进度回调（0-1）
+ * @param algo 音高检测算法（与实时录音共用同一设置；Worker 侧由请求快照下发）
  */
 export function analyzePcmFrames(
   pcm: Float32Array,
   onProgress?: (frac: number) => void,
+  algo: PitchAlgorithm = 'yin',
 ): FrameAnalysisResult {
   const hop = Math.round(PIPELINE_HZ / FRAME_HZ);
   const frames = Math.max(0, Math.floor((pcm.length - FRAME_SAMPLES) / hop) + 1);
@@ -117,8 +119,9 @@ export function analyzePcmFrames(
     const now = (start + FRAME_SAMPLES) / PIPELINE_HZ;
 
     const dbFrame = rmsDb(frame);
+    // 音高检测器跟随设置（与实时录音同一口径）；语音门限见 algoParams
     const pitch = dbFrame > voicedGateDb
-      ? detectPitchYin(frame, PIPELINE_HZ, pitchMinHz, pitchMaxHz)
+      ? detectPitch(frame, PIPELINE_HZ, pitchMinHz, pitchMaxHz, algo)
       : null;
 
     // 共振峰每 2 帧一次（LPC 开销较大），指数平滑系数与实时管线一致

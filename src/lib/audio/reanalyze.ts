@@ -1,7 +1,7 @@
 /**
  * 历史记录用当前算法参数重算
- * 从记录的录音音频出发，重跑与录音时同一套离线管线（YIN / LPC / 语谱 /
- * 统计聚合 / 嗓音质量），产出一份「仅替换分析结果」的新记录对象——
+ * 从记录的录音音频出发，重跑与录音时同一套离线管线（音高检测器跟随设置 / LPC /
+ * 语谱 / 统计聚合 / 嗓音质量），产出一份「仅替换分析结果」的新记录对象——
  * id / createdAt / mode / note 等元数据原样保留，由调用方决定是否落库。
  *
  * 与 importAudio 的关系：解码 / 单声道化 / 重采样 / 管线派发全部同一口径
@@ -15,7 +15,9 @@
 import { computeStats, computeInTargetPct, toRecordSeries } from './recorder';
 import { runFrameAnalysis } from './analysisClient';
 import { PIPELINE_HZ, FRAME_HZ, FRAME_SAMPLES } from './analysisPipeline';
+import { getPitchAlgorithm } from '@/constants';
 import { decodeBlob, mixdown, resample, IMPORT_MAX_SEC, specData } from './importAudio';
+import { estimateImportGainDb, applyGainDb } from './normalize';
 import { getAlgoParams } from './algoParams';
 import type { AnalysisRecord } from '@/types';
 
@@ -29,9 +31,10 @@ function hashStr(s: string): string {
   return (h >>> 0).toString(36);
 }
 
-/** 当前算法参数的指纹（记录落库时随行标记，用于判断「参数已变，可重算」） */
+/** 当前算法参数的指纹（记录落库时随行标记，用于判断「参数已变，可重算」）。
+ *  含音高算法：离线管线也随之切换检测器（与实时录音同口径），算法变了结果就会变。 */
 export function algoParamsFingerprint(): string {
-  return hashStr(JSON.stringify(getAlgoParams()));
+  return hashStr(JSON.stringify({ ...getAlgoParams(), pitchAlgorithm: getPitchAlgorithm() }));
 }
 
 export interface ReanalyzeOptions {
@@ -66,7 +69,9 @@ export async function reanalyzePcm(
   const durationSec = series.t.length > 0 ? series.t[series.t.length - 1] : 0;
   // 有效内容不足：调用方按消息映射本地化提示（保持本模块不依赖 i18n，与 importAudio 同口径）
   if (durationSec < 1 || series.t.length < 4) throw new Error('tooShort');
-  const sampleHz = series.t.length > 1 ? 1 / (series.t[1] - series.t[0]) : FRAME_HZ;
+  // sampleHz 由全序列时间跨度反推（帧间隔时间戳按 ms 取整，单帧差有 ≈1% 系统偏差）
+  const spanSec = series.t.length > 1 ? series.t[series.t.length - 1] - series.t[0] : 0;
+  const sampleHz = spanSec > 0 ? (series.t.length - 1) / spanSec : FRAME_HZ;
   const stats = computeStats(series, sampleHz);
   const inTargetPct = computeInTargetPct(series, opts.targetRange ?? null);
   if (inTargetPct != null) stats.inTargetPct = inTargetPct;
@@ -87,7 +92,7 @@ export async function reanalyzePcm(
   return { record: next, truncated: false };
 }
 
-/** 录音音频 Blob → 管线 PCM（与导入分析同一口径：混音 + 重采样 + 超长截断） */
+/** 录音音频 Blob → 管线 PCM（与导入分析同一口径：混音 + 重采样 + 自动增益 + 超长截断） */
 export async function audioToPipelinePcm(audio: Blob): Promise<{ pcm: Float32Array; truncated: boolean }> {
   const decoded = await decodeBlob(audio);
   const truncated = decoded.duration > IMPORT_MAX_SEC + 0.5;
@@ -96,6 +101,9 @@ export async function audioToPipelinePcm(audio: Blob): Promise<{ pcm: Float32Arr
   if (decoded.sampleRate !== PIPELINE_HZ) {
     pcm = await resample(pcm, decoded.sampleRate);
   }
+  // 与 importAudio 一致：电平过低先抬进可分析范围。estimateImportGainDb 对
+  // 已足够响的音频返回 0（不改动），因此对应用内录音通常是空操作。
+  applyGainDb(pcm, estimateImportGainDb(pcm, PIPELINE_HZ));
   return { pcm, truncated };
 }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyzePcmFrames } from './analysisPipeline';
-import { SPEC_BANDS } from '@/constants';
+import { SPEC_BANDS, getPitchAlgorithm, setPitchAlgorithm } from '@/constants';
 import { makePulseTrain } from './testHelpers';
 
 describe('analyzePcmFrames', () => {
@@ -41,5 +41,26 @@ describe('analyzePcmFrames', () => {
     analyzePcmFrames(pcm, (f) => fracs.push(f));
     expect(fracs.length).toBeGreaterThan(0);
     expect(fracs[fracs.length - 1]).toBe(1);
+  });
+
+  it('音高检测器跟随参数：缺省等价 yin，换算法后结果随之变化', () => {
+    // 90Hz 脉冲串：YIN 与 MPM 在此类周期信号上判定不同（帧内全部可检出）
+    const pcm = makePulseTrain({ f0: 90, sampleRate: 32000, durSec: 1.5, amp: 0.5, seed: 7 });
+
+    const byDefault = analyzePcmFrames(pcm);
+    const byYin = analyzePcmFrames(pcm, undefined, 'yin');
+    expect(byYin.f0).toEqual(byDefault.f0);
+    // 先确认信号确实被检出，避免「两边都是 null」这种假通过
+    expect(byYin.f0.some((v) => !Number.isNaN(v))).toBe(true);
+
+    // 离线管线不再硬编码 YIN：换算法后 f0 序列应产生可观测差异
+    setPitchAlgorithm('mpm');
+    try {
+      const byMpm = analyzePcmFrames(pcm, undefined, getPitchAlgorithm());
+      expect(byMpm.f0.length).toBe(byYin.f0.length);
+      expect(byMpm.f0).not.toEqual(byYin.f0);
+    } finally {
+      setPitchAlgorithm('yin');
+    }
   });
 });
