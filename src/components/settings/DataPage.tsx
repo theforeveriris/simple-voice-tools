@@ -72,6 +72,7 @@ export function DataPage({
   useI18n();
   const records = useHistoryStore((s) => s.records);
   const importRecords = useHistoryStore((s) => s.importRecords);
+  const getAllRecords = useHistoryStore((s) => s.getAllRecords);
   const clearAll = useHistoryStore((s) => s.clearAll);
   const setCurrentAnalysis = useStore((s) => s.setCurrentAnalysis);
   const recordsInputRef = useRef<HTMLInputElement>(null);
@@ -214,18 +215,22 @@ export function DataPage({
   const importData = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
-      try {
-        const { records: incoming } = parseRecordsPayload(String(reader.result));
-        const existingIds = new Set(records.map((r) => r.id));
-        pendingImportRef.current = () => {
-          const added = importRecords(incoming);
-          if (added > 0) toast.success(t('toast.imported', { n: added }));
-          else toast.info(t('toast.importedNone'));
-        };
-        setRestorePreview(buildRestorePreview(incoming, existingIds));
-      } catch (err) {
-        toast.error(err instanceof Error && err.message ? err.message : t('toast.importFail'));
-      }
+      void (async () => {
+        try {
+          const { records: incoming } = parseRecordsPayload(String(reader.result));
+          // 预览去重按全量（内存视图有 MAX_HISTORY 截断，只看内存会低估已有记录）
+          const existingIds = new Set((await getAllRecords()).map((r) => r.id));
+          pendingImportRef.current = () => {
+            void importRecords(incoming).then((added) => {
+              if (added > 0) toast.success(t('toast.imported', { n: added }));
+              else toast.info(t('toast.importedNone'));
+            });
+          };
+          setRestorePreview(buildRestorePreview(incoming, existingIds));
+        } catch (err) {
+          toast.error(err instanceof Error && err.message ? err.message : t('toast.importFail'));
+        }
+      })();
     };
     reader.readAsText(file);
   };
@@ -235,7 +240,8 @@ export function DataPage({
     void (async () => {
       try {
         const { records: incoming } = await parseFullBackupZip(file);
-        const existingIds = new Set(records.map((r) => r.id));
+        // 预览去重按全量（内存视图有 MAX_HISTORY 截断）
+        const existingIds = new Set((await getAllRecords()).map((r) => r.id));
         pendingImportRef.current = () => {
           void (async () => {
             try {

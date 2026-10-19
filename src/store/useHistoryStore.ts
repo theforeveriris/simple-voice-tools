@@ -50,8 +50,8 @@ interface HistoryState {
   clearAll: () => void;
   /** 更新一条记录（备注编辑等） */
   updateRecord: (record: AnalysisRecord) => void;
-  /** 批量导入（按 id 去重合并），返回实际导入条数 */
-  importRecords: (incoming: AnalysisRecord[]) => number;
+  /** 批量导入（按 id 去重合并，对 IDB 全量去重），返回实际导入条数 */
+  importRecords: (incoming: AnalysisRecord[]) => Promise<number>;
   /** 读取某条记录的音频（无音频返回 null） */
   getAudio: (id: string) => Promise<Blob | null>;
   /**
@@ -121,7 +121,14 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
   },
 
   removeRecord: (id) => {
-    set((state) => ({ records: state.records.filter((r) => r.id !== id) }));
+    set((state) => {
+      if (!state.records.some((r) => r.id === id)) return state;
+      return {
+        records: state.records.filter((r) => r.id !== id),
+        // 同步递减，否则列表清空后仍显示「已截断，共 N 条」
+        totalCount: Math.max(0, state.totalCount - 1),
+      };
+    });
     persist(async () => {
       await idbDeleteRecord(id);
       await idbDeleteAudio(id);
@@ -144,8 +151,10 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
     persist(() => idbPutRecord(record));
   },
 
-  importRecords: (incoming) => {
-    const existing = new Map(get().records.map((r) => [r.id, r]));
+  importRecords: async (incoming) => {
+    // 对「IDB 全量 + 内存」去重：内存视图只有最新 MAX_HISTORY 条，
+    // 只按内存判断会把窗口外的老记录当成新增，导致 totalCount 虚高、重复写库
+    const existing = new Map((await get().getAllRecords()).map((r) => [r.id, r]));
     const added: AnalysisRecord[] = [];
     for (const rec of incoming) {
       if (!rec || typeof rec !== 'object' || !rec.id || !rec.series || !rec.stats) continue;
@@ -155,8 +164,8 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       }
     }
     if (added.length > 0) {
-      const merged = dedupeSorted([...existing.values()]);
-      set((state) => ({ records: merged, totalCount: state.totalCount + added.length }));
+      const merged = [...existing.values()].sort((a, b) => b.createdAt - a.createdAt);
+      set({ records: merged.slice(0, MAX_HISTORY), totalCount: merged.length });
       persist(() => idbPutRecords(added));
     }
     return added.length;

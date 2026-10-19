@@ -423,7 +423,7 @@ export async function pullBackup(
     : rawJson;
   // 与 ZIP 恢复同一套格式/版本校验（v1/v2 可读，更新版本拒绝）
   const { records: incoming } = parseRecordsPayload(new TextDecoder().decode(jsonBytes));
-  const added = useHistoryStore.getState().importRecords(incoming);
+  const added = await useHistoryStore.getState().importRecords(incoming);
 
   // 云端音频中，本地缺失的部分。
   // validIds 取全量（IDB + 内存）：importRecords 全部入库，内存 records 有

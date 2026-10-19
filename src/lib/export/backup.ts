@@ -196,7 +196,7 @@ export async function importFullBackup(file: File): Promise<BackupImportResult> 
   const { records: incoming } = parseRecordsPayload(strFromU8(jsonEntry));
 
   const store = useHistoryStore.getState();
-  const added = store.importRecords(incoming);
+  const added = await store.importRecords(incoming);
 
   // 音频：文件名（去扩展名）即记录 id，只挂载到本地存在的记录。
   // validIds 取全量（IDB + 内存）：importRecords 全部入库，内存 records 有
