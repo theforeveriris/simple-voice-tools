@@ -18,6 +18,7 @@
 
 import type { AnalysisRecord } from '@/types';
 import { luaTakeFlower } from '@/lib/lua/flower';
+import { SPEC_FMIN, SPEC_FMAX } from '@/constants';
 
 /** 单片花瓣的绘制参数（角度制，0° = 正上方，顺时针） */
 export interface Petal {
@@ -75,13 +76,12 @@ function bandEnergies(rec: AnalysisRecord): { hz: number[]; energy: number[] } |
         if (v > 0) energy[b] += v * v;
       }
     }
-    // 频带中心频率：语谱为对数频带，等分 80–8000 Hz（与分析管线语谱范围同数量级）
-    const F_LO = 80;
-    const F_HI = 8000;
+    // 频带中心频率：与录音管线的语谱分带共用同一映射（SPEC_FMIN→SPEC_FMAX 对数端点，
+    // 见 spectrogram.spectrumRowToBands），保证花详情里标注的 Hz 与真实分析频带一致
     const hz: number[] = [];
+    const span = bands - 1;
     for (let b = 0; b < bands; b++) {
-      const t = (b + 0.5) / bands;
-      hz[b] = F_LO * Math.pow(F_HI / F_LO, t);
+      hz[b] = SPEC_FMIN * Math.pow(SPEC_FMAX / SPEC_FMIN, span > 0 ? b / span : 0);
     }
     const arr = Array.from(energy);
     if (arr.every((v) => v === 0)) return null;

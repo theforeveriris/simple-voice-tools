@@ -131,7 +131,8 @@ describe('_internal.bandEnergies', () => {
     const { hz } = _internal.bandEnergies(rec)!;
     expect(hz[0]).toBeLessThan(hz[3]);
     expect(hz[3]).toBeLessThan(hz[7]);
+    // 与录音管线语谱分带同源：80 Hz（SPEC_FMIN）→ 5000 Hz（SPEC_FMAX）
     expect(hz[0]).toBeGreaterThanOrEqual(80);
-    expect(hz[7]).toBeLessThanOrEqual(8000);
+    expect(hz[7]).toBeLessThanOrEqual(5000);
   });
 });
