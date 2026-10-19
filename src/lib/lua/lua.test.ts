@@ -34,6 +34,10 @@ describe('lua engine', () => {
     expect(engine.global.get('os')).toBeFalsy();
     expect(engine.global.get('io')).toBeFalsy();
     expect(engine.global.get('require')).toBeFalsy();
+    // 看门狗靠调试钩子实现：debug 能改钩子、coroutine 能另开无钩子线程，都必须移除
+    expect(engine.global.get('debug')).toBeFalsy();
+    expect(engine.global.get('coroutine')).toBeFalsy();
+    expect(engine.global.get('package')).toBeFalsy();
   });
 
   it('null stats fields become nil (wasmoon null-push workaround)', async () => {
@@ -58,6 +62,25 @@ describe('lua engine', () => {
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toMatch(/timeout/i);
   }, 15000);
+
+  it('顶层死循环同样会超时（doString 的顶层线程没有看门狗）', async () => {
+    const res = await runLuaFn('while true do end', 'advise', []);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toMatch(/timeout/i);
+  }, 15000);
+
+  it('脚本未定义目标函数时不会复用上一个脚本残留的同名函数', async () => {
+    const first = await runLuaFn<number>('function advise() return 7 end', 'advise', []);
+    expect(first).toEqual({ ok: true, value: 7 });
+    // 共享 VM：若不清全局，这里会静默用旧脚本的函数跑新数据
+    const second = await runLuaFn('x = 1', 'advise', []);
+    expect(second.ok).toBe(false);
+  });
+
+  it('非法函数名直接拒绝（不拼接进 Lua 源码）', async () => {
+    const res = await runLuaFn('x = 1', 'advise\nos = nil', []);
+    expect(res.ok).toBe(false);
+  });
 
   it('tables round-trip between js and lua', async () => {
     const res = await runLuaFn<{ a: number; b: string }>(

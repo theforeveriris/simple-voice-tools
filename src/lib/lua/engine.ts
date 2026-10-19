@@ -28,8 +28,37 @@ async function glueWasmUri(): Promise<string> {
   throw new Error('glue.wasm not found');
 }
 
-/** 单次脚本执行上限（毫秒）：主线程协作式中断，防死循环卡 UI */
+/** 单次脚本执行上限（毫秒）：wasmoon 的协作式中断（计数钩子）把死循环掐断，防卡 UI */
 export const LUA_TIMEOUT_MS = 500;
+
+/**
+ * 用户脚本的执行包装函数名（顶层代码也放进函数体）。
+ * wasmoon 只在「从 JS 调用 Lua 函数」时设置看门狗，`doString` 的顶层线程没有超时，
+ * 因此顶层 `while true do end` 会永久卡死；包一层函数再经 JS 调用即可受同一超时保护。
+ */
+const CHUNK_FN = '__svt_chunk';
+
+/**
+ * 收紧标准库：移除可访问宿主、可加载动态模块、以及**能绕过看门狗**的入口。
+ * 超时靠 Lua 调试钩子实现，所以 debug（可改钩子）与 coroutine（新线程不带钩子）
+ * 都必须移除，否则看门狗可被用户脚本直接解除。
+ */
+const SANDBOX_SETUP = `
+  os = nil
+  io = nil
+  require = nil
+  load = nil
+  loadstring = nil
+  dofile = nil
+  loadfile = nil
+  collectgarbage = nil
+  debug = nil
+  coroutine = nil
+  package = nil
+`;
+
+/** 合法的全局函数名（调用方都是字面量；此处兜底防止拼接进 Lua 源码造成注入） */
+const FN_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 let enginePromise: Promise<LuaEngine> | null = null;
 
@@ -44,17 +73,7 @@ export function getLuaEngine(): Promise<LuaEngine> {
         _: 'simple-voice-tool',
       } as Record<string, string>);
       const engine = await factory.createEngine({ functionTimeout: LUA_TIMEOUT_MS });
-      // 收紧标准库：io/os 整表移除；require/load* 置 nil（无 IO、无常驻、无动态编译）
-      await engine.doString(`
-        os = nil
-        io = nil
-        require = nil
-        load = nil
-        loadstring = nil
-        dofile = nil
-        loadfile = nil
-        collectgarbage = nil
-      `);
+      await engine.doString(SANDBOX_SETUP);
       return engine;
     })().catch((err) => {
       enginePromise = null; // 失败可重试
@@ -86,13 +105,16 @@ function stripNulls(v: unknown): unknown {
  * 执行一段用户脚本，然后调用其定义的全局函数并取回返回值。
  * 调用方约定：脚本里必须定义 `fnName` 指定的全局函数。
  * 例：runLuaFn<number>('function double(x) return x*2 end', 'double', [21])
- * 超时/脚本错误统一折叠为 { ok: false, error }。
+ * 顶层代码与目标函数都在 500ms 看门狗之下；超时/脚本错误统一折叠为 { ok: false, error }。
  */
 export async function runLuaFn<T>(
   code: string,
   fnName: string,
   args: unknown[],
 ): Promise<LuaResult<T>> {
+  if (!FN_NAME_RE.test(fnName)) {
+    return { ok: false, error: `非法的函数名 ${fnName}` };
+  }
   let engine: LuaEngine;
   try {
     engine = await getLuaEngine();
@@ -100,7 +122,16 @@ export async function runLuaFn<T>(
     return { ok: false, error: `Lua VM 加载失败：${String(err)}` };
   }
   try {
-    await engine.doString(code);
+    // 先清掉同名全局：共享 VM 不会在编译时清理，否则「脚本没定义 fnName」会静默
+    // 命中上一个脚本留下的函数，用新的数据跑旧逻辑（无从察觉）
+    await engine.doString(`${fnName} = nil\n${CHUNK_FN} = function()\n${code}\nend`);
+    const chunk = engine.global.get(CHUNK_FN);
+    if (typeof chunk !== 'function') {
+      return { ok: false, error: '脚本编译失败' };
+    }
+    // 经 JS 调用路径执行顶层代码：这里才会带上 wasmoon 的函数超时看门狗
+    await chunk();
+    await engine.doString(`${CHUNK_FN} = nil`);
     const fn = engine.global.get(fnName);
     if (typeof fn !== 'function') {
       return { ok: false, error: `脚本未定义全局函数 ${fnName}` };
