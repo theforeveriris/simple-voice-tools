@@ -78,7 +78,8 @@ export function createDemoRecord(): AnalysisRecord {
   return {
     id: `demo-${Date.now()}`,
     createdAt: Date.now(),
-    durationSec: dur,
+    // 与系列/统计同源（真实路径一律取 series 末帧时间），避免时长对不上
+    durationSec: stats.durationSec,
     sampleHz: hz,
     series,
     stats: {
