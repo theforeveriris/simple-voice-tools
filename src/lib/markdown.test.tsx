@@ -54,6 +54,47 @@ describe('renderMarkdown', () => {
     expect(h).not.toContain('<ul');
     expect(h).toContain('plain text');
   });
+
+  it('围栏代码块：内容原样输出为 <pre><code>，不做行内解析', () => {
+    const h = html(renderMarkdown('```bash\nnpm run build -- --watch\n```'));
+    expect(h).toContain('<pre');
+    expect(h).toContain('<code>');
+    expect(h).toContain('npm run build -- --watch');
+    // 代码块内的 ** 不解析为粗体
+    const h2 = html(renderMarkdown('```\n**not bold**\n```'));
+    expect(h2).not.toContain('<strong');
+    expect(h2).toContain('**not bold**');
+  });
+
+  it('围栏代码块未闭合时吃到文末（不丢内容）', () => {
+    const h = html(renderMarkdown('```\nline1\nline2'));
+    expect(h).toContain('line1');
+    expect(h).toContain('line2');
+  });
+
+  it('多段代码块与段落混排', () => {
+    const h = html(renderMarkdown('说明\n\n```\ncode1\n```\n\n```\ncode2\n```'));
+    expect(h).toContain('说明');
+    expect(h).toContain('code1');
+    expect(h).toContain('code2');
+    expect((h.match(/<pre/g) ?? []).length).toBe(2);
+  });
+
+  it('缩进列表项保留层级（子项带缩进类）', () => {
+    const h = html(renderMarkdown('- 顶层\n  - 子项'));
+    expect(h).toContain('顶层');
+    expect(h).toContain('子项');
+    expect(h).toContain('ml-4');
+  });
+
+  it('doc 尺度：一级标题更大且带下边框，正文显式字号', () => {
+    const chat = html(renderMarkdown('# 标题'));
+    const doc = html(renderMarkdown('# 标题', 'doc'));
+    expect(chat).not.toContain('border-b');
+    expect(doc).toContain('border-b');
+    expect(doc).toContain('text-xl');
+    expect(html(renderMarkdown('正文', 'doc'))).toContain('text-[13px]');
+  });
 });
 
 describe('renderAssistantContent', () => {

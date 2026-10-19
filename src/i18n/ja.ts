@@ -762,6 +762,20 @@ export const ja = {
   'settings.docCppsDesc': '実ケプストラム · 回帰線ベースライン · 時間平滑化',
   'settings.docDevTitle': '開発ガイド',
   'settings.docDevDesc': 'アーキテクチャ · データフロー · テーマとモーションのモデル',
+  'settings.docRecordsTitle': '記録フォーマット標準',
+  'settings.docRecordsDesc': 'JSON Schema · フィールド解説と検証ツール',
+  'settings.docCapacitorTitle': 'ガイド：Android（Capacitor）',
+  'settings.docCapacitorDesc': 'ビルド · 署名 · ネイティブ共有と既知の制限',
+  'settings.docDesktopTitle': 'ガイド：Windows デスクトップ（Tauri）',
+  'settings.docDesktopDesc': 'ビルド · CI とプラットフォーム差異',
+  'settings.docRefsTitle': '参考文献',
+  'settings.docRefsDesc': '各参照範囲とアルゴリズム選択の文献出典',
+
+  'docs.loading': 'ドキュメントを読み込み中…',
+  'docs.loadFail': 'ドキュメントの読み込みに失敗しました。後でもう一度お試しください',
+  'docs.copyAll': '全文をコピー',
+  'docs.copied': '全文をコピーしました',
+  'docs.openGithub': 'GitHub でソースを表示',
 
   /* ---------- 分享图 ---------- */
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
@@ -1210,7 +1224,7 @@ export const ja = {
   'themeShare.importFail': 'テーマファイルが無効です（.svt-theme JSON が必要）',
   'themeShare.overwrite': '取り込むと現在の外観設定が上書きされます。続行しますか？',
 
-  'sibilance.title': '咝音分析（/s/ ブレード）',
+  'sibilance.title': '咝音分析',
   'sibilance.explain': '咝音（/s/ /x/ /sh/ などの摩擦音）のスペクトル重心は音色の性別知覚と直接関係します：高いほど明るく、低いほど沈みます。統計はこの録音から自動検出した摩擦音フレームに基づきます。トレーニング参考用であり医療指標ではありません。',
   'sibilance.needAudio': '咝音分析には録音音声が必要です（音声品質指標と同じ条件）',
   'sibilance.analyzing': '咝音フレームを分析中…',

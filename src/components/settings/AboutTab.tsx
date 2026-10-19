@@ -8,62 +8,67 @@
 import { useState } from 'react';
 import { BookOpen, ChevronRight, HeartHandshake, Info, Code2, GraduationCap, ShieldCheck, MessageSquareWarning } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import { GuideSheet } from './GuideSheet';
+import { DocSheet } from './DocSheet';
 import { FeedbackDialog } from './FeedbackDialog';
 import { t } from '@/i18n';
+import type { DictKey } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
+import {
+  DEV_DOCS, PUBLIC_DOCS, USER_DOCS, docGithubUrl, loadDoc, loadPublicDoc, type DocEntry,
+} from '@/lib/docs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui';
 import { SettingsSection } from './rows';
 
-const DOC_BASE_URL = 'https://github.com/theforeveriris/simple-voice-tools/blob/main/documentation';
-
-interface DocEntry {
-  titleKey: 'settings.docGuideTitle' | 'settings.docYinTitle' | 'settings.docLpcTitle' | 'settings.docEnergyTitle' | 'settings.docCppsTitle' | 'settings.docDevTitle'
-    | 'settings.docI18nTitle' | 'settings.docThemeTitle' | 'settings.docStateTitle' | 'settings.docSettingsTitle' | 'settings.docPwaTitle';
-  descKey: 'settings.docGuideDesc' | 'settings.docYinDesc' | 'settings.docLpcDesc' | 'settings.docEnergyDesc' | 'settings.docCppsDesc' | 'settings.docDevDesc'
-    | 'settings.docI18nDesc' | 'settings.docThemeDesc' | 'settings.docStateDesc' | 'settings.docSettingsDesc' | 'settings.docPwaDesc';
-  file: string;
+/** 可在应用内打开的文档（documentation/ 懒加载 或 public/ fetch） */
+interface OpenDoc {
+  /** 稳定标识（来源 + 文件名），用作 DocSheet key 与 loader 记忆 */
+  key: string;
+  /** 标题词条（渲染时翻译，跟随界面语言切换） */
+  titleKey: DictKey;
+  load: () => Promise<string>;
+  githubUrl?: string;
 }
 
-/** 使用说明（面向使用者的参数与结果解读） */
-const USER_DOC_ENTRIES: DocEntry[] = [
-  { titleKey: 'settings.docGuideTitle', descKey: 'settings.docGuideDesc', file: 'PARAMETERS-GUIDE.md' },
-];
+function entryToDoc(e: DocEntry): OpenDoc {
+  return {
+    key: `repo:${e.file}`,
+    titleKey: e.titleKey,
+    load: () => loadDoc(e.file),
+    githubUrl: docGithubUrl(e.file),
+  };
+}
 
-/** 开发者文档（算法与架构） */
-const DEV_DOC_ENTRIES: DocEntry[] = [
-  { titleKey: 'settings.docDevTitle', descKey: 'settings.docDevDesc', file: 'DEVELOPMENT.md' },
-  { titleKey: 'settings.docI18nTitle', descKey: 'settings.docI18nDesc', file: 'ARCHITECTURE-I18N.md' },
-  { titleKey: 'settings.docThemeTitle', descKey: 'settings.docThemeDesc', file: 'ARCHITECTURE-THEME.md' },
-  { titleKey: 'settings.docStateTitle', descKey: 'settings.docStateDesc', file: 'ARCHITECTURE-STATE.md' },
-  { titleKey: 'settings.docSettingsTitle', descKey: 'settings.docSettingsDesc', file: 'ARCHITECTURE-SETTINGS.md' },
-  { titleKey: 'settings.docPwaTitle', descKey: 'settings.docPwaDesc', file: 'GUIDE-PWA.md' },
-  { titleKey: 'settings.docYinTitle', descKey: 'settings.docYinDesc', file: 'ALGORITHM-YIN.md' },
-  { titleKey: 'settings.docLpcTitle', descKey: 'settings.docLpcDesc', file: 'ALGORITHM-FORMANT-LPC.md' },
-  { titleKey: 'settings.docEnergyTitle', descKey: 'settings.docEnergyDesc', file: 'ALGORITHM-ENERGY.md' },
-  { titleKey: 'settings.docCppsTitle', descKey: 'settings.docCppsDesc', file: 'ALGORITHM-CPPS.md' },
-];
+const USER_OPEN_DOCS: OpenDoc[] = USER_DOCS.map(entryToDoc);
+const DEV_OPEN_DOCS: OpenDoc[] = DEV_DOCS.map(entryToDoc);
 
-function DocList({ entries }: { entries: DocEntry[] }) {
+const GUIDE_DOC: OpenDoc = {
+  key: `public:${PUBLIC_DOCS.guide.file}`,
+  titleKey: PUBLIC_DOCS.guide.titleKey,
+  load: () => loadPublicDoc(PUBLIC_DOCS.guide.file),
+};
+
+const PRIVACY_DOC: OpenDoc = {
+  key: `public:${PUBLIC_DOCS.privacy.file}`,
+  titleKey: PUBLIC_DOCS.privacy.titleKey,
+  load: () => loadPublicDoc(PUBLIC_DOCS.privacy.file),
+};
+
+/** 文档列表：点击即在应用内打开（源文件入口移进查看器顶栏） */
+function DocList({ docs, onOpen }: { docs: OpenDoc[]; onOpen: (doc: OpenDoc) => void }) {
   return (
     <>
-      {entries.map((doc) => (
-        <a
-          key={doc.titleKey}
-          href={`${DOC_BASE_URL}/${doc.file}`}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-sm font-medium text-ink transition-colors first:border-t-0 hover:text-accent"
+      {docs.map((doc) => (
+        <button
+          key={doc.key}
+          onClick={() => onOpen(doc)}
+          className="flex w-full items-center justify-between gap-2 border-t border-black/[0.04] py-3 text-left text-sm font-medium text-ink transition-colors first:border-t-0 hover:text-accent"
         >
-          <span className="flex min-w-0 items-center gap-2 text-left">
+          <span className="flex min-w-0 items-center gap-2">
             <BookOpen size={14} className="shrink-0 text-accent" />
-            <span className="truncate">
-              {t(doc.titleKey)}
-              <span className="ml-2 text-[11px] font-normal text-ink-2">{t(doc.descKey)}</span>
-            </span>
+            <span className="truncate">{t(doc.titleKey)}</span>
           </span>
           <ChevronRight size={15} className="shrink-0 text-ink-2" />
-        </a>
+        </button>
       ))}
     </>
   );
@@ -104,8 +109,8 @@ export function AboutTab() {
   useI18n();
   // 免责声明：每次进入关于标签页自动弹出（本组件随标签切换挂载/卸载）
   const [disclaimerOpen, setDisclaimerOpen] = useState(true);
-  // 使用说明（guide.md 应用内查看）
-  const [guideOpen, setGuideOpen] = useState(false);
+  // 应用内文档查看器（使用说明 / 参数说明 / 开发文档 / 隐私政策）
+  const [openDoc, setOpenDoc] = useState<OpenDoc | null>(null);
   // 问题反馈弹窗
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
@@ -139,16 +144,14 @@ export function AboutTab() {
           <p className="text-sm font-semibold text-ink">Simple Voice Tool</p>
           <p className="mt-1">{t('settings.aboutVersion')}</p>
           <p className="mt-1">{t('settings.aboutPrivacy')}</p>
-          {/* 隐私政策全文：随站点发布（public/privacy-policy.md），亦为应用商店要求可公开访问的政策 URL */}
-          <a
-            href={`${import.meta.env.BASE_URL}privacy-policy.md`}
-            target="_blank"
-            rel="noreferrer"
+          {/* 隐私政策全文：应用内可读（public/privacy-policy.md） */}
+          <button
+            onClick={() => setOpenDoc(PRIVACY_DOC)}
             className="mt-2 inline-flex items-center gap-1 font-medium text-accent transition-opacity hover:opacity-70"
           >
             <ShieldCheck size={13} />
             {t('settings.privacyPolicy')}
-          </a>
+          </button>
           {/* 问题反馈：自动收集非敏感诊断，预览确认后才离开设备 */}
           <button
             onClick={() => setFeedbackOpen(true)}
@@ -160,10 +163,10 @@ export function AboutTab() {
         </div>
       </SettingsSection>
 
-      {/* 文档：使用说明（应用内查看 guide.md）+ 开发者文档（GitHub 仓库内源文件） */}
+      {/* 文档：使用说明 + 参数说明 + 开发者文档，全部应用内可读（懒加载，离线可用） */}
       <SettingsSection icon={GraduationCap} title={t('settings.userDocs')}>
         <button
-          onClick={() => setGuideOpen(true)}
+          onClick={() => setOpenDoc(GUIDE_DOC)}
           className="flex w-full items-center justify-between gap-2 py-3 text-left first:border-t-0"
         >
           <span className="flex min-w-0 items-center gap-2">
@@ -173,17 +176,25 @@ export function AboutTab() {
               <span className="ml-2 text-[11px] font-normal text-ink-2">{t('settings.guideDesc')}</span>
             </span>
           </span>
-          <span className="shrink-0 text-xs font-medium text-accent">{t('settings.guideOpen')}</span>
+          <ChevronRight size={15} className="shrink-0 text-ink-2" />
         </button>
-        <DocList entries={USER_DOC_ENTRIES} />
+        <DocList docs={USER_OPEN_DOCS} onOpen={setOpenDoc} />
       </SettingsSection>
       <SettingsSection icon={Code2} title={t('settings.devDocs')}>
-        <DocList entries={DEV_DOC_ENTRIES} />
+        <DocList docs={DEV_OPEN_DOCS} onOpen={setOpenDoc} />
       </SettingsSection>
 
-      {/* 使用说明（全屏查看器）；AnimatePresence 让关闭时的退出淡出真正播放 */}
+      {/* 应用内文档查看器（AnimatePresence 让关闭时的退出淡出真正播放） */}
       <AnimatePresence>
-        {guideOpen && <GuideSheet onClose={() => setGuideOpen(false)} />}
+        {openDoc && (
+          <DocSheet
+            key={openDoc.key}
+            title={t(openDoc.titleKey)}
+            load={openDoc.load}
+            githubUrl={openDoc.githubUrl}
+            onClose={() => setOpenDoc(null)}
+          />
+        )}
       </AnimatePresence>
 
       {/* 问题反馈弹窗 */}

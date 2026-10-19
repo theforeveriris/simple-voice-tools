@@ -22,6 +22,8 @@ export default defineConfig({
     },
     // 断言默认超时收紧
     actionTimeout: 10_000,
+    // 时区钉死：快照里的日期/时间串必须跨机器、跨环境稳定（CI 与本地一致）
+    timezoneId: 'Asia/Shanghai',
   },
   webServer: {
     command: 'npx vite --port 5199 --strictPort',

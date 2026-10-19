@@ -762,6 +762,20 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'settings.docCppsDesc': '實倒譜 · 迴歸之基線 · 時之平滑',
   'settings.docDevTitle': '開發指南',
   'settings.docDevDesc': '架構 · 數之流 · 主題與動效之模',
+  'settings.docRecordsTitle': '記錄格式之公準',
+  'settings.docRecordsDesc': 'JSON Schema · 字段之釋與校正之具',
+  'settings.docCapacitorTitle': '指南：安卓（Capacitor）',
+  'settings.docCapacitorDesc': '打包 · 簽署 · 原生分享與已知之限',
+  'settings.docDesktopTitle': '指南：視窗桌面（Tauri）',
+  'settings.docDesktopDesc': '構建 · CI 與平台之異',
+  'settings.docRefsTitle': '參考文獻',
+  'settings.docRefsDesc': '諸參考區間與算法取舍之出處',
+
+  'docs.loading': '方載其文…',
+  'docs.loadFail': '載文不成，請少緩再試',
+  'docs.copyAll': '謄其全文',
+  'docs.copied': '全文已謄',
+  'docs.openGithub': '於 GitHub 觀其源',
 
   /* ---------- 分享图 ---------- */
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
@@ -1210,7 +1224,7 @@ export const lzh: Partial<Record<import('./zh-CN').DictKey, string>> = {
   'themeShare.importFail': '其檔非效（須 .svt-theme JSON）',
   'themeShare.overwrite': '入之即覆今色貌之設，行之乎？',
 
-  'sibilance.title': '咝音之析（/s/ 之刃）',
+  'sibilance.title': '咝音之析',
   'sibilance.explain': '咝音（/s/ /x/ /sh/ 之屬）之譜重心與音色男女之感繫焉：高者清亮，低者沉濁。其據自此錄中自擇之摩擦音帧，以資練習之參，非醫家之指。',
   'sibilance.needAudio': '析咝音須錄音之音（與嗓音諸指同例）',
   'sibilance.analyzing': '方析咝音之帧…',

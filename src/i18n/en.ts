@@ -761,6 +761,20 @@ export const en = {
   'settings.docCppsDesc': 'Real cepstrum · regression baseline · temporal smoothing',
   'settings.docDevTitle': 'Development guide',
   'settings.docDevDesc': 'Architecture · data flow · theming & motion',
+  'settings.docRecordsTitle': 'Records format standard',
+  'settings.docRecordsDesc': 'JSON Schema · field reference & validator',
+  'settings.docCapacitorTitle': 'Guide: Android (Capacitor)',
+  'settings.docCapacitorDesc': 'Build · signing · native share & limits',
+  'settings.docDesktopTitle': 'Guide: Windows desktop (Tauri)',
+  'settings.docDesktopDesc': 'Build · CI & platform differences',
+  'settings.docRefsTitle': 'References',
+  'settings.docRefsDesc': 'Literature behind every reference range',
+
+  'docs.loading': 'Loading document…',
+  'docs.loadFail': 'Failed to load the document, please try again',
+  'docs.copyAll': 'Copy full text',
+  'docs.copied': 'Full text copied',
+  'docs.openGithub': 'View source on GitHub',
 
   /* ---------- Share card ---------- */
   'share.rangeLine': 'Range P10–P90: {a} – {b} Hz',
@@ -1209,7 +1223,7 @@ export const en = {
   'themeShare.importFail': 'Invalid theme file (a .svt-theme JSON is expected)',
   'themeShare.overwrite': 'Importing will overwrite your current appearance settings. Continue?',
 
-  'sibilance.title': 'Sibilance analysis (/s/ blade)',
+  'sibilance.title': 'Sibilance analysis',
   'sibilance.explain': 'The spectral centroid of sibilants (/s/ /x/ /sh/ fricatives) correlates directly with the gender perception of timbre: higher = brighter, lower = darker. Statistics come from fricative frames auto-detected in this recording; for training reference only, not a medical metric.',
   'sibilance.needAudio': 'Sibilance analysis needs the saved audio (same requirement as voice-quality metrics)',
   'sibilance.analyzing': 'Analyzing sibilant frames…',

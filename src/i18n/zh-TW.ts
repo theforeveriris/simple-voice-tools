@@ -761,6 +761,20 @@ export const zhTW = {
   'settings.docCppsDesc': '實倒譜 · 迴歸線基線 · 時間平滑',
   'settings.docDevTitle': '開發指南',
   'settings.docDevDesc': '架構 · 資料流 · 主題與動效模型',
+  'settings.docRecordsTitle': '記錄格式開放標準',
+  'settings.docRecordsDesc': 'JSON Schema · 欄位說明與校驗工具',
+  'settings.docCapacitorTitle': '指南：Android（Capacitor）',
+  'settings.docCapacitorDesc': '打包 · 簽名 · 原生分享與已知限制',
+  'settings.docDesktopTitle': '指南：Windows 桌面（Tauri）',
+  'settings.docDesktopDesc': '建置 · CI 與平台差異',
+  'settings.docRefsTitle': '參考文獻',
+  'settings.docRefsDesc': '每條參考區間與演算法取捨的文獻出處',
+
+  'docs.loading': '正在載入文件…',
+  'docs.loadFail': '文件載入失敗，請稍後重試',
+  'docs.copyAll': '複製全文',
+  'docs.copied': '全文已複製',
+  'docs.openGithub': '在 GitHub 中檢視原始檔',
 
   /* ---------- 分享圖 ---------- */
   'share.rangeLine': '音域 P10–P90：{a} – {b} Hz',
@@ -1209,7 +1223,7 @@ export const zhTW = {
   'themeShare.importFail': '主題檔案無效（需要 .svt-theme JSON）',
   'themeShare.overwrite': '匯入將立即覆蓋目前外觀設定，繼續？',
 
-  'sibilance.title': '咝音分析（/s/ 之刃）',
+  'sibilance.title': '咝音分析',
   'sibilance.explain': '咝音（/s/ /x/ /sh/ 等摩擦音）的頻譜重心與音色性別感知直接相關：重心越高越清亮，越低越沉。統計取自本條錄音中自動檢出的摩擦音帧，僅供訓練參考，非醫療指標。',
   'sibilance.needAudio': '需要錄音音訊才能分析咝音（與嗓音品質指標同口徑）',
   'sibilance.analyzing': '正在分析咝音帧…',
