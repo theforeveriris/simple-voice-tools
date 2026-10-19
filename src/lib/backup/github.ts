@@ -300,7 +300,12 @@ async function ensureRepo(token: string, repoName: string): Promise<string> {
   return login;
 }
 
-/** 一次拉取远端文件树（path → blob sha）；空仓库返回空表 */
+/**
+ * 一次拉取远端文件树（path → blob sha）。
+ * 空仓库（尚无 HEAD 提交）返回空表；鉴权 / 限流 / 网络等失败必须向上抛出——
+ * 若一并吞成空表，拉取时会被误报成「云端没有备份」，推送时又会被当成
+ * 「远端全部是新文件」，把真实原因（令牌失效等）藏起来。
+ */
 async function fetchRemoteShas(token: string, owner: string, repo: string): Promise<Map<string, string>> {
   try {
     const tree = await gh<{ tree: { path: string; sha: string; type: string }[] }>(
@@ -310,8 +315,10 @@ async function fetchRemoteShas(token: string, owner: string, repo: string): Prom
     const map = new Map<string, string>();
     for (const e of tree.tree) if (e.type === 'blob') map.set(e.path, e.sha);
     return map;
-  } catch {
-    return new Map();
+  } catch (err) {
+    // 404/409：仓库刚建好还没有提交（HEAD 不存在）→ 视作空仓库
+    if (err instanceof GhError && (err.status === 404 || err.status === 409)) return new Map();
+    throw err;
   }
 }
 
