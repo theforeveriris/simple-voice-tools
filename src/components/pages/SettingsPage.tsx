@@ -44,6 +44,7 @@ const SEARCH_INDEX: { page: SubPage; sectionKey: DictKey; labelKey: DictKey }[] 
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.syncRange' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.mobileSpark' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.liveWindow' },
+  { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.pitchSmoothing' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.pitchAxis' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.specColormap' },
   { page: 'appearance', sectionKey: 'settings.chartDisplay', labelKey: 'settings.playbackRateSel' },

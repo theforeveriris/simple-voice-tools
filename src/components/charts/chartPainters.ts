@@ -5,8 +5,9 @@
  * 调色板 / 画布助手等公共件见 chartShared.ts。
  */
 
-import { BAND_COLORS, bandOf, getBandRanges, getPitchAxis, ENERGY_AXIS, FORMANT_AXIS } from '@/constants';
+import { BAND_COLORS, bandOf, getBandRanges, getPitchAxis, getPitchSmoothing, ENERGY_AXIS, FORMANT_AXIS } from '@/constants';
 import { formatClock } from '@/lib/utils';
+import { smoothPitch } from '@/lib/audio/pitchSmooth';
 import type { PitchBand } from '@/types';
 import type { PaintContext, SeriesLike } from './chartShared';
 import { chartPalette, DASH, dashedLine } from './chartShared';
@@ -462,7 +463,10 @@ export function paintChart(
     if (target) drawTargetBand(ctx, w, h, target, yFor);
     drawValueGrid(p, yFor, [100, 300, 500].map((v) => ({ v, label: `${v}Hz` })));
     drawTimeGrid(p);
-    drawPitchLine(p, series, xOf, yFor);
+    // 实时显示平滑（设置项）：只改图表观感，静态分析曲线与统计保持原始数据
+    const lvl = live ? getPitchSmoothing() : 0;
+    const pitchSeries = lvl > 0 ? { ...series, f0: smoothPitch(series.f0, lvl) } : series;
+    drawPitchLine(p, pitchSeries, xOf, yFor);
   } else if (kind === 'energy') {
     const [dMin, dMax] = ENERGY_AXIS;
     const yFor = (db: number) => h - ((db - dMin) / (dMax - dMin)) * h;

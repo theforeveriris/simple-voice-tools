@@ -342,6 +342,8 @@ export interface AppSettings {
   pitchAxisMax: number;
   /** 测试页实时图表滚动窗口（秒） */
   liveWindowSec: number;
+  /** 实时音高曲线的显示平滑级别（0 = 关闭，1–3 递增；仅影响图表观感，不改记录与统计） */
+  pitchSmoothing: number;
   /** 语谱图伪彩色方案 */
   specColormap: SpecColormap;
   /** 录音码率（kbps，MediaRecorder audioBitsPerSecond） */

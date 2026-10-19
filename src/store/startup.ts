@@ -11,7 +11,7 @@ import type { AppSettings } from '@/types';
 import {
   AGE_BAND_PRESETS, setBandBounds,
   setPitchAxis, setLiveWindowSec, setSpecColormap, setPitchAlgorithm,
-  setFormantTarget,
+  setFormantTarget, setPitchSmoothing,
 } from '@/constants';
 import { applyPrideParams } from '@/lib/theme/monet';
 import { applyBgImage } from '@/lib/theme/bgImage';
@@ -51,6 +51,7 @@ export function syncModuleSettings(s: AppSettings): void {
   setBandBounds(s.bandBounds ?? AGE_BAND_PRESETS[s.ageGroup]);
   setPitchAxis(s.pitchAxisMin, s.pitchAxisMax);
   setLiveWindowSec(s.liveWindowSec);
+  setPitchSmoothing(s.pitchSmoothing);
   setSpecColormap(s.specColormap);
   setPitchAlgorithm(s.pitchAlgorithm);
   setFormantTarget(s.formantTargetEnabled

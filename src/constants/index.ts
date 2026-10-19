@@ -257,6 +257,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   pitchAxisMin: 50,
   pitchAxisMax: 520,
   liveWindowSec: 12,
+  pitchSmoothing: 0,
   specColormap: 'magma',
   audioBitrateKbps: 128,
   micEnhance: false,
@@ -313,6 +314,18 @@ export function getLiveWindowSec(): number {
 }
 export function setLiveWindowSec(sec: number): void {
   currentLiveWindowSec = [6, 12, 20].includes(sec) ? sec : LIVE_WINDOW_SEC;
+}
+
+/**
+ * 运行时实时音高显示平滑级别（0 = 关闭，1–3 递增）
+ * 画笔读取：仅平滑实时音量图表的显示，不影响记录数据与统计（音符/读数保持真实）
+ */
+let currentPitchSmoothing = 0;
+export function getPitchSmoothing(): number {
+  return currentPitchSmoothing;
+}
+export function setPitchSmoothing(level: number): void {
+  currentPitchSmoothing = Number.isFinite(level) ? Math.max(0, Math.min(3, Math.round(level))) : 0;
 }
 
 /** 运行时语谱图配色（导入 settings 时同步） */

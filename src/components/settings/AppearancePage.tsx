@@ -468,6 +468,22 @@ export function AppearancePage({
               </SelectContent>
             </Select>
           </SettingRow>
+          <SettingRow label={<InfoTip label={t('settings.pitchSmoothing')} text={t('settings.pitchSmoothingDesc')} />}>
+            <Select
+              value={String(settings.pitchSmoothing)}
+              onValueChange={(v) => update({ pitchSmoothing: Number(v) })}
+            >
+              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
+                <SelectItem value="0">{t('settings.pitchSmoothOff')}</SelectItem>
+                <SelectItem value="1">{t('settings.pitchSmoothLight')}</SelectItem>
+                <SelectItem value="2">{t('settings.pitchSmoothMedium')}</SelectItem>
+                <SelectItem value="3">{t('settings.pitchSmoothStrong')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingRow>
           <SettingRow label={<InfoTip label={t('settings.pitchAxis')} text={t('settings.pitchAxisDesc')} />}>
             <div className="flex items-center gap-1.5">
               <input
