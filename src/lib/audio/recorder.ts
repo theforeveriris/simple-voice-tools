@@ -265,7 +265,7 @@ class VoiceRecorder {
   private monitoring = false;
   /** 静音自动停止（长音模式）：发声开始后持续静音阈值（秒，0 = 不启用） */
   private silenceStopSec = 0;
-  /** 最近一次发声帧的时间戳（performance.now，ms） */
+  /** 最近一次发声帧的时间戳（相对录音起点的秒数，与 loop 内的 now 同口径） */
   private lastVoicedAt = 0;
   /** 是否已出现过发声帧（防止录完即静音的环境被立即判停） */
   private voicedSeen = false;
@@ -675,7 +675,7 @@ class VoiceRecorder {
       if (db > algo.activeGateDb) {
         this.voicedSeen = true;
         this.lastVoicedAt = now;
-      } else if (this.voicedSeen && now - this.lastVoicedAt >= this.silenceStopSec * 1000) {
+      } else if (this.voicedSeen && now - this.lastVoicedAt >= this.silenceStopSec) {
         this.autoStopFired = true;
         this.onAutoStop?.();
         return;
