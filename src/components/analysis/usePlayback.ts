@@ -128,8 +128,12 @@ export function usePlayback(record: AnalysisRecord | null, pitchRange: [number, 
 
   const seekPlay = (frac: number) => {
     const audio = audioRef.current;
-    if (!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
-    const time = Math.max(0, Math.min(1, frac)) * audio.duration;
+    if (!audio || !record) return;
+    // 与 togglePlay 同口径：MediaRecorder 录制的流式 webm 其 duration 常为 Infinity，
+    // 据它直接 return 会让应用内录音的进度条完全失效（拖动无反应、滑块回弹）
+    const dur = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : record.durationSec;
+    if (!(dur > 0)) return;
+    const time = Math.max(0, Math.min(1, frac)) * dur;
     audio.currentTime = time;
     setPlayTime(time);
   };
