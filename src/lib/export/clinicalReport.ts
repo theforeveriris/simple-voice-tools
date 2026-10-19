@@ -115,7 +115,7 @@ export function buildClinicalReportHtml(record: AnalysisRecord): string {
   const s = record.stats;
   const { accent, accent2 } = accentColors();
   const dateStr = new Date(record.createdAt).toLocaleString(localeTag());
-  const modeLabel = record.mode ? t(`mode.${record.mode}`) : t('analysis.statDuration');
+  const modeLabel = t(`mode.${record.mode ?? 'reading'}`);
   const rows = statRows(record);
   const chartW = 720;
   const chartH = 150;
@@ -170,7 +170,7 @@ export function buildClinicalReportHtml(record: AnalysisRecord): string {
   <span class="date">${t('report.clinicalTitle')} · ${dateStr}</span>
 </header>
 <h1>${t('report.clinicalTitle')}</h1>
-<p class="meta">${t('analysis.rowDuration')}: ${fmtClock(record.durationSec)} · ${t('analysis.statDuration')}: ${modeLabel} · ${t('analysis.rowFrames')}: ${s.totalSamples} (${s.sampleHz.toFixed(0)} Hz)</p>
+<p class="meta">${t('analysis.rowDuration')}: ${fmtClock(record.durationSec)} · ${t('history.trendModeLabel')}: ${modeLabel} · ${t('analysis.rowFrames')}: ${s.totalSamples} (${s.sampleHz.toFixed(0)} Hz)</p>
 ${noteHtml}
 
 <h2>${t('report.sectionStats')}</h2>

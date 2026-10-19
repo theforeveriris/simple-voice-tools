@@ -52,8 +52,11 @@ export function envInsights(records: AnalysisRecord[]): EnvInsight[] {
   const floors = recent.map((r) => envOf(r)?.noiseFloorDb).filter((x): x is number => x != null);
   if (floors.length >= MIN_BUCKET * 2) {
     const mid = median(floors);
-    const quiet = recent.filter((r) => (envOf(r)?.noiseFloorDb ?? mid) <= mid);
-    const noisy = recent.filter((r) => (envOf(r)?.noiseFloorDb ?? mid) > mid);
+    // 只比较确实记录了底噪的记录：缺字段的旧记录不能默认算进「安静」组，
+    // 否则会把两组都掺进无数据记录，结论失去意义
+    const withFloor = recent.filter((r) => envOf(r)?.noiseFloorDb != null);
+    const quiet = withFloor.filter((r) => (envOf(r)!.noiseFloorDb as number) <= mid);
+    const noisy = withFloor.filter((r) => (envOf(r)!.noiseFloorDb as number) > mid);
     const quietF0 = quiet.map((r) => r.stats.avgF0);
     const noisyF0 = noisy.map((r) => r.stats.avgF0);
     if (quietF0.length >= MIN_BUCKET && noisyF0.length >= MIN_BUCKET) {
@@ -85,7 +88,7 @@ export function envInsights(records: AnalysisRecord[]): EnvInsight[] {
     }
   }
 
-  // ---- 麦克风变化（最近 7 天内出现过 ≥2 个不同标签）----
+  // ---- 麦克风变化（最近 60 条记录内出现过 ≥2 个不同标签；窗口见函数头部）----
   const labels = new Set(recent.map((r) => envOf(r)?.micLabel).filter((x): x is string => !!x));
   if (labels.size >= 2) {
     out.push({ key: 'envInsight.micChanged', params: { n: labels.size } });

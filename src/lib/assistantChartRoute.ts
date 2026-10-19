@@ -16,7 +16,9 @@ export function isImgKind(v: string): v is ImgKind {
  */
 export function renderAssistantContent(text: string): { type: 'md' | 'img'; content: string; alt?: string; recordId?: string; kind?: ImgKind }[] {
   const parts: { type: 'md' | 'img'; content: string; alt?: string; recordId?: string; kind?: ImgKind }[] = [];
-  const re = /!\[([^\]]*)\]\(record:\/\/([A-Za-z0-9-]+)\/(\w+)\)/g;
+  // 记录 id 可能是 crypto.randomUUID()，也可能是非安全上下文下的
+  // `${Date.now()}-${Math.random()}` 兜底（含小数点），两种都要能匹配
+  const re = /!\[([^\]]*)\]\(record:\/\/([A-Za-z0-9_.-]+)\/(\w+)\)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {

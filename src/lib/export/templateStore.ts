@@ -15,7 +15,10 @@ function lsGet(): ExportTemplate[] {
   if (lsBroken) return (memoryStore.get(LS_KEY) as ExportTemplate[]) ?? [];
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? (JSON.parse(raw) as ExportTemplate[]) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    // 存储被外部改坏（不是数组）时不能让 .filter 抛错，退回空列表
+    return Array.isArray(parsed) ? (parsed as ExportTemplate[]) : [];
   } catch {
     lsBroken = true;
     return (memoryStore.get(LS_KEY) as ExportTemplate[]) ?? [];

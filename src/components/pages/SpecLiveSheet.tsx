@@ -142,7 +142,6 @@ export function SpecLiveSheet({ onClose }: { onClose: () => void }) {
         />
         <p className="mt-2 text-center text-[10px] leading-relaxed text-ink-2">{t('specLive.hint')}</p>
       </div>
-      <p className="mt-2 text-center text-xs text-ink-2">{t('specLive.noSignal')}</p>
     </LiveSheetFrame>
   );
 }

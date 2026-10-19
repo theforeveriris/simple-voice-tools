@@ -39,7 +39,15 @@ function openDb(): Promise<IDBDatabase> {
           db.createObjectStore(STORE_KV);
         }
       };
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => {
+        const db = req.result;
+        // 别的标签页请求升级版本时主动让路：长期连接会一直阻塞升级
+        db.onversionchange = () => {
+          db.close();
+          dbPromise = null;
+        };
+        resolve(db);
+      };
       req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
       // 版本升级被其他标签页阻塞：瞬态而非终态，reject 本次调用但不锁死
       req.onblocked = () => {

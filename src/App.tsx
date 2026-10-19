@@ -196,6 +196,8 @@ function App() {
         useStore.getState().setTab(TABS[Number(e.key) - 1]);
         return;
       }
+      // 弹窗（分享卡 / 文档 / 设置子页等）打开时 S 不触发录音
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
       // S = 开始 / 停止录音（任意页签；与测试页 Space 等价的全局键位，
       // 输入控件聚焦的豁免已在函数头部统一处理）
       if (e.key === 's' || e.key === 'S') {

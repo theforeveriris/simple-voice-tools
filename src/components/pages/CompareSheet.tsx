@@ -182,11 +182,12 @@ export function CompareSheet({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      // 分享卡弹窗叠在对比页之上：Esc 先由它消费，避免一次按键同时关掉两层
+      if (e.key === 'Escape' && !shareOpen) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, shareOpen]);
 
   const sA = a.stats;
   const sB = b.stats;
