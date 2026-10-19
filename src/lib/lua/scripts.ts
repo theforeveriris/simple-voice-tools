@@ -126,10 +126,21 @@ export async function listScripts(): Promise<LuaScriptView[]> {
   return [...builtins, ...userViews];
 }
 
+/** 脚本消费方种类（导入校验与 UI 共用） */
+export const SCRIPT_KINDS = ['advice', 'card', 'flower', 'export'] as const;
+export type ScriptKind = (typeof SCRIPT_KINDS)[number];
+
+/** 宽松校验类型字段：未知值回退 advice，不整条丢弃 */
+function asKind(k: unknown): ScriptKind {
+  return typeof k === 'string' && (SCRIPT_KINDS as readonly string[]).includes(k)
+    ? (k as ScriptKind)
+    : 'advice';
+}
+
 /** 导入格式（分享 = 一段 JSON；宽松校验，坏数据逐条丢弃） */
 export interface LuaScriptExport {
   version: 1;
-  scripts: Array<{ name: string; kind: 'advice' | 'card' | 'flower' | 'export'; code: string }>;
+  scripts: Array<{ name: string; kind: ScriptKind; code: string }>;
 }
 
 /** 新脚本 id（导入/新建共用） */
@@ -148,7 +159,8 @@ export async function importScripts(raw: string): Promise<number> {
     await putUserScript({
       id: newId(),
       name: s.name.slice(0, 60),
-      kind: s.kind === 'card' ? 'card' : 'advice',
+      // 保留原始种类（此前把 flower / export 静默降级成 advice，导入即失效）
+      kind: asKind(s.kind),
       code: s.code,
       createdAt: 0,
       updatedAt: 0,

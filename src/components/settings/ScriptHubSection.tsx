@@ -67,6 +67,8 @@ interface Draft {
   id: string | null; // null = 新建
   name: string;
   code: string;
+  /** 脚本种类：编辑时保留原种类，避免保存把 flower/export 降级成 advice */
+  kind: LuaScriptView['kind'];
 }
 
 export function ScriptHubSection() {
@@ -84,7 +86,7 @@ export function ScriptHubSection() {
     await putUserScript({
       id: draft.id ?? `lua-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name,
-      kind: 'advice',
+      kind: draft.kind,
       code: draft.code,
       createdAt: 0,
       updatedAt: 0,
@@ -206,7 +208,7 @@ export function ScriptHubSection() {
             {!s.builtin && (
               <>
                 <button
-                  onClick={() => setDraft({ id: s.id, name: s.name, code: s.code })}
+                  onClick={() => setDraft({ id: s.id, name: s.name, code: s.code, kind: s.kind })}
                   aria-label={t('labs.scriptEdit')}
                   className="grid size-7 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-black/5 hover:text-accent"
                 >
@@ -239,7 +241,7 @@ export function ScriptHubSection() {
       {/* 工具行 */}
       <div className="mt-3 flex items-center gap-3 px-0.5">
         <button
-          onClick={() => setDraft({ id: null, name: '', code: '-- 新脚本：定义 function advise(stats) ...\n' })}
+          onClick={() => setDraft({ id: null, name: '', code: '-- 新脚本：定义 function advise(stats) ...\n', kind: 'advice' })}
           className="flex items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70"
         >
           <FilePlus2 size={13} />
@@ -258,12 +260,17 @@ export function ScriptHubSection() {
       {/* 编辑器 */}
       {draft && (
         <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-black/10 bg-surface-hi p-3">
-          <input
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            placeholder={t('labs.scriptNamePlaceholder')}
-            className="rounded-xl border border-black/10 bg-card px-3 py-2 text-sm text-ink outline-none focus:border-accent"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              placeholder={t('labs.scriptNamePlaceholder')}
+              className="min-w-0 flex-1 rounded-xl border border-black/10 bg-card px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+            />
+            <span className="shrink-0 rounded-full bg-accent-soft px-2 py-1 text-[10px] font-medium text-on-accent-soft">
+              {KIND_LABEL[draft.kind]}
+            </span>
+          </div>
           <textarea
             value={draft.code}
             onChange={(e) => setDraft({ ...draft, code: e.target.value })}
@@ -279,7 +286,7 @@ export function ScriptHubSection() {
               {t('common.save')}
             </button>
             <button
-              onClick={() => void testRun(draft.code, 'advice')}
+              onClick={() => void testRun(draft.code, draft.kind)}
               disabled={testing}
               className="flex items-center gap-1.5 text-xs font-medium text-accent transition-opacity hover:opacity-70 disabled:opacity-40"
             >
