@@ -1,10 +1,10 @@
 ﻿/**
- * 璁粌寤鸿鍗★紙瀹為獙鎬э級
- * adviceMode = rules锛氭湰鍦拌鍒欏紩鎿庣敓鎴愶紙lib/advice.ts锛夛紱
+ * 训练建议卡（实验性）
+ * adviceMode = rules：本地规则引擎生成（lib/advice.ts）；
  * adviceMode = lua：用户 Lua 脚本生成（lib/lua/advice.ts，脚本中心）；
- * adviceMode = llm锛氳皟鐢?璁剧疆 鈫?澶фā鍨?涓娇鐢ㄤ腑妗ｆ鐨勬帴鍙ｏ紙lib/llm.ts锛夈€?
- * 浼犲叆涓ゆ潯璁板綍鏃讹紙瀵规瘮椤碉級鎸?A / B 鍒嗙粍缁欒鍒欏缓璁紝
- * 澶фā鍨嬪垯鍚堝苟涓や唤缁熻鐢熸垚瀵规瘮鎬у缓璁€?
+ * adviceMode = llm：调用设置 → 大模型中使用中档案的接口（lib/llm.ts）。
+ * 传入两条记录时（对比页）按 A / B 分组给规则建议，
+ * 大模型则合并两份统计生成对比性建议。
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -24,7 +24,7 @@ import { t } from '@/i18n';
 import type { AnalysisRecord, UserGoal } from '@/types';
 import { LlmResultView, StreamPreview } from '@/components/analysis/LlmResultView';
 
-/** 寤鸿鍗￠€氱敤楠ㄦ灦锛氭爣棰樿 + 鍐呭 + 搴曢儴鎻愮ず */
+/** 建议卡通用骨架：标题行 + 内容 + 底部提示 */
 export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   const adviceMode = useStore((s) => s.settings.adviceMode);
   const targetEnabled = useStore((s) => s.settings.targetEnabled);
@@ -42,7 +42,7 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   );
   if (adviceMode === 'none') return null;
   const target: AdviceTarget = { enabled: targetEnabled, min: targetMin, max: targetMax };
-  // 鍩虹嚎 螖 鍙湪鍗曡褰曪紙鍒嗘瀽椤碉級涓旈潪鑷韩鏃堕檮甯?
+  // 基线 Δ 只在单记录（分析页）且非自身时附带
   const baseline =
     records.length === 1 && baselineRecord && baselineRecord.id !== records[0].id
       ? baselineRecord
@@ -82,7 +82,7 @@ export function AdviceCard({ records }: { records: AnalysisRecord[] }) {
   );
 }
 
-/** 瑙勫垯鍒ゆ柇锛氭湰鍦伴€愭潯鐢熸垚锛涗袱鏉¤褰曟椂鎸?A / B 鍒嗙粍 */
+/** 规则判断：本地逐条生成；两条记录时按 A / B 分组 */
 function RuleAdvice({ records, target, userGoal }: { records: AnalysisRecord[]; target: AdviceTarget; userGoal: UserGoal }) {
   const paired = records.length > 1;
   return (
@@ -114,10 +114,10 @@ function RuleAdvice({ records, target, userGoal }: { records: AnalysisRecord[]; 
 }
 
 /** Lua 脚本判断：异步跑启用的脚本（脚本中心），错误折叠提示。
- *  鐢?records/target 娲剧敓 key + 璁℃暟鍣ㄥ湪娓叉煋鏈熺敓鎴愯姹傛爣璇嗭紙鏃?effect setState锛夛細
- *  state 瀛樸€屼笂娆″畬鎴愮殑缁撴灉 + 褰撴椂 key銆嶏紝key 涓嶅尮閰嶅嵆瑙嗕负鍔犺浇涓紝鏁版嵁鍒颁綅鍚?setState 钀藉畾銆?*/
+ *  用 records/target 派生 key + 计数器在渲染期生成请求标识（无 effect setState）：
+ *  state 存「上次完成的结果 + 当时 key」，key 不匹配即视为加载中，数据到位后 setState 落定。*/
 function LuaAdvice({ records, target }: { records: AnalysisRecord[]; target: AdviceTarget }) {
-  // 璁板綍缁勫悎鐨勭ǔ瀹氭爣璇嗭紙id 鎷兼帴 + 鐩爣鍊硷級锛岄┍鍔ㄩ噸鏂拌姹?
+  // 记录组合的稳定标识（id 拼接 + 目标值），驱动重新请求
   const reqKey = `${records.map((r) => `${r.id}:${r.reanalyzedAt ?? 0}`).join('|')}#${target.enabled}:${target.min}:${target.max}`;
   const [done, setDone] = useState<{ key: string; tips: LuaAdviceItem[]; errors: number } | null>(null);
   useEffect(() => {
@@ -170,9 +170,9 @@ function LuaAdvice({ records, target }: { records: AnalysisRecord[]; target: Adv
   );
 }
 
-/** 澶фā鍨嬪垽鏂細鐐瑰嚮瑙﹀彂鍚庡紓姝ョ敓鎴愶紙浼氳瘽鍐呯紦瀛橈紝澶辫触鍙噸璇曪級銆?
- *  浠樿垂璋冪敤浠呯敱鐢ㄦ埛鏄惧紡鍙戣捣锛堜笉涓婁紶闊抽锛屼粎缁熻鎸囨爣锛涘嵏杞戒笉涓柇锛岃窇瀹岀収甯歌繘缂撳瓨锛夛紱
- *  閿彉鍖栵紙閲嶇畻/鏀瑰娉級鍚庣殑鍏嶈垂閲嶅彇涓庢墜鍔ㄩ噸鍙栭棬鎺ц useLlmStream銆?*/
+/** 大模型判断：点击触发后异步生成（会话内缓存，失败可重试）。
+ *  付费调用仅由用户显式发起（不上传音频，仅统计指标；卸载不中断，跑完照常进缓存）；
+ *  键变化（重算/改备注）后的免费重取与手动重取门控见 useLlmStream。*/
 function LlmAdvice({
   records,
   target,
@@ -187,7 +187,7 @@ function LlmAdvice({
   prompt: LlmPromptOptions;
 }) {
   const key = cfg ? llmAdviceKey(cfg, records, target, { baseline, prompt }) : null;
-  // effect 鎸夌紦瀛橀敭锛堝€肩ǔ瀹氾級瑙﹀彂锛岃緭鍏ョ粡 ref 浼犻€掞細閿€间笉鍙樺垯涓嶉噸澶嶈姹?
+  // effect 按缓存键（值稳定）触发，输入经 ref 传递：键值不变则不重复请求
   const latest = useRef({ records, target, cfg, baseline, prompt });
   useEffect(() => {
     latest.current = { records, target, cfg, baseline, prompt };
@@ -240,7 +240,7 @@ function LlmAdvice({
     );
   }
   if (stale) {
-    // 閿彉鍖栧悗鏈嚜鍔ㄩ噸鍙栵紙缂撳瓨鏈懡涓級锛氬睍绀烘棫缁撴灉骞剁粰鎵嬪姩閲嶅彇鍏ュ彛锛屼笉鑷姩娑堣€椾粯璐归搴?
+    // 键变化后未自动重取（缓存未命中）：展示旧结果并给手动重取入口，不自动消耗付费额度
     return (
       <div className="flex flex-col gap-1.5 px-0.5">
         {state.result && <LlmResultView result={state.result} />}
