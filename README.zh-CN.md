@@ -138,6 +138,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
+| [贡献指南](CONTRIBUTING.md) | 如何报 Bug、提交 PR、代码风格与隐私要求 |
 | [documentation/DEVELOPMENT.md](documentation/DEVELOPMENT.md) | 开发者文档：架构、数据流、主题系统、动效模型、性能设计 |
 | [documentation/ARCHITECTURE-I18N.md](documentation/ARCHITECTURE-I18N.md) | 架构：i18n 查找链、自定义词条、AI 翻译管线 |
 | [documentation/ARCHITECTURE-THEME.md](documentation/ARCHITECTURE-THEME.md) | 架构：主题系统、骄傲旗预设与渐变参数 |

@@ -84,6 +84,7 @@ A voice measurement, analysis and training tracker built on the Web Audio API. S
 
 | Doc | Contents |
 | --- | --- |
+| [Contributing](CONTRIBUTING.md) | How to report bugs, submit PRs, code style & privacy rules |
 | [documentation/DEVELOPMENT.md](documentation/DEVELOPMENT.md) | Developer docs: architecture, data flow, theming, motion model, performance design |
 | [documentation/ARCHITECTURE-I18N.md](documentation/ARCHITECTURE-I18N.md) | Architecture: i18n lookup chain, custom entries, AI translation pipeline |
 | [documentation/ARCHITECTURE-THEME.md](documentation/ARCHITECTURE-THEME.md) | Architecture: theme system, pride-flag presets, gradient parameters |
