@@ -10,6 +10,9 @@ import { zhTW } from './zh-TW';
 import { en } from './en';
 import { ja } from './ja';
 import { lzh } from './lzh';
+import { es } from './es';
+import { fr } from './fr';
+import { bo } from './bo';
 
 export type DictKey = keyof typeof zhCN;
 type Dict = Partial<Record<DictKey, string>>;
@@ -20,17 +23,32 @@ const DICTS: Record<Locale, Dict> = {
   en,
   ja,
   lzh,
+  es,
+  fr,
+  bo,
   ai: {},
 };
 
-/** 语言选择项：英语 / 日语为机器翻译，选择器中注明（AI 语言项由语言子页面追加） */
-export const LOCALES: { id: Locale; label: string; machine?: boolean }[] = [
+/**
+ * 语言选择项：机器翻译的条目标注（AI 语言项由语言子页面追加）。
+ * machine 显示「机器翻译」，note 显示自定义备注（藏语「雪豹」）。
+ */
+export const LOCALES: { id: Locale; label: string; machine?: boolean; note?: string }[] = [
   { id: 'zh-CN', label: '简体中文' },
   { id: 'zh-TW', label: '繁體中文' },
   { id: 'en', label: 'English', machine: true },
   { id: 'ja', label: '日本語', machine: true },
+  { id: 'es', label: 'Español', machine: true },
+  { id: 'fr', label: 'Français', machine: true },
+  { id: 'bo', label: 'བོད་ཡིག', note: '雪豹' },
   { id: 'lzh', label: '文言（華夏）' },
 ];
+
+/** 语言项的备注文字（无备注返回 null；machine 的文案随界面语言翻译） */
+export function localeRemark(l: { machine?: boolean; note?: string }, machineText: string): string | null {
+  if (l.machine) return machineText;
+  return l.note ?? null;
+}
 
 /** 默认界面语言（与 DEFAULT_SETTINGS.language 一致；用户选择后持久化覆盖） */
 export const DEFAULT_LOCALE: Locale = 'en';

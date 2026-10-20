@@ -69,6 +69,9 @@ function detectBrowserLocale(): Locale {
     if (tag === 'zh-cn' || tag === 'zh-hans') return 'zh-CN';
     if (tag === 'zh-tw' || tag === 'zh-hk' || tag === 'zh-mo' || tag === 'zh-hant') return 'zh-TW';
     if (tag.startsWith('ja')) return 'ja';
+    if (tag.startsWith('es')) return 'es';
+    if (tag.startsWith('fr')) return 'fr';
+    if (tag.startsWith('bo')) return 'bo';
   }
   if (langs.some((l) => l.toLowerCase().startsWith('zh'))) return 'zh-CN';
   return DEFAULT_LOCALE;

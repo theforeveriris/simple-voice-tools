@@ -12,7 +12,7 @@ import {
   ArrowLeft, ChevronDown, Download, Languages, Loader2, Pencil, Trash2, Sparkles, Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { LOCALES, localeTag, t } from '@/i18n';
+import { LOCALES, localeRemark, localeTag, t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import {
   loadAiCache, clearAiCache, hydrateAiLocale,
@@ -154,12 +154,19 @@ export function LanguagePage({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
-                {LOCALES.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.label}
-                    {l.machine && <span className="ml-1.5 text-[10px] text-ink-2">{t('settings.languageMachine')}</span>}
-                  </SelectItem>
-                ))}
+                {LOCALES.map((l) => {
+                  const remark = localeRemark(l, t('settings.languageMachine'));
+                  // 机器翻译文案自带括号；自定义备注（雪豹）在此补齐同款括号
+                  const text = remark && l.note ? `（${remark}）` : remark;
+                  return (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.label}
+                      {text ? (
+                        <span className="ml-1.5 text-[10px] text-ink-2">{text}</span>
+                      ) : null}
+                    </SelectItem>
+                  );
+                })}
                 {aiItemVisible && (
                   <SelectItem value="ai">
                     <span className="flex items-center gap-1.5">

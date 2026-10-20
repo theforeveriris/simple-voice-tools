@@ -4,7 +4,10 @@ import { zhTW } from './zh-TW';
 import { en } from './en';
 import { ja } from './ja';
 import { lzh } from './lzh';
-import { t, setLocale } from './index';
+import { es } from './es';
+import { fr } from './fr';
+import { bo } from './bo';
+import { LOCALES, localeRemark, t, setLocale } from './index';
 
 /** zh-CN 为基准词典，其余语言直接与它对齐 */
 const base = zhCN as unknown as Record<string, string>;
@@ -13,6 +16,9 @@ const others: Record<string, Record<string, string>> = {
   en: en as unknown as Record<string, string>,
   ja: ja as unknown as Record<string, string>,
   lzh: lzh as unknown as Record<string, string>,
+  es: es as unknown as Record<string, string>,
+  fr: fr as unknown as Record<string, string>,
+  bo: bo as unknown as Record<string, string>,
 };
 const baseKeys = Object.keys(base).sort();
 
@@ -39,6 +45,24 @@ describe('词典漂移防护', () => {
         expect(value.length, `${key} 为空字符串`).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe('语言清单', () => {
+  it('除 ai 外的所有内置语言都在选择器中，且都有词典', () => {
+    expect(LOCALES.map((l) => l.id).sort()).toEqual(
+      ['zh-CN', 'zh-TW', 'en', 'ja', 'lzh', 'es', 'fr', 'bo'].sort(),
+    );
+    expect(new Set(LOCALES.map((l) => l.id)).size).toBe(LOCALES.length);
+  });
+
+  it('备注：机器翻译沿用传入文案，自定义备注（雪豹）固定，无备注返回 null', () => {
+    const byId = (id: string) => LOCALES.find((l) => l.id === id)!;
+    expect(localeRemark(byId('es'), 'MT')).toBe('MT');
+    expect(localeRemark(byId('fr'), 'MT')).toBe('MT');
+    expect(localeRemark(byId('bo'), 'MT')).toBe('雪豹');
+    expect(localeRemark(byId('zh-CN'), 'MT')).toBeNull();
+    expect(localeRemark(byId('lzh'), 'MT')).toBeNull();
   });
 });
 

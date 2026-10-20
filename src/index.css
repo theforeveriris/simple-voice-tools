@@ -118,7 +118,8 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'PingFang SC',
-      'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      'Microsoft YaHei', 'Noto Sans SC', 'Microsoft Himalaya', 'Noto Sans Tibetan',
+      'Kailasa', 'Jomolhari', sans-serif;
     overscroll-behavior-y: none;
   }
 

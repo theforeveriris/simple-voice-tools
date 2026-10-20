@@ -21,7 +21,7 @@ import {
 } from '@/constants';
 import type { AgeGroup, AppSettings, UserGoal } from '@/types';
 import { LOCALES } from '@/i18n';
-import { t } from '@/i18n';
+import { localeRemark, t } from '@/i18n';
 import { useI18n } from '@/i18n/hook';
 import { cn } from '@/lib/utils';
 import {
@@ -222,12 +222,15 @@ export function OnboardingSheet() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper" className="rounded-2xl border-0 bg-card shadow-lg">
-                  {LOCALES.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.label}
-                      {l.machine ? ` · ${t('onboard.machine')}` : ''}
-                    </SelectItem>
-                  ))}
+                  {LOCALES.map((l) => {
+                    const remark = localeRemark(l, t('onboard.machine'));
+                    return (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.label}
+                        {remark ? ` · ${remark}` : ''}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </>

@@ -654,7 +654,7 @@ export const en = {
   'settings.themeLight': 'Light',
   'settings.themeDark': 'Dark',
   'settings.language': 'Language',
-  'settings.languageDesc': 'UI display language; English / 日本語 are machine-translated. More languages can be generated with AI translation below',
+  'settings.languageDesc': 'UI display language; items marked "machine translation" or "snow leopard" are AI-translated. More languages can be generated with AI translation below',
   'settings.languageMachine': '(machine translation)',
   'settings.hue': 'Accent color',
   'settings.showGrid': 'Chart grid lines',

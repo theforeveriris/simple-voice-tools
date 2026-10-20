@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAiLocaleLabel, getLocale, getOverride, setOverride, t } from '@/i18n';
+import { getAiLocaleLabel, getLocale, getOverride, LOCALES, setOverride, t } from '@/i18n';
 import type { DictKey } from '@/i18n';
 import { zhCN } from '@/i18n/zh-CN';
 import { useI18n } from '@/i18n/hook';
@@ -37,7 +37,7 @@ export function EditStringsSheet({ onClose }: { onClose: () => void }) {
   /** 当前语言显示名（选择器同款） */
   const langLabel = getLocale() === 'ai'
     ? getAiLocaleLabel() ?? 'AI'
-    : { 'zh-CN': '简体中文', 'zh-TW': '繁體中文', en: 'English', ja: '日本語', lzh: '文言', ai: 'AI' }[getLocale()];
+    : LOCALES.find((l) => l.id === getLocale())?.label ?? getLocale();
 
   /** 列表渲染依赖词典版本（getI18nVersion）：保存/恢复覆盖后 bump，立即反映新译文 */
   const results = (() => {
